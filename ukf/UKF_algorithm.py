@@ -39,7 +39,6 @@ Use mean and covariance matrices to make sigma point matrix
 def sigma(means, cov, n, scaling):
     #temp=np.zeros((len(cov,n)))
 
-    # print("COV ENTERED IS POSITIVE SEMI?", scipy.linalg.cholesky(cov, lower=True))
   
     '''hardcode 10 here'''
     sigmaMatrix = np.zeros((2*n+1,n))
