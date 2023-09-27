@@ -1,25 +1,12 @@
-''' simple_attitude.py
-
-    Simple simulation propagting attitude, represented with a quaternion, for generating
-    simulated states data for computing team's UKF development. Assumes a constant angular velocity
-    model, given an initial angular velocity.
-
-    Propagator equations taken from https://ahrs.readthedocs.io/en/latest/filters/angular.html
-
-    Ways to improve:
-        - Implement propagation element by element of quaternion to allow for Runge-Kutta 4(5) and/or to write
-        as the Kalman Filter transformation equation
-        - Comment code block about visualization so I finally understand how it works LOL
-    
-    Next goal:
-        Equations of motions proper, for state = (q1, q2, q3, q4, w_x, w_y, w_z), given initial torque and all that shiii
-        Maybe I'll let da proto people do that
-
-    IrishSat
-    Juwan Jeremy Jacobe
-    University of Notre Dame
-    3 Nov 2022
 '''
+run_UKF.py
+Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
+Last modified 9/26/23
+
+Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
+'''
+
+# implement EOMS for real-time control in pygame???
 
 import numpy as np
 import random
@@ -32,6 +19,8 @@ import time
 from pyquaternion import Quaternion
 
 from UKF_algorithm import *
+# change for readability: import __ as ___ and change names later on
+# see above comments >:(
 
 from BNO055_MAGNETOMETER_BASIC import calibrate
 from BNO055_MAGNETOMETER_BASIC import get_data
@@ -220,15 +209,25 @@ def game_visualize(states, i):
         if i == num_states:
             break
 
+# data: list
+# typecasting for readability/a little functionality
 def check_zeros(data):
+    ''' Checks validity of data
+
+        Args:
+            data (???): data point
+
+    '''
     if int(data[0]) == 0 and int(data[1]) == 0 and int(data[2]) == 0:
         return True
 
 if __name__ == "__main__":
     states = []
+
     # Initialize
     r=np.zeros(10)
     q=np.zeros(9)
+
     for i in range(9):
         r[i]=random.random()
         q[i]=random.random() * .1
@@ -245,7 +244,6 @@ if __name__ == "__main__":
     # calibrate sensors before getting data
     calibrate()
     #get_data()
-    #print("STARTING COV: ", cov)
 
     cnt = 0
     for i in range(1, 150):
@@ -265,8 +263,8 @@ if __name__ == "__main__":
         if check_zeros(data): continue # do not use data if B-field is all zeros
 
         print(f"new data = {data}")
-        #start, cov = UKF(start, cov, r, q, data)
-        #game_visualize(np.array([start[:4]]), i)
+        start, cov = UKF(start, cov, r, q, data)
+        game_visualize(np.array([start[:4]]), i)
 
        # print("STATE AFTER {} RUNTHROUGH: {}".format(i, start))
         #print("COV AFTER {} RUNTHROUGH: {}".format(i, cov))
