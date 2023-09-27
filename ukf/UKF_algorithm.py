@@ -1,5 +1,28 @@
-# CURRENT WORKING COPY!!!
-# custom for our data inputs & needed state/dimensions
+'''
+UKF_algorithm.py
+Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
+Last modified 9/26/23
+
+UKF algorithm for IrishSat based on following resource:
+https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
+
+Variables needed throughout UKF process:
+  n = dimensionality of model (10)
+  m = dimension of measurement space that excludes first 0 of quaternion (9)
+  r = noise vector for predictions (we choose this & make it) (n)
+  q = noise vector for sensors (provided on data sheet for sensors) (m)
+  scaling = parameter for sigma point generation (3 - n)
+  cov = initial covariance matrix (n x n)
+  predMeans = matrix of predicted means (1 x n)
+  predCovid = matrix of predicted covariance (n x n)
+  g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
+  h = matrix of transformed sigma points (in the measurement space) (2*n+1 x m)
+  q_wmm = B field represented as quaternion (1 x 4)
+  meanInMes = means in the measurement space (1 x m)
+  covidInMes = covariance matrix of points in measurement space (m x m)
+  z = sensor data (1 x n except switched to 1 x m for some calculations)
+  kalman = kalman gain for each step (n x m)
+'''
 
 import numpy as np
 import math
@@ -9,27 +32,6 @@ import scipy
 import scipy.linalg
 #from statsmodels import *
 #from statsmodels.stats import correlation_tools
-'''
-UKF code developed based on the following resource:
-https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
-'''
-'''
-SPM = sigma point matrix
-'''
-"""
-Initialize globals needed throughout UKF process:
-  n = dimensionality of model
-  r = noise vector for predictions (we choose this & make it)
-  q = noise vector for sensors (provided on data sheet for sensors)
-  cov = initial covariance matrix (n x n) - does not really matter what it sra
-  predMeans = matrix of predicted means 
-  predCovid = matrix of predicted covariance
-  meanInMes = means in the measurement space (must apply H function)
-  h = sigma point matrix of transformed sigma points (in the measurement space)
-  g = matrix of predicted states (using stored means & covariance)
-  covidInMes = covariance matrix of points in measurement space
-  z = sensor data (current state of system)
-"""
 
 """
 Calculate sigma points
@@ -83,10 +85,9 @@ def sigma(means, cov, n, scaling):
 """
 Equations of motion
 Using the current state of the system, output the new predicted state of the system 
-Use the new collected means & covariance to make next SPM using the Equations of Motion
+Use the new collected means & covariance to make next sigma point matrix using the Equations of Motion
 """
 
-#Keep function seperate
 def EOMs(state):
     ''' Transformation function x_k_plus = f(x_k, u_k)
     
@@ -197,7 +198,6 @@ H function: update function (predict measurement from predicted state)
 
 Functions of getting predicted measurement from magnetometer (quaternion of B-field in body frame) from state (quaternion of body frame with reference to ECI)
 """
-#Keep function seperate
 
 
 def observe_a_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
@@ -217,7 +217,7 @@ def observe_d_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
 
 
 # Observation function: z = h(x_k, u_k)
-# Keep function separate
+# might add a gps aspect to better calculate body frame
 def H_func(state, q_wmm):  #magnetic field to quaternion RE-ADD q_wmm
     ''' Observation function:
     
@@ -311,6 +311,8 @@ Get the means in the measurement space (used in cross-covariance and final mean 
   This is stuff that Claudia is writing that we are getting from the magnetorquers
   Going to normalize aswell (divide by magnitude of bx by and bz)
   """
+# q_wmm is supposed to be B field represented as quaternion. Bx / magnatude(B)
+
 
   #return [0, bx, by, bz]
 
@@ -381,15 +383,11 @@ def UKF(passedMeans, passedCov, r, q, data):
     z.append(passedMeans[8])
     z.append(passedMeans[9])
 
-
-    
-    # print("Z ARRAY  ", z)
     scaling = 3-n
-    w1 = scaling / (n + scaling) #weight for first value
-    w2 = 1 / (2 * ( n + scaling)) #weight for all other values
+    w1 = scaling / (n + scaling) # weight for first value
+    w2 = 1 / (2 * ( n + scaling)) # weight for all other values
     
     # track the average of the estimated K states so far
-    #means = [1] * 10
     means = passedMeans
 
     """
@@ -404,7 +402,6 @@ def UKF(passedMeans, passedCov, r, q, data):
     # initialize the means array to zeroes
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
-    # print("SIGMA POINTS: ", sigTemp)
     # oldSig = sigTemp
 
     for i in range(1, n * 2 + 1):  # generate 2N+1 sigma points
@@ -417,7 +414,6 @@ def UKF(passedMeans, passedCov, r, q, data):
     x = EOMs(sigTemp[0])  # calculate EoMs for first sigma point
     g[0] = x  # add first sigma point to first index in g(x)
     predMeans = np.add(predMeans, x*w1)  # w1 for first weight
-    # print("PREDICTED MEANS: ", predMeans)
     
     """
     Calculate predicted covariance of Gaussian
@@ -444,7 +440,7 @@ def UKF(passedMeans, passedCov, r, q, data):
     """
     #qvmm = getQvmm()
     # create temporary sigma points
-    # #sigTemp = sensorSigma(z, n, scaling)
+    # sigTemp = sensorSigma(z, n, scaling)
     # b = np.random.randint(0,1,size=(10,10))
     # zCov = (b + b.T)/2 #create symmetric covariance
     zCov = [[.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -464,7 +460,6 @@ def UKF(passedMeans, passedCov, r, q, data):
     # z = means
     sigTemp = sigma(z, zCov, n, scaling)
     
-    # print("SECOND CALL:", sigTemp)
     # pass the sigma point to the h function
     for i in range(1, n * 2 + 1):
         x = H_func(sigTemp[i], q_wmm)
@@ -491,7 +486,6 @@ def UKF(passedMeans, passedCov, r, q, data):
     """
     Creates covariance matrix in measurement space
     """
-    # print("FIRST TRANSFORMED SIGAM POINT; ", h[0])
     for i in range(1, n * 2 + 1):
         arr = np.subtract(h[i], meanInMes)[np.newaxis]
         arr = np.matmul(arr.transpose(), arr)
