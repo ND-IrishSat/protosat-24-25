@@ -22,8 +22,8 @@ from UKF_algorithm import *
 # change for readability: import __ as ___ and change names later on
 # see above comments >:(
 
-from BNO055_MAGNETOMETER_BASIC import calibrate
-from BNO055_MAGNETOMETER_BASIC import get_data
+# from BNO055_MAGNETOMETER_BASIC import calibrate
+# from BNO055_MAGNETOMETER_BASIC import get_data
 
 ##################################################################################################################
 ## AttitudePropagator - the important part, propagates states numerically using constant angular velocity model ##
@@ -241,12 +241,39 @@ if __name__ == "__main__":
     for i in range(10):
         cov[i][i]=random.random()
 
-    # calibrate sensors before getting data
-    calibrate()
-    #get_data()
 
-    cnt = 0
-    for i in range(1, 150):
+    f = open("sensor_data_1.txt", "r")
+    full = f.read()
+    split = full.split(")")
+    split = split[:-1]
+    split2 = []
+    for thing in split:
+        temp = thing.split(",")
+        # if(len(temp)<3):
+        #     continue
+        for t in range(0, len(temp)): 
+            temp[t] = float(temp[t][1:])
+        
+        split2.append(temp)
+    # split2 = split.split(",")
+    # print(split2)
+    gyro = []
+    mag = []
+    for i in range(len(split2)):
+        if(i%2==0):
+            gyro.append(split2[i])
+        else:
+            mag.append(split2[i])
+    print(len(gyro))
+    print(len(mag))
+
+    data = [0] * 6
+
+    # calibrate sensors before getting data when linking with pi
+    # calibrate()
+    # cnt = 0
+
+    for i in range(1, len(gyro)):
         
         '''
         EOMSData = EOMs(np.array(start))
@@ -255,14 +282,21 @@ if __name__ == "__main__":
         start = EOMSData
         '''
 
-        if cnt == 0: 
-            data = get_data()
-            cnt += 1
-        time.sleep(0.5)
-        data = get_data()
-        if check_zeros(data): continue # do not use data if B-field is all zeros
+        # if cnt == 0: 
+        #     data = get_data()
+        #     cnt += 1
+        # time.sleep(0.5)
+        # data = get_data()
+        # if check_zeros(data): continue # do not use data if B-field is all zeros
+        # print(f"new data = {data}")
 
-        print(f"new data = {data}")
+        for a in range(3):
+            data[a] = gyro[i][a]
+        
+        for a in range(3):
+            data[a + 3] = mag[i][a]
+
+
         start, cov = UKF(start, cov, r, q, data)
         game_visualize(np.array([start[:4]]), i)
 
