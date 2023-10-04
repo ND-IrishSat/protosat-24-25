@@ -221,8 +221,48 @@ def check_zeros(data):
     if int(data[0]) == 0 and int(data[1]) == 0 and int(data[2]) == 0:
         return True
 
+
+def run_ukf_textfile(start, cov, r, q, filename):
+    f = open(filename, "r")
+    data = f.readline()
+    splitData = data.split(",")
+    splitData = [float(x) for x in splitData]
+    i = 1
+    while(data):
+
+        start, cov = UKF(start, cov, r, q, splitData)
+        game_visualize(np.array([start[:4]]), i)
+
+        data = f.readline()
+        if(data == ''):
+            break
+        splitData = data.split(",")
+        splitData = [float(x) for x in splitData]
+        i+=1
+
+    f.close()
+
+
+def run_ukf_sensor(state, cov, r, q):
+
+    ''' uncomment BNO055 imports to use '''
+
+    # i = 1
+    # calibrate()
+
+    # while(1):
+    #     time.sleep(0.5)
+    #     data = get_data()
+    #     # do not use data if B-field is all zeros 
+    #     if check_zeros(data): continue 
+
+    #     start, cov = UKF(start, cov, r, q, data)
+    #     game_visualize(np.array([start[:4]]), i)
+
+    #     i += 1
+
+
 if __name__ == "__main__":
-    states = []
 
     # Initialize
     r=np.zeros(10)
@@ -241,65 +281,11 @@ if __name__ == "__main__":
     for i in range(10):
         cov[i][i]=random.random()
 
+    filename = "sensor_data_2.txt"
 
-    f = open("sensor_data_1.txt", "r")
-    full = f.read()
-    split = full.split(")")
-    split = split[:-1]
-    split2 = []
-    for thing in split:
-        temp = thing.split(",")
-        # if(len(temp)<3):
-        #     continue
-        for t in range(0, len(temp)): 
-            temp[t] = float(temp[t][1:])
-        
-        split2.append(temp)
-    # split2 = split.split(",")
-    # print(split2)
-    gyro = []
-    mag = []
-    for i in range(len(split2)):
-        if(i%2==0):
-            gyro.append(split2[i])
-        else:
-            mag.append(split2[i])
-    print(len(gyro))
-    print(len(mag))
+    # tests ukf with pre-generated and cleaned data file
+    run_ukf_textfile(start, cov, r, q, filename)
 
-    data = [0] * 6
-
-    # calibrate sensors before getting data when linking with pi
-    # calibrate()
-    # cnt = 0
-
-    for i in range(1, len(gyro)):
-        
-        '''
-        EOMSData = EOMs(np.array(start))
-        print(EOMSData)
-        game_visualize(np.array([EOMSData[:4]]), i)
-        start = EOMSData
-        '''
-
-        # if cnt == 0: 
-        #     data = get_data()
-        #     cnt += 1
-        # time.sleep(0.5)
-        # data = get_data()
-        # if check_zeros(data): continue # do not use data if B-field is all zeros
-        # print(f"new data = {data}")
-
-        for a in range(3):
-            data[a] = gyro[i][a]
-        
-        for a in range(3):
-            data[a + 3] = mag[i][a]
-
-
-        start, cov = UKF(start, cov, r, q, data)
-        game_visualize(np.array([start[:4]]), i)
-
-       # print("STATE AFTER {} RUNTHROUGH: {}".format(i, start))
-        #print("COV AFTER {} RUNTHROUGH: {}".format(i, cov))
+    # must uncomment BNO055 imports to use in real-time with sensor
+    # run_ukf_sensor(start, cov, r, q)
         
