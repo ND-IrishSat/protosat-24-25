@@ -1,26 +1,33 @@
 '''
 run_UKF.py
 Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
-Last modified 9/26/23
+Last modified 10/7/23
 
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
-'''
 
-# implement EOMS for real-time control in pygame???
+TODO:
+    implement EOMS for real-time control in pygame?
+    fix hfunc
+    optimize for loops and numpy arrays
+    change import statements for readability
+    how do we get qvmm? write a function?
+    adding gps component
+    control input vector for EOMs?
+    remake sigma points?
+    find correct value for zCov and noise (r, q)
+'''
 
 import numpy as np
 import random
 import pygame
-from pygame.locals import * # Bad coding practice >:( Change later
-from OpenGL.GL import * # Bad coding practice >:( Change later
-from OpenGL.GLU import * # Bad coding practice >:( Change later
+from pygame.locals import * 
+from OpenGL.GL import *
+from OpenGL.GLU import *
 import time
 
 from pyquaternion import Quaternion
 
 from UKF_algorithm import *
-# change for readability: import __ as ___ and change names later on
-# see above comments >:(
 
 # from BNO055_MAGNETOMETER_BASIC import calibrate
 # from BNO055_MAGNETOMETER_BASIC import get_data
@@ -133,6 +140,14 @@ def Draw(vertices, edges):
 
     glEnd()
 
+'''
+game_visualize 
+    uses pygames and AttitudePropagator class to visualize simple cube with our data (written by Juwan)
+
+@params
+    states: quaternion matrix to visualize (1 x 4)
+    i: index of what step we are on (must start at 1 to properly initialize)
+'''
 def game_visualize(states, i):
     ''' Tryna implement PyGame and OpenGL to this bish 
 
@@ -187,7 +202,6 @@ def game_visualize(states, i):
     Q_array = states[:, :4]  # array of quaternions (for each entry, take first four items -> array of [a,b,c,d])
     for i in range(0, len(Q_array)):
         Q_array[i][0] = 0
-    # print("Q_ARRAY: ", Q_array)
     i = 0
 
     num_states = states.shape[0]
@@ -209,8 +223,15 @@ def game_visualize(states, i):
         if i == num_states:
             break
 
-# data: list
-# typecasting for readability/a little functionality
+'''
+check_zeros
+    checks validity of data input
+
+@params
+    data: input from sensor real-time (1 x 6)
+@returns
+    true or false 
+'''
 def check_zeros(data):
     ''' Checks validity of data
 
@@ -221,7 +242,17 @@ def check_zeros(data):
     if int(data[0]) == 0 and int(data[1]) == 0 and int(data[2]) == 0:
         return True
 
+'''
+run_ukf_textfile
+    runs and visualizes UKF algorithm on input data file
 
+@params
+    start: initialized state (1 x n)
+    cov: initialized covariance matrix (n x n)
+    r: noise vector for predictions (1 x n)
+    q: noise vector for sensors (1 x m)
+    filename: text file of cleaned sensor data to read from (any length)
+'''
 def run_ukf_textfile(start, cov, r, q, filename):
     f = open(filename, "r")
     data = f.readline()
@@ -242,7 +273,16 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     f.close()
 
+'''
+run_ukf_sensor
+    runs and visualizes UKF algorithm using real-time data from magnetometer/pi
 
+@params
+    start: initialized state (1 x n)
+    cov: initialized covariance matrix (n x n)
+    r: noise vector for predictions (1 x n)
+    q: noise vector for sensors (1 x m)
+'''
 def run_ukf_sensor(state, cov, r, q):
 
     ''' uncomment BNO055 imports to use '''
@@ -264,21 +304,22 @@ def run_ukf_sensor(state, cov, r, q):
 
 if __name__ == "__main__":
 
-    # Initialize
-    r=np.zeros(10)
-    q=np.zeros(9)
+    # Initialize noises and starting state/cov to random values
+    n = 10
+    m = 9
 
-    for i in range(9):
+    r=np.zeros(n)
+    q=np.zeros(m)
+    for i in range(m):
         r[i]=random.random()
         q[i]=random.random() * .1
     
-    start=np.zeros(10)
+    start=np.zeros(n)
     for i in range(len(start)):
         start[i] = random.random()
-    # start = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-    cov = np.zeros((10,10))
-    for i in range(10):
+    cov = np.zeros((n,n))
+    for i in range(n):
         cov[i][i]=random.random()
 
     filename = "sensor_data_2.txt"
