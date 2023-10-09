@@ -35,19 +35,19 @@ import scipy.linalg
 #from statsmodels.stats import correlation_tools
 
 
-'''
-sigma
-    creates sigma point matrix based on formula that represents distribution of means and cov
-
-@params
-    means: mean of gaussian of estimated states so far (maybe???). Also first column of sigma matrix (1 x n)
-    cov: covariance matrix of state (n x n)
-    n: dimensionality of model
-    scaling: how far from mean we distribute our points, used in sigma point formula
-@returns
-    sigmaMatrix: matrix of sigma points (2 * n + 1, n) 
-'''
 def sigma(means, cov, n, scaling):
+    '''
+    sigma
+        creates sigma point matrix based on formula that represents distribution of means and cov
+
+    @params
+        means: mean of gaussian of estimated states so far (maybe???). Also first column of sigma matrix (1 x n)
+        cov: covariance matrix of state (n x n)
+        n: dimensionality of model
+        scaling: how far from mean we distribute our points, used in sigma point formula
+    @returns
+        sigmaMatrix: matrix of sigma points (2 * n + 1, n) 
+    '''
     # intialize 2N + 1 sigma points to zeroes
     sigmaMatrix = np.zeros((2*n+1,n))
     temp = np.zeros((n, n))
@@ -70,52 +70,45 @@ def sigma(means, cov, n, scaling):
     return sigmaMatrix
 
 
-'''
-EOMs
-    uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
-    change dt within to control time step
-    u_k: control input vector for magnetorquers?
-
-@params
-    state: column of sigma point matrix to propogate (1 x n)
-@returns
-    x_predicted: next step based on Euler's method (1 x n)
-'''
 def EOMs(state):
-    ''' Transformation function x_k_plus = f(x_k, u_k)
-    
-        Args:
-            state: State of the system vector
-                [a b c d w_x w_y w_z theta_dot_RW1 theta_dot_RW2 theta_dot_RW3]
-              
-            u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
-                [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
-                
-            I_body_tensor: Moment of inertia tensor of the cubesat
-                [[I_XX  I_XY  I_XZ]
-                 [I_YX  I_YY  I_YZ]
-                 [I_ZX  I_ZY  I_ZZ]]
-            
-            I_RW: Moment of inertias of the three reaction wheels
-                [I_RW1 I_RW2 I_RW3]
-                
-            dt: The timestep between the current state and predicted state
-            
-            func: instance of EoMs object, defined in eoms.py
     '''
+    EOMs
+        uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
+        change dt within to control time step
+        u_k: control input vector for magnetorquers?
+
+    @params
+        state: column of sigma point matrix to propogate (1 x n)
+            [a b c d w_x w_y w_z theta_dot_RW1 theta_dot_RW2 theta_dot_RW3]
+    @returns
+        x_predicted: next step based on Euler's method (1 x n)
+    '''
+
+    # func: instance of EoMs object, defined in eoms.py
     func = bigEOMS()
 
+    # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
+                # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
     u_k = np.zeros(6)
+
+    # I_body_tensor: Moment of inertia tensor of the cubesat
+                # [[I_XX  I_XY  I_XZ]
+                #  [I_YX  I_YY  I_YZ]
+                #  [I_ZX  I_ZY  I_ZZ]]
     I_body_tensor = [[1728.7579, -60.6901, -8.7583],
                      [-60.6901, 1745.997, 53.4338],
                      [-8.7583, 53.4338, 1858.2584]]
+    
+    # I_RW: Moment of inertias of the three reaction wheels
+                # [I_RW1 I_RW2 I_RW3]
     I_RW = [578.5944, 578.5944, 578.5944]
+
+    # dt: The timestep between the current state and predicted state
     dt = 0.1
 
     # Initialize prediction
     x_predicted = np.zeros(len(state))
 
-    ## Grab intermediate values
     # Grab components of state vector
     a = state[0]
     b = state[1]
@@ -198,50 +191,17 @@ def observe_d_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
     return a_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) - b_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf) + c_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf) + d_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm)
 
 
-'''
-H_func
-    transforms sigma points from state space to measurement space by running transformation and removing unnecessary first element of quaternion
-
-@params
-    state: estimate in state space (1 x n)
-    q_wmm: B field of ECI frame (measurement space) represented as quaternion (1 x 4, first element 0)
-           [0, bx, by, bz] normalized by dividing by magnitude
-@returns
-    za: state estimate in measurement space (1 x m)
-'''
 def H_func(state, q_wmm): 
-    ''' Observation function:
-    
-        Args:
-            q_wmm: quaternion of B_field w/ respect to the ECI frame. FIRST VALUE SHOULD BE 0
-            state: state x_k of system
-            
-                              a_kf
-                              b_kf
-                              c_kf
-                              d_kf
-                              w_x
-                     x_kf =   w_y
-                              w_z
-                              theta_dot_RW1
-                              theta_dot_RW2
-                              theta_dot_RW3
+    '''
+    H_func
+        transforms sigma points from state space to measurement space by running transformation and removing unnecessary first element of quaternion
 
-           
-        The observation function maps that measurement z_kf from state x_kf such that
-        z_kf = h(x_kf), where z_kf in this case is the following vector
-        
-                              a_B^BF      
-                              b_B^BF
-                              c_B^BF
-                              d_B^BF
-                    z_kf =    w_x
-                              w_y
-                              w_z
-                              theta_dot_RW1
-                              theta_dot_RW2
-                              theta_dot_RW3
-    
+    @params
+        state: estimate in state space (1 x n)
+        q_wmm: B field of ECI frame (measurement space) represented as quaternion (1 x 4, first element 0)
+            [0, bx, by, bz] normalized by dividing by magnitude
+    @returns
+        za: state estimate in measurement space (1 x m)
     '''
 
     # Grab components from vectors
@@ -260,7 +220,7 @@ def H_func(state, q_wmm):
     b_wmm = q_wmm[1]
     c_wmm = q_wmm[2]
     d_wmm = q_wmm[3]
-    #print(a_kf, b_kf, c_kf, d_kf, b_wmm, c_wmm, d_wmm)
+
     # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
     a_B_BF = 0  # For now, assume this will always be zero. Trust P. Wensing!!!
     b_B_BF = observe_b_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
@@ -287,37 +247,40 @@ def H_func(state, q_wmm):
     
     return za
 
-'''
-quaternionMultiply
-    custom function to perform quaternion multiply on two passed-in matrices
 
-@params
-    a, b: quaternion matrices (1 x 4)
-@returns
-    multiplied quaternion matrix
-'''
 def quaternionMultiply(a, b):
+    '''
+    quaternionMultiply
+        custom function to perform quaternion multiply on two passed-in matrices
+
+    @params
+        a, b: quaternion matrices (1 x 4)
+    @returns
+        multiplied quaternion matrix
+    '''
     return [[a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]],
             [a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]],
             [a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]],
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
-'''
-UKF
-    estimates state at for time step based on sensor data, noise, and equations of motion
 
-@params
-    passedMeans: means of previous states (1 x n)
-    passedCov: covariance matrix of state (n x n)
-    r: noise vector of predictions (1 x n)
-    q: noise vector of sensors (1 x m)
-    data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
-@returns
-    means: calcuated state estimate at current time (1 x n)
-    cov: covariance matrix (n x n)
-'''
 def UKF(passedMeans, passedCov, r, q, data):
+    '''
+    UKF
+        estimates state at for time step based on sensor data, noise, and equations of motion
 
+    @params
+        passedMeans: means of previous states (1 x n)
+        passedCov: covariance matrix of state (n x n)
+        r: noise vector of predictions (1 x n)
+        q: noise vector of sensors (1 x m)
+        data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
+    @returns
+        means: calcuated state estimate at current time (1 x n)
+        cov: covariance matrix (n x n)
+    '''
+
+    # initialize vars (top of file for descriptions)
     n = 10
     m = 9
     cov = passedCov

@@ -140,19 +140,16 @@ def Draw(vertices, edges):
 
     glEnd()
 
-'''
-game_visualize 
-    uses pygames and AttitudePropagator class to visualize simple cube with our data (written by Juwan)
 
-@params
-    states: quaternion matrix to visualize (1 x 4)
-    i: index of what step we are on (must start at 1 to properly initialize)
-'''
 def game_visualize(states, i):
-    ''' Tryna implement PyGame and OpenGL to this bish 
+    '''
+    game_visualize 
+        uses pygames and AttitudePropagator class to visualize simple cube with our data (written by Juwan)
 
-    You don't stop
-    '''     
+    @params
+        states: quaternion matrix to visualize (1 x 4)
+        i: index of what step we are on (must start at 1 to properly initialize)
+    ''' 
     vertices_cube = np.array([[1, -1, -1], [1, 1, -1],[-1, 1, -1],[-1, -1, -1],\
         [1, -1, 1],[1, 1, 1],[-1, -1, 1],[-1, 1, 1],[0,0,0],[0,-1,0],\
         [-0.8,0.8,1],[-0.8,0.6,1],[-0.6,0.6,1],[-0.6,0.8,1],\
@@ -223,37 +220,33 @@ def game_visualize(states, i):
         if i == num_states:
             break
 
-'''
-check_zeros
-    checks validity of data input
 
-@params
-    data: input from sensor real-time (1 x 6)
-@returns
-    true or false 
-'''
 def check_zeros(data):
-    ''' Checks validity of data
+    '''
+    check_zeros
+        checks validity of data input
 
-        Args:
-            data (???): data point
-
+    @params
+        data: input from sensor real-time (1 x 6)
+    @returns
+        true or false 
     '''
     if int(data[0]) == 0 and int(data[1]) == 0 and int(data[2]) == 0:
         return True
 
-'''
-run_ukf_textfile
-    runs and visualizes UKF algorithm on input data file
 
-@params
-    start: initialized state (1 x n)
-    cov: initialized covariance matrix (n x n)
-    r: noise vector for predictions (1 x n)
-    q: noise vector for sensors (1 x m)
-    filename: text file of cleaned sensor data to read from (any length)
-'''
 def run_ukf_textfile(start, cov, r, q, filename):
+    '''
+    run_ukf_textfile
+        runs and visualizes UKF algorithm on input data file
+
+    @params
+        start: initialized state (1 x n)
+        cov: initialized covariance matrix (n x n)
+        r: noise vector for predictions (1 x n)
+        q: noise vector for sensors (1 x m)
+        filename: text file of cleaned sensor data to read from (any length)
+    '''
     f = open(filename, "r")
     data = f.readline()
     splitData = data.split(",")
@@ -273,19 +266,20 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     f.close()
 
-'''
-run_ukf_sensor
-    runs and visualizes UKF algorithm using real-time data from magnetometer/pi
 
-@params
-    start: initialized state (1 x n)
-    cov: initialized covariance matrix (n x n)
-    r: noise vector for predictions (1 x n)
-    q: noise vector for sensors (1 x m)
-'''
 def run_ukf_sensor(state, cov, r, q):
+    '''
+    run_ukf_sensor
+        runs and visualizes UKF algorithm using real-time data from magnetometer/pi
 
-    ''' uncomment BNO055 imports to use '''
+    @params
+        start: initialized state (1 x n)
+        cov: initialized covariance matrix (n x n)
+        r: noise vector for predictions (1 x n)
+        q: noise vector for sensors (1 x m)
+    '''
+
+    # uncomment BNO055 imports to use
 
     # i = 1
     # calibrate()
