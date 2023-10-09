@@ -27,7 +27,7 @@ import time
 
 from pyquaternion import Quaternion
 
-from UKF_algorithm import *
+import UKF_algorithm
 
 # from BNO055_MAGNETOMETER_BASIC import calibrate
 # from BNO055_MAGNETOMETER_BASIC import get_data
@@ -254,7 +254,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     i = 1
     while(data):
 
-        start, cov = UKF(start, cov, r, q, splitData)
+        start, cov = UKF_algorithm.UKF(start, cov, r, q, splitData)
         game_visualize(np.array([start[:4]]), i)
 
         data = f.readline()
@@ -290,7 +290,7 @@ def run_ukf_sensor(state, cov, r, q):
     #     # do not use data if B-field is all zeros 
     #     if check_zeros(data): continue 
 
-    #     start, cov = UKF(start, cov, r, q, data)
+    #     start, cov = UKF_algorithm.UKF(start, cov, r, q, data)
     #     game_visualize(np.array([start[:4]]), i)
 
     #     i += 1
