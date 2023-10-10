@@ -6,13 +6,12 @@ Last modified 10/7/23
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
+    biggest priority: fixing hfunc
+        how do we get qvmm? write a function?
+    adding gps component/control input vector for EOMs (u_k)
     implement EOMS for real-time control in pygame?
-    fix hfunc
+    update EOMs with new inertia
     optimize for loops and numpy arrays
-    change import statements for readability
-    how do we get qvmm? write a function?
-    adding gps component
-    control input vector for EOMs?
     remake sigma points?
     find correct value for zCov and noise (r, q)
 '''

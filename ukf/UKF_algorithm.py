@@ -27,7 +27,7 @@ Variables needed throughout UKF process:
 
 import numpy as np
 import math
-from bigEOMS import *
+import bigEOMS
 import random
 import scipy
 import scipy.linalg
@@ -85,7 +85,7 @@ def EOMs(state, u_k):
     '''
 
     # func: instance of EoMs object, defined in eoms.py
-    func = bigEOMS()
+    func = bigEOMS.bigEOMS()
 
     # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
                 # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
