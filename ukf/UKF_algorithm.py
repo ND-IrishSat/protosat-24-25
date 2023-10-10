@@ -70,7 +70,7 @@ def sigma(means, cov, n, scaling):
     return sigmaMatrix
 
 
-def EOMs(state):
+def EOMs(state, u_k):
     '''
     EOMs
         uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
@@ -264,7 +264,7 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
-def UKF(passedMeans, passedCov, r, q, data):
+def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
     UKF
         estimates state at for time step based on sensor data, noise, and equations of motion
@@ -274,6 +274,7 @@ def UKF(passedMeans, passedCov, r, q, data):
         passedCov: covariance matrix of state (n x n)
         r: noise vector of predictions (1 x n)
         q: noise vector of sensors (1 x m)
+        u_k: control input vector for EOMs step (gps data)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
     @returns
         means: calcuated state estimate at current time (1 x n)
@@ -330,13 +331,13 @@ def UKF(passedMeans, passedCov, r, q, data):
     # oldSig = sigTemp
 
     for i in range(1, n * 2 + 1):  # generate 2N+1 sigma points
-        x = EOMs(sigTemp[i])  # use state estimation equations
+        x = EOMs(sigTemp[i], u_k)  # use state estimation equations
         g[i] = x  # add the next entry to g matrix
         predMeans = np.add(predMeans,x)  # calculate means of sigma points w/out weights
 
     # apply weights to predicted means
     predMeans *= w2   # w2 for later weights
-    x = EOMs(sigTemp[0])  # calculate EoMs for first sigma point
+    x = EOMs(sigTemp[0], u_k)  # calculate EoMs for first sigma point
     g[0] = x  # add first sigma point to first index in g(x)
     predMeans = np.add(predMeans, x*w1)  # w1 for first weight
     
