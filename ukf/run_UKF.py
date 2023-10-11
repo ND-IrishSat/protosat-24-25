@@ -6,13 +6,12 @@ Last modified 10/7/23
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
+    biggest priority: fixing hfunc
+        how do we get qvmm? write a function?
+    adding gps component/control input vector for EOMs (u_k)
     implement EOMS for real-time control in pygame?
-    fix hfunc
+    update EOMs with new inertia
     optimize for loops and numpy arrays
-    change import statements for readability
-    how do we get qvmm? write a function?
-    adding gps component
-    control input vector for EOMs?
     remake sigma points?
     find correct value for zCov and noise (r, q)
 '''
@@ -252,9 +251,10 @@ def run_ukf_textfile(start, cov, r, q, filename):
     splitData = data.split(",")
     splitData = [float(x) for x in splitData]
     i = 1
+    u_k = []
     while(data):
-
-        start, cov = UKF_algorithm.UKF(start, cov, r, q, splitData)
+        # u_k = dataFromGPS()
+        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
         game_visualize(np.array([start[:4]]), i)
 
         data = f.readline()
@@ -282,15 +282,17 @@ def run_ukf_sensor(state, cov, r, q):
     # uncomment BNO055 imports to use
 
     # i = 1
+    # u_k = []
     # calibrate()
 
     # while(1):
     #     time.sleep(0.5)
     #     data = get_data()
+    #       u_k = getDataGPS()
     #     # do not use data if B-field is all zeros 
     #     if check_zeros(data): continue 
 
-    #     start, cov = UKF_algorithm.UKF(start, cov, r, q, data)
+    #     start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, data)
     #     game_visualize(np.array([start[:4]]), i)
 
     #     i += 1
