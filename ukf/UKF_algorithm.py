@@ -285,9 +285,11 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     n = 10
     m = 9
     cov = passedCov
+    predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
     meanInMes = np.zeros(m)
     covidInMes = np.zeros(m)
+    crossCo = np.zeros((n,m))
     h = np.zeros((2 * n + 1,m))
     g = np.zeros((n * 2 + 1, n))
     q_wmm = []
@@ -324,8 +326,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     4. Calculate the new predicted means by applying predetermined weights
     Let the sigma matrix = the starting sigma point matrix
     """
-    # initialize the means array to zeroes
-    predMeans = np.zeros(n)
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     # oldSig = sigTemp
@@ -378,7 +378,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
             [0, 0, 0, 0, 0, 0, 0, 0, 0, .1]
     ]
     for i in range(n):
-        zCov[i][i] = .2
+        zCov[i][i] = .05
     # zCov = cov
     # z = means
     # create temporary sigma points
@@ -431,7 +431,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
     # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
-    crossCo = np.zeros((n,m))
 
     for i in range(1, n * 2 + 1):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
@@ -477,5 +476,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
     cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
+    print(cov)
 
     return [means, cov]
