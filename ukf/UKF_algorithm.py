@@ -52,19 +52,25 @@ def sigma(means, cov, n, scaling):
     sigmaMatrix = np.zeros((2*n+1,n))
     temp = np.zeros((n, n))
 
-    for i in range(len(cov)):
-      for j in range(len(cov[i])):
-        #sigma point formula from website
-        temp[i][j] = cov[i][j]  * (n + scaling)
+    # for i in range(len(cov)):
+    #   for j in range(len(cov[i])):
+    #     temp[i][j] = cov[i][j]  * (n + scaling)
 
+    # sigma point formula from website
+    temp = np.multiply(cov, (n + scaling))
+
+    # take the square root of the matrix
     temp = scipy.linalg.sqrtm(temp)
+
     # first column of sigma matrix is means
     sigmaMatrix[0] = means
 
     # traverse N (10) dimensions, calculating all sigma points
-    for i in range(n):
-        sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
-        sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    # for i in range(n):
+    #     sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
+    #     sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    sigmaMatrix[1:(n+1)] = np.add(means, temp)
+    sigmaMatrix[(n+1):(2*n+1)] = np.subtract(means, temp)
 
     # return the sigma matrix (21 columns)
     return sigmaMatrix
@@ -449,10 +455,12 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     d = np.matmul(arr1.transpose(), arr2)
 
-    for i in range(n):
-        for j in range(m):
-            crossCo[i][j] *= w2
-            d[i][j] *= w1
+    # for i in range(n):
+    #     for j in range(m):
+    #         crossCo[i][j] *= w2
+    #         d[i][j] *= w1
+    np.multiply(crossCo, w2)
+    np.multiply(d, w1)
 
     crossCo = np.add(crossCo, d)
 
@@ -476,6 +484,5 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
     cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
-    print(cov)
 
     return [means, cov]

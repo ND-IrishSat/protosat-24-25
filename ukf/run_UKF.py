@@ -250,18 +250,16 @@ def run_ukf_textfile(start, cov, r, q, filename):
     data = f.readline()
     splitData = data.split(",")
     splitData = [float(x) for x in splitData]
-    start[0] = splitData[0]
-    start[1] = splitData[1]
-    start[2] = splitData[2]
-    start[3] = splitData[3]
+    # start[0] = splitData[0]
+    # start[1] = splitData[1]
+    # start[2] = splitData[2]
+    # start[3] = splitData[3]
     i = 1
     u_k = []
-    estimate_difference = 0.0
-    prevAve = 0.0
     while(data):
         # u_k = dataFromGPS()
         start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
-        # game_visualize(np.array([start[:4]]), i)
+        game_visualize(np.array([start[:4]]), i)
 
         data = f.readline()
         if(data == ''):
@@ -270,26 +268,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
         splitData = [float(x) for x in splitData]
         i+=1
 
-        aveDiff = 0.0
-
-        for x in range(6):
-            stepDiff = 0.0
-            if(splitData[x] == 0):
-                stepDiff = prevAve
-            else:
-                stepDiff = (start[x + 1] - splitData[x]) / abs((splitData[x]))
-            aveDiff += stepDiff
-
-        aveDiff = (aveDiff / 6)
-        prevAve = aveDiff
-        # print("difference at step {}: {}%".format(i, aveDiff))
-
-        estimate_difference += aveDiff
-
-    estimate_difference = (estimate_difference / i)
-    print("difference between data and state: {}".format(estimate_difference))
     f.close()
-    return estimate_difference
 
 
 def run_ukf_sensor(state, cov, r, q):
@@ -324,9 +303,6 @@ def run_ukf_sensor(state, cov, r, q):
 
 
 if __name__ == "__main__":
-    bigAverage = 0.0
-    trials = 100
-
 
     # Initialize noises and starting state/cov to random values
     n = 10
@@ -337,27 +313,17 @@ if __name__ == "__main__":
     for i in range(m):
         r[i]=random.random()
         q[i]=random.random() * .1
+
+    start = np.random.rand(n)
+
+    cov = np.zeros((n,n))
+    for i in range(n):
+        cov[i][i]=random.random()
     
+    filename = "sensor_data_2.txt"
 
-    filename = "sensor_data_3.txt"
+    # tests ukf with pre-generated and cleaned data file
+    run_ukf_textfile(start, cov, r, q, filename)
 
-    for x in range(trials):
-        start=np.zeros(n)
-        for i in range(len(start)):
-            start[i] = random.random()
-
-        cov = np.zeros((n,n))
-        for i in range(n):
-            cov[i][i]=random.random()
-
-        # tests ukf with pre-generated and cleaned data file
-        bigAverage += run_ukf_textfile(start, cov, r, q, filename)
-
-        # must uncomment BNO055 imports to use in real-time with sensor
-        # run_ukf_sensor(start, cov, r, q)
-            
-    bigAverage = (bigAverage / trials)
-    print("difference between data and state over {} trials: {}".format(trials, bigAverage))
-    #what we have in dev currently: 7.56
-    #starting cov * .1: 8.51
-    #unit test ukf function and switch over to numpy arrays. python generators?
+    # must uncomment BNO055 imports to use in real-time with sensor
+    # run_ukf_sensor(start, cov, r, q)
