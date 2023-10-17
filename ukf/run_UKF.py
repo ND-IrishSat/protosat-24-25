@@ -8,12 +8,12 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 TODO:
     biggest priority: fixing hfunc
         how do we get qvmm? write a function?
+        find correct value for zCov and noise (r, q)
     adding gps component/control input vector for EOMs (u_k)
-    implement EOMS for real-time control in pygame?
     update EOMs with new inertia
     optimize for loops and numpy arrays
     remake sigma points?
-    find correct value for zCov and noise (r, q)
+    implement EOMS for real-time control in pygame?
 '''
 
 import numpy as np
@@ -250,6 +250,10 @@ def run_ukf_textfile(start, cov, r, q, filename):
     data = f.readline()
     splitData = data.split(",")
     splitData = [float(x) for x in splitData]
+    # start[0] = splitData[0]
+    # start[1] = splitData[1]
+    # start[2] = splitData[2]
+    # start[3] = splitData[3]
     i = 1
     u_k = []
     while(data):
@@ -309,15 +313,13 @@ if __name__ == "__main__":
     for i in range(m):
         r[i]=random.random()
         q[i]=random.random() * .1
-    
-    start=np.zeros(n)
-    for i in range(len(start)):
-        start[i] = random.random()
+
+    start = np.random.rand(n)
 
     cov = np.zeros((n,n))
     for i in range(n):
         cov[i][i]=random.random()
-
+    
     filename = "sensor_data_2.txt"
 
     # tests ukf with pre-generated and cleaned data file
@@ -325,4 +327,3 @@ if __name__ == "__main__":
 
     # must uncomment BNO055 imports to use in real-time with sensor
     # run_ukf_sensor(start, cov, r, q)
-        

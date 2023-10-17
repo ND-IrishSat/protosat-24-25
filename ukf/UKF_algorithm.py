@@ -52,19 +52,25 @@ def sigma(means, cov, n, scaling):
     sigmaMatrix = np.zeros((2*n+1,n))
     temp = np.zeros((n, n))
 
-    for i in range(len(cov)):
-      for j in range(len(cov[i])):
-        #sigma point formula from website
-        temp[i][j] = cov[i][j]  * (n + scaling)
+    # for i in range(len(cov)):
+    #   for j in range(len(cov[i])):
+    #     temp[i][j] = cov[i][j]  * (n + scaling)
 
+    # sigma point formula from website
+    temp = np.multiply(cov, (n + scaling))
+
+    # take the square root of the matrix
     temp = scipy.linalg.sqrtm(temp)
+
     # first column of sigma matrix is means
     sigmaMatrix[0] = means
 
     # traverse N (10) dimensions, calculating all sigma points
-    for i in range(n):
-        sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
-        sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    # for i in range(n):
+    #     sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
+    #     sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    sigmaMatrix[1:(n+1)] = np.add(means, temp)
+    sigmaMatrix[(n+1):(2*n+1)] = np.subtract(means, temp)
 
     # return the sigma matrix (21 columns)
     return sigmaMatrix
@@ -285,9 +291,11 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     n = 10
     m = 9
     cov = passedCov
+    predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
     meanInMes = np.zeros(m)
     covidInMes = np.zeros(m)
+    crossCo = np.zeros((n,m))
     h = np.zeros((2 * n + 1,m))
     g = np.zeros((n * 2 + 1, n))
     q_wmm = []
@@ -324,8 +332,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     4. Calculate the new predicted means by applying predetermined weights
     Let the sigma matrix = the starting sigma point matrix
     """
-    # initialize the means array to zeroes
-    predMeans = np.zeros(n)
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     # oldSig = sigTemp
@@ -378,7 +384,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
             [0, 0, 0, 0, 0, 0, 0, 0, 0, .1]
     ]
     for i in range(n):
-        zCov[i][i] = .2
+        zCov[i][i] = .05
     # zCov = cov
     # z = means
     # create temporary sigma points
@@ -431,7 +437,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
     # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
-    crossCo = np.zeros((n,m))
 
     for i in range(1, n * 2 + 1):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
@@ -450,10 +455,12 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     d = np.matmul(arr1.transpose(), arr2)
 
-    for i in range(n):
-        for j in range(m):
-            crossCo[i][j] *= w2
-            d[i][j] *= w1
+    # for i in range(n):
+    #     for j in range(m):
+    #         crossCo[i][j] *= w2
+    #         d[i][j] *= w1
+    np.multiply(crossCo, w2)
+    np.multiply(d, w1)
 
     crossCo = np.add(crossCo, d)
 
