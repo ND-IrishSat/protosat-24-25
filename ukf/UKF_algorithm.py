@@ -28,11 +28,8 @@ Variables needed throughout UKF process:
 import numpy as np
 import math
 import bigEOMS
-import random
 import scipy
 import scipy.linalg
-#from statsmodels import *
-#from statsmodels.stats import correlation_tools
 
 
 def sigma(means, cov, n, scaling):
@@ -294,10 +291,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
     meanInMes = np.zeros(m)
-    covidInMes = np.zeros(m)
+    covidInMes = np.zeros((m, m))
     crossCo = np.zeros((n,m))
-    h = np.zeros((2 * n + 1,m))
     g = np.zeros((n * 2 + 1, n))
+    h = np.zeros((2 * n + 1,m))
     q_wmm = []
     q_wmm.append(0)
     q_wmm.append(data[0])
@@ -336,10 +333,11 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     # oldSig = sigTemp
 
-    for i in range(1, n * 2 + 1):  # generate 2N+1 sigma points
-        x = EOMs(sigTemp[i], u_k)  # use state estimation equations
-        g[i] = x  # add the next entry to g matrix
-        predMeans = np.add(predMeans,x)  # calculate means of sigma points w/out weights
+    # pass sigma points through EOMs
+    for i in range(1, n * 2 + 1):
+        x = EOMs(sigTemp[i], u_k) # predicted next state for sigma point
+        g[i] = x  # store entry in g matrix
+        predMeans = np.add(predMeans, x)  # calculate means of sigma points w/out weights
 
     # apply weights to predicted means
     predMeans *= w2   # w2 for later weights
@@ -353,16 +351,17 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     """
     # for all sigma points
     for i in range(1, n * 2 + 1):
-        arr = np.subtract(g[i], predMeans)[np.newaxis]
         # subtract the predicted mean from the transformed sigma points
+        arr = np.subtract(g[i], predMeans)[np.newaxis]
 
         arr = np.matmul(arr.transpose(), arr)
         # matrix multiplication: multiply the matrix by itself transposed!
         predCovid = np.add(predCovid, arr)
 
     arr = np.subtract(g[0], predMeans)[np.newaxis]
-    predCovid*=w2
-    d = np.matmul(arr.transpose(), arr)*w1  # d: separates out first value
+    predCovid *= w2
+    # seperate out first value and update with correct weight
+    d = np.matmul(arr.transpose(), arr) * w1 
 
     # add d back to predicted covariance matrix
     predCovid = np.add(predCovid, d)
@@ -397,7 +396,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
         '''works'''
         # transforms sigma points into measurement space
         h[i] = x  # store the calculated point in the h matrix
-        meanInMes = np.add(meanInMes, x)  # update mean in measurement mean
+        meanInMes = np.add(meanInMes, x)  # update mean in measurement w/out weights
 
     meanInMes *= w2  # weight for later value
 
@@ -407,7 +406,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     h[0] = x  # set the first element in h matrix
 
     # adjust the means in measurement space for first value
-    meanInMes = np.add(meanInMes, [i * w1 for i in x])
+    meanInMes = np.add(meanInMes, x*w1)
 
 
     """
@@ -419,12 +418,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
         covidInMes = np.add(covidInMes, arr)
     
     arr = np.subtract(h[0], meanInMes)[np.newaxis]
-    d = np.matmul(arr.transpose(), arr)  #ordering?
+    # multiply by weights by all values except w1 for first value d
+    covidInMes *= w2
+    d = np.matmul(arr.transpose(), arr) * w1  #ordering?
 
-    for i in range(m):
-        for j in range(m):
-            covidInMes[i][j] *= w2
-            d[i][j] *= w1
     covidInMes = np.add(covidInMes, d)
     '''remove/add sensor noise here '''
     # covidInMes=np.add(covidInMes,q) 
