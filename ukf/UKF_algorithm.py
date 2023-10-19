@@ -267,6 +267,95 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
+def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
+    '''
+    generateMeans
+        generate mean after passing sigma point distribution through a transformation function
+        also stores and returns all tranformed sigma points
+            
+    @params
+        func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        controlVector: additional input needed for func (u_k or q_wmm)
+        sigmaPoints: sigma point matrix (2xn+1 x n)
+        w1, w2: weight for first and all other sigma points, respectively
+        n: dimensionality of model 
+        dimensionality: dimensionality of what state we are generating for (n or m)
+    @returns
+        means: mean of distribution in state or measurement space (1 x n or 1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+    '''
+    # initialize means and new sigma matrix with correct dimensionality
+    means = np.zeros(dimensionality)
+    transformedSigma = np.zeros((2 * n + 1, dimensionality))
+
+    # pass all sigma points to the transformation function
+    for i in range(1, n * 2 + 1):
+        x = func(sigmaPoints[i], controlVector)
+        # store calculated sigma point in transformed sigma matrix
+        transformedSigma[i] = x
+        # update mean with point
+        means = np.add(means, x)
+
+    # apply weight to mean without first point
+    means *= w2
+
+    # pass first sigma point through transformation function
+    x = func(sigmaPoints[0], controlVector) 
+    # store new point as first element in transformed sigma matrix
+    transformedSigma[0] = x
+
+    # adjust the means for first value and multiply by correct weight
+    means = np.add(means, x*w1)
+
+    return means, transformedSigma
+
+
+def generateCov(means, transformedSigma, w1, w2, n, noise):
+    '''
+    generateCov
+        generates covariance matrix from website equation based on means and sigma points
+        uncoment noise addition once r and q are figured out
+        
+    @params
+        means: means in state or measurement space (1 x n or 1 x m)
+        transformedSigma: stored result of passing sigma points through the EOMs or H_func (n*2+1 x m or n*2+1 x n)
+        w1, w2: weight for first and all other sigma points, respectively
+        n: dimensionality of model 
+        noise: noise value array to apply to our cov matrix (r or q)
+    @returns
+        cov: covariance matrix in state or measurement space (n x n or m x m)
+    '''
+    # find dimension of cov by looking at size of sigma point array
+    # prediction points will have n columns, measurement points will have m columns
+    covDimension = transformedSigma.shape[1]
+    
+    # initialize cov with proper dimensionality
+    cov = np.zeros((covDimension, covDimension))
+
+    # for all transformed sigma points, apply covariance formula
+    for i in range(1, n * 2 + 1):
+        # subtract mean from sigma point and multiply by itself tranposed
+        arr = np.subtract(transformedSigma[i], means)[np.newaxis]
+        arr = np.matmul(arr.transpose(), arr)
+        cov = np.add(cov, arr)
+    
+    # separate out first value and update with correct weight
+    arr = np.subtract(transformedSigma[0], means)[np.newaxis]
+    d = np.matmul(arr.transpose(), arr) * w1
+
+    # use other weight for rest of values
+    cov *= w2
+
+    # add back first element
+    cov = np.add(cov, d)
+
+    # add noise to covariance matrix
+    # cov = np.add(cov, noise)
+
+    return cov
+
+
+
 def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
     UKF
@@ -333,39 +422,14 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     # oldSig = sigTemp
 
-    # pass sigma points through EOMs
-    for i in range(1, n * 2 + 1):
-        x = EOMs(sigTemp[i], u_k) # predicted next state for sigma point
-        g[i] = x  # store entry in g matrix
-        predMeans = np.add(predMeans, x)  # calculate means of sigma points w/out weights
-
-    # apply weights to predicted means
-    predMeans *= w2   # w2 for later weights
-    x = EOMs(sigTemp[0], u_k)  # calculate EoMs for first sigma point
-    g[0] = x  # add first sigma point to first index in g(x)
-    predMeans = np.add(predMeans, x*w1)  # w1 for first weight
+    predMeans, g = generateMeans(EOMs, u_k, sigTemp, w1, w2, n, n)
     
 
     """
     Calculate predicted covariance of Gaussian
     """
-    # for all sigma points
-    for i in range(1, n * 2 + 1):
-        # subtract the predicted mean from the transformed sigma points
-        arr = np.subtract(g[i], predMeans)[np.newaxis]
+    predCovid = generateCov(predMeans, g, w1, w2, n, r)
 
-        arr = np.matmul(arr.transpose(), arr)
-        # matrix multiplication: multiply the matrix by itself transposed!
-        predCovid = np.add(predCovid, arr)
-
-    arr = np.subtract(g[0], predMeans)[np.newaxis]
-    predCovid *= w2
-    # seperate out first value and update with correct weight
-    d = np.matmul(arr.transpose(), arr) * w1 
-
-    # add d back to predicted covariance matrix
-    predCovid = np.add(predCovid, d)
-  
 
     """ 
     Mean to measurement
@@ -385,46 +449,16 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     for i in range(n):
         zCov[i][i] = .05
     # zCov = cov
-    # z = means
     # create temporary sigma points
     sigTemp = sigma(z, zCov, n, scaling)
-    
-    # pass the sigma point to the h function
-    for i in range(1, n * 2 + 1):
-        x = H_func(sigTemp[i], q_wmm)
-        # x = sigTemp[i] 
-        '''works'''
-        # transforms sigma points into measurement space
-        h[i] = x  # store the calculated point in the h matrix
-        meanInMes = np.add(meanInMes, x)  # update mean in measurement w/out weights
 
-    meanInMes *= w2  # weight for later value
-
-    x = H_func(sigTemp[0], q_wmm)  # get first mapped point
-    # x = sigTemp[0]
-    '''works'''
-    h[0] = x  # set the first element in h matrix
-
-    # adjust the means in measurement space for first value
-    meanInMes = np.add(meanInMes, x*w1)
+    meanInMes, h = generateMeans(H_func, q_wmm, sigTemp, w1, w2, n, m)
 
 
     """
     Creates covariance matrix in measurement space
     """
-    for i in range(1, n * 2 + 1):
-        arr = np.subtract(h[i], meanInMes)[np.newaxis]
-        arr = np.matmul(arr.transpose(), arr)
-        covidInMes = np.add(covidInMes, arr)
-    
-    arr = np.subtract(h[0], meanInMes)[np.newaxis]
-    # multiply by weights by all values except w1 for first value d
-    covidInMes *= w2
-    d = np.matmul(arr.transpose(), arr) * w1  #ordering?
-
-    covidInMes = np.add(covidInMes, d)
-    '''remove/add sensor noise here '''
-    # covidInMes=np.add(covidInMes,q) 
+    covidInMes = generateCov(meanInMes, h, w1, w2, n, q)
 
 
     '''
@@ -434,6 +468,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
     # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
+    # sig = sigma(z, zCov, n, scaling)
+
 
     for i in range(1, n * 2 + 1):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
@@ -452,10 +488,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     d = np.matmul(arr1.transpose(), arr2)
 
-    # for i in range(n):
-    #     for j in range(m):
-    #         crossCo[i][j] *= w2
-    #         d[i][j] *= w1
     np.multiply(crossCo, w2)
     np.multiply(d, w1)
 
