@@ -271,7 +271,7 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
     '''
     generateMeans
         generate mean after passing sigma point distribution through a transformation function
-        also stores and returns all tranformed sigma points
+        also stores and returns all transformed sigma points
             
     @params
         func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
@@ -334,7 +334,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
 
     # for all transformed sigma points, apply covariance formula
     for i in range(1, n * 2 + 1):
-        # subtract mean from sigma point and multiply by itself tranposed
+        # subtract mean from sigma point and multiply by itself transposed
         arr = np.subtract(transformedSigma[i], means)[np.newaxis]
         arr = np.matmul(arr.transpose(), arr)
         cov = np.add(cov, arr)
@@ -343,7 +343,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     arr = np.subtract(transformedSigma[0], means)[np.newaxis]
     d = np.matmul(arr.transpose(), arr) * w1
 
-    # use other weight for rest of values
+    # use other weight for remaining values
     cov *= w2
 
     # add back first element
@@ -359,7 +359,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
 def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
     UKF
-        estimates state at for time step based on sensor data, noise, and equations of motion
+        estimates state at time step based on sensor data, noise, and equations of motion
 
     @params
         passedMeans: means of previous states (1 x n)
@@ -369,7 +369,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
         u_k: control input vector for EOMs step (gps data)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
     @returns
-        means: calcuated state estimate at current time (1 x n)
+        means: calculated state estimate at current time (1 x n)
         cov: covariance matrix (n x n)
     '''
 
@@ -384,13 +384,15 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     crossCo = np.zeros((n,m))
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((2 * n + 1,m))
+    
     q_wmm = []
     q_wmm.append(0)
     q_wmm.append(data[0])
     q_wmm.append(data[1])
     q_wmm.append(data[2])
+    
     # z = passedMeans
-    z=[]
+    z = []
     z.append(0)
     z.append(data[0])
     z.append(data[1])
@@ -404,7 +406,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     scaling = 3-n
     w1 = scaling / (n + scaling) # weight for first value
-    w2 = 1 / (2 * ( n + scaling)) # weight for all other values
+    w2 = 1 / (2 * (n + scaling)) # weight for all other values
     
     # track the average of the estimated K states so far
     means = passedMeans
@@ -416,7 +418,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     2. Apply the EOMs to the temporary (stored) sigma points
     2. Calculate the means of sigma points without weights
     4. Calculate the new predicted means by applying predetermined weights
-    Let the sigma matrix = the starting sigma point matrix
+    Initialize sigma matrix to the starting sigma point matrix
     """
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
@@ -449,6 +451,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     for i in range(n):
         zCov[i][i] = .05
     # zCov = cov
+  
     # create temporary sigma points
     sigTemp = sigma(z, zCov, n, scaling)
 
@@ -502,15 +505,18 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
 
     z = z[1:]
+  
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
 
     # 2 options for updated cov:
     
+    # option 1:
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
     # cov = np.matmul(np.subtract(np.identity(m), np.matmul(kalman, crossCo)), predCovid)
     # this one doesn't work with different n and m for some reason
 
+    # option 2:
     # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
     cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
 
