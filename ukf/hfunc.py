@@ -65,6 +65,24 @@ def quaternion_rotation_matrix(Q):
 
 
 
+n = 10
+state = np.random.rand(n)
+transformed = np.array()
+# need some kind of generator for random long/lat coordinates, height, and time
+#   arrays needed for controls: 
+    # lat_gd (np.array): array holding the geodesic latitude associated with a state
+    # lon (np.array): array holding the longtitude associated with a state
+    # h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
+    # t (np.array): array of times associated with an array of states, given in decimal years
+controls = [[]]
+
+# Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
+transformed.append(transformed, np.array(hfunc(state, controls)))
+
+transformed.append(transformed, np.array(state[4:]))
+
+# transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])
+
 
 
 

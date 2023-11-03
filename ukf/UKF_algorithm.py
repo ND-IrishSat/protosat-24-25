@@ -30,6 +30,7 @@ import math
 import bigEOMS
 import scipy
 import scipy.linalg
+from hfunc import hfunc
 
 
 def sigma(means, cov, n, scaling):
@@ -179,21 +180,6 @@ def EOMs(state, u_k):
     return x_predicted
 
 
-"""
-Functions of getting predicted measurement from magnetometer (quaternion of B-field in body frame) from state (quaternion of body frame with reference to ECI)
-"""
-def observe_b_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return a_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf) - c_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) + b_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm) + d_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf)
-
-
-def observe_c_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return a_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf) + b_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) + c_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm) - d_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf)
-
-
-def observe_d_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return a_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) - b_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf) + c_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf) + d_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm)
-
-
 def H_func(state, q_wmm): 
     '''
     H_func
@@ -201,54 +187,30 @@ def H_func(state, q_wmm):
 
     @params
         state: estimate in state space (1 x n)
+        # update with description of control vector + update var name everywhere
         q_wmm: B field of ECI frame (measurement space) represented as quaternion (1 x 4, first element 0)
             [0, bx, by, bz] normalized by dividing by magnitude
     @returns
-        za: state estimate in measurement space (1 x m)
+        transformed: state estimate in measurement space (1 x m)
     '''
+    # I think this is how we use what hfunc returns unless we want to get rid of H_func in this file entirely
 
-    # Grab components from vectors
-    a_kf = state[0]
-    b_kf = state[1]
-    c_kf = state[2]
-    d_kf = state[3]
-    w_x = state[4]
-    w_y = state[5]
-    w_z = state[6]
-    theta_dot_RW1 = state[7]
-    theta_dot_RW2 = state[8]
-    theta_dot_RW3 = state[9]
-
-    a_wmm = q_wmm[0]
-    b_wmm = q_wmm[1]
-    c_wmm = q_wmm[2]
-    d_wmm = q_wmm[3]
+    # observation vector
+    transformed = np.array()
 
     # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
-    a_B_BF = 0  # For now, assume this will always be zero. Trust P. Wensing!!!
-    b_B_BF = observe_b_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
-    c_B_BF = observe_c_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
-    d_B_BF = observe_d_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
+    transformed.append(transformed, np.array(hfunc(state, q_wmm)))
 
-    # Observation vector
-    za = np.array([
-        b_B_BF, c_B_BF, d_B_BF, w_x, w_y, w_z, theta_dot_RW1,
-        theta_dot_RW2, theta_dot_RW3
-    ])
+    transformed.append(transformed, np.array(state[4:]))
 
-    
-    #normalized version if we need it idk
+    # is there a better way to create transformed except appending?
+    # maybe: 
+    # transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])
+
+    #should we normalized obversation vector?
     #should already be normal, but isn't occasually due to rounding errors. Could normalize sometimes
-    '''
-    normalize=1/math.sqrt(abs(a_B_BF*a_B_BF + b_B_BF*b_B_BF + c_B_BF*c_B_BF + d_B_BF*d_B_BF))
-    Nza = np.array([
-        a_B_BF * normalize, b_B_BF * normalize, c_B_BF * normalize, 
-        d_B_BF * normalize, w_x, w_y, w_z, theta_dot_RW1,
-        theta_dot_RW2, theta_dot_RW3
-    ])
-    '''
     
-    return za
+    return transformed
 
 
 def quaternionMultiply(a, b):
@@ -385,6 +347,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((2 * n + 1,m))
     
+    # change to gps control variables
     q_wmm = []
     q_wmm.append(0)
     q_wmm.append(data[0])
@@ -455,6 +418,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     # create temporary sigma points
     sigTemp = sigma(z, zCov, n, scaling)
 
+    # update with gps control vector instead of q_wmm
     meanInMes, h = generateMeans(H_func, q_wmm, sigTemp, w1, w2, n, m)
 
 
@@ -473,7 +437,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     sig = sigTemp
     # sig = sigma(z, zCov, n, scaling)
 
-
+    # use formula from website to compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
         arr2 = np.subtract(h[i], meanInMes)[np.newaxis]
@@ -489,11 +453,14 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], meanInMes)[np.newaxis]
 
+    # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
 
+    # multiply by weights for first and other values
     np.multiply(crossCo, w2)
     np.multiply(d, w1)
 
+    # add first value back into cross covariance
     crossCo = np.add(crossCo, d)
 
 
