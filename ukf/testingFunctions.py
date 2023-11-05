@@ -50,24 +50,26 @@ def alex(a, b, c):
 # speedTest(alex, [3, 5, 10000], 10000)
 
 
-n = 10
-m = 9
-scaling = 3-n
-means = np.random.rand(n)
-cov = np.random.rand(10,10)
-r=np.zeros(n)
-q=np.zeros(m)
-for i in range(m):
-    r[i]=random.random()
-    q[i]=random.random() * .1
-u_k = []
-data = np.random.rand(6)
+if __name__ == '__main__':
 
-# speedTest(UKF_algorithm.sigma, [means, cov, n, scaling], 10000)
-# about half a millisecond
+    n = 10
+    m = 9
+    scaling = 3-n
+    means = np.random.rand(n)
+    cov = np.random.rand(10,10)
+    r=np.zeros(n)
+    q=np.zeros(m)
+    for i in range(m):
+        r[i]=random.random()
+        q[i]=random.random() * .1
+    u_k = []
+    data = np.random.rand(6)
 
-speedTest(UKF_algorithm.UKF, [means, cov, r, q, u_k, data], 10000)
-# about 7.9 ms
+    # speedTest(UKF_algorithm.sigma, [means, cov, n, scaling], 10000)
+    # about half a millisecond
+
+    speedTest(UKF_algorithm.UKF, [means, cov, r, q, u_k, data], 10000)
+    # about 7.9 ms
 
 
 

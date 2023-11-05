@@ -19,7 +19,7 @@ def hfunc(state, controls):
     wmm_model = WMM(12, 'WMMcoef.csv')
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
-    return np.matmul(rotationMatrix,Bfield1)
+    return np.concatenate( np.matmul(rotationMatrix,Bfield1), state[4:])
 
 
 
@@ -68,43 +68,33 @@ def quaternion_rotation_matrix(Q):
 
 
 
+if __name__ == '__main__':
 
+    q = np.array([1,0,1,1])
+    val = np.linalg.norm(q)
+    q = q/val
+    rotationMatrix = quaternion_rotation_matrix(q)
 
-q = np.array([1,0,1,1])
-val = np.linalg.norm(q)
-q = q/val
-rotationMatrix = quaternion_rotation_matrix(q)
+    print('quaternion: ',q,'\nrotation matrix: ', rotationMatrix)
 
-print('quaternion: ',q,'\nrotation matrix: ', rotationMatrix)
+    original = [1,0,0]
+    rotated = np.matmul(rotationMatrix,original)
 
-original = [1,1,1]
-rotated = np.matmul(rotationMatrix,original)
+    #PLOTTING (DOESNT MATTER)
+    original = np.concatenate(([0, 0, 0], original))
+    rotated = np.concatenate(([0, 0, 0], rotated))
 
+    print(original)
 
+    soa = np.array([original, rotated])
 
+    X, Y, Z, U, V, W = zip(*soa)
 
-
-
-
-
-
-
-
-#PLOTTING (DOESNT MATTER)
-original = np.concatenate(([0, 0, 0], original))
-rotated = np.concatenate(([0, 0, 0], rotated))
-
-print(original)
-
-soa = np.array([original, rotated])
-
-X, Y, Z, U, V, W = zip(*soa)
-
-print(X, Y, Z, U, V, W)
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-ax.quiver(X, Y, Z, U, V, W)
-ax.set_xlim([-2, 2])
-ax.set_ylim([-2, 2])
-ax.set_zlim([-2, 2])
-plt.show()
+    print(X, Y, Z, U, V, W)
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    ax.quiver(X, Y, Z, U, V, W)
+    ax.set_xlim([-2, 2])
+    ax.set_ylim([-2, 2])
+    ax.set_zlim([-2, 2])
+    plt.show()
