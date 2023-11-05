@@ -1,29 +1,34 @@
 '''
 run_UKF.py
 Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
-Last modified 9/26/23
+Last modified 10/7/23
 
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
-'''
 
-# implement EOMS for real-time control in pygame???
+TODO:
+    biggest priority: implementing hfunc
+    find correct value for zCov and noise (r, q)
+    adding gps component/control input vector for EOMs (u_k)
+    update EOMs with new inertia
+    optimize for loops and numpy arrays
+    test with different data sets
+    remake sigma points?
+'''
 
 import numpy as np
 import random
 import pygame
-from pygame.locals import * # Bad coding practice >:( Change later
-from OpenGL.GL import * # Bad coding practice >:( Change later
-from OpenGL.GLU import * # Bad coding practice >:( Change later
+from pygame.locals import * 
+from OpenGL.GL import *
+from OpenGL.GLU import *
 import time
 
 from pyquaternion import Quaternion
 
-from UKF_algorithm import *
-# change for readability: import __ as ___ and change names later on
-# see above comments >:(
+import UKF_algorithm
 
-from BNO055_MAGNETOMETER_BASIC import calibrate
-from BNO055_MAGNETOMETER_BASIC import get_data
+# from BNO055_MAGNETOMETER_BASIC import calibrate
+# from BNO055_MAGNETOMETER_BASIC import get_data
 
 ##################################################################################################################
 ## AttitudePropagator - the important part, propagates states numerically using constant angular velocity model ##
@@ -133,11 +138,16 @@ def Draw(vertices, edges):
 
     glEnd()
 
-def game_visualize(states, i):
-    ''' Tryna implement PyGame and OpenGL to this bish 
 
-    You don't stop
-    '''     
+def game_visualize(states, i):
+    '''
+    game_visualize 
+        uses pygames and AttitudePropagator class to visualize simple cube with our data (written by Juwan)
+
+    @params
+        states: quaternion matrix to visualize (1 x 4)
+        i: index of what step we are on (must start at 1 to properly initialize)
+    ''' 
     vertices_cube = np.array([[1, -1, -1], [1, 1, -1],[-1, 1, -1],[-1, -1, -1],\
         [1, -1, 1],[1, 1, 1],[-1, -1, 1],[-1, 1, 1],[0,0,0],[0,-1,0],\
         [-0.8,0.8,1],[-0.8,0.6,1],[-0.6,0.6,1],[-0.6,0.8,1],\
@@ -187,7 +197,6 @@ def game_visualize(states, i):
     Q_array = states[:, :4]  # array of quaternions (for each entry, take first four items -> array of [a,b,c,d])
     for i in range(0, len(Q_array)):
         Q_array[i][0] = 0
-    # print("Q_ARRAY: ", Q_array)
     i = 0
 
     num_states = states.shape[0]
@@ -209,63 +218,111 @@ def game_visualize(states, i):
         if i == num_states:
             break
 
-# data: list
-# typecasting for readability/a little functionality
+
 def check_zeros(data):
-    ''' Checks validity of data
+    '''
+    check_zeros
+        checks validity of data input
 
-        Args:
-            data (???): data point
-
+    @params
+        data: input from sensor real-time (1 x 6)
+    @returns
+        true or false 
     '''
     if int(data[0]) == 0 and int(data[1]) == 0 and int(data[2]) == 0:
         return True
 
-if __name__ == "__main__":
-    states = []
 
-    # Initialize
-    r=np.zeros(10)
-    q=np.zeros(9)
+def run_ukf_textfile(start, cov, r, q, filename):
+    '''
+    run_ukf_textfile
+        runs and visualizes UKF algorithm on input data file
 
-    for i in range(9):
-        r[i]=random.random()
-        q[i]=random.random() * .1
-    
-    start=np.zeros(10)
-    for i in range(len(start)):
-        start[i] = random.random()
-    # start = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-
-    cov = np.zeros((10,10))
-    for i in range(10):
-        cov[i][i]=random.random()
-
-    # calibrate sensors before getting data
-    calibrate()
-    #get_data()
-
-    cnt = 0
-    for i in range(1, 150):
-        
-        '''
-        EOMSData = EOMs(np.array(start))
-        print(EOMSData)
-        game_visualize(np.array([EOMSData[:4]]), i)
-        start = EOMSData
-        '''
-
-        if cnt == 0: 
-            data = get_data()
-            cnt += 1
-        time.sleep(0.5)
-        data = get_data()
-        if check_zeros(data): continue # do not use data if B-field is all zeros
-
-        print(f"new data = {data}")
-        start, cov = UKF(start, cov, r, q, data)
+    @params
+        start: initialized state (1 x n)
+        cov: initialized covariance matrix (n x n)
+        r: noise vector for predictions (1 x n)
+        q: noise vector for sensors (1 x m)
+        filename: text file of cleaned sensor data to read from (any length)
+    '''
+    f = open(filename, "r")
+    data = f.readline()
+    splitData = data.split(",")
+    splitData = [float(x) for x in splitData]
+    # start[0] = splitData[0]
+    # start[1] = splitData[1]
+    # start[2] = splitData[2]
+    # start[3] = splitData[3]
+    i = 1
+    u_k = []
+    while(data):
+        # u_k = dataFromGPS()
+        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
         game_visualize(np.array([start[:4]]), i)
 
-       # print("STATE AFTER {} RUNTHROUGH: {}".format(i, start))
-        #print("COV AFTER {} RUNTHROUGH: {}".format(i, cov))
-        
+        data = f.readline()
+        if(data == ''):
+            break
+        splitData = data.split(",")
+        splitData = [float(x) for x in splitData]
+        i+=1
+
+    f.close()
+
+
+def run_ukf_sensor(state, cov, r, q):
+    '''
+    run_ukf_sensor
+        runs and visualizes UKF algorithm using real-time data from magnetometer/pi
+
+    @params
+        start: initialized state (1 x n)
+        cov: initialized covariance matrix (n x n)
+        r: noise vector for predictions (1 x n)
+        q: noise vector for sensors (1 x m)
+    '''
+
+    # uncomment BNO055 imports to use
+
+    # i = 1
+    # u_k = []
+    # calibrate()
+
+    # while(1):
+    #     time.sleep(0.5)
+    #     data = get_data()
+    #       u_k = getDataGPS()
+    #     # do not use data if B-field is all zeros 
+    #     if check_zeros(data): continue 
+
+    #     start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, data)
+    #     game_visualize(np.array([start[:4]]), i)
+
+    #     i += 1
+
+
+if __name__ == "__main__":
+
+    # Initialize noises and starting state/cov to random values
+    n = 10
+    m = 9
+
+    r=np.zeros(n)
+    q=np.zeros(m)
+    for i in range(m):
+        r[i]=random.random()
+        q[i]=random.random() * .1
+
+    start = np.random.rand(n)
+
+    cov = np.zeros((n,n))
+    for i in range(n):
+        cov[i][i]=random.random()
+    
+    filename = "sensor_data_2.txt"
+
+    # tests ukf with pre-generated and cleaned data file
+    run_ukf_textfile(start, cov, r, q, filename)
+
+    # must uncomment BNO055 imports to use in real-time with sensor
+    # run_ukf_sensor(start, cov, r, q)
