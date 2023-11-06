@@ -1,3 +1,11 @@
+'''
+hfunc.py
+Authors: Micheal Paulucci
+Last modified: 11/5/2023
+
+Transformation function hfunc for IrishSat Unscented Kalman Filter. Requires wmm.py and associated files. 
+'''
+
 import numpy as np
 import matplotlib.pyplot as plt
 from wmm import WMM
@@ -5,6 +13,17 @@ from wmm import WMM
 from mpl_toolkits.mplot3d import Axes3D
 
 def hfunc(state, controls):
+    '''
+    hfunc
+        transformation from state space to measurement space using magnetic field with respect to the earth at given time
+        goes from earth orientation to CubeSat orientation so that it aligns with what our sensors will be giving us
+
+    @params
+        state: state estimate of system-quaternion, angular velocity, reaction wheel speed (1 x n)
+        controls: gps and time data needed to calculate magnetic field with respect to the earth (latitude, longitude, height, time arrays)
+    @returns
+        state array in measurement space (1 x m, as first element of quaternion becomes 0)
+    '''
 
     quaternion = state[:4]
     rotationMatrix = quaternion_rotation_matrix(quaternion)
@@ -17,24 +36,28 @@ def hfunc(state, controls):
     time = controls[3] #formatted as 2023.percentage of the year in month type stuff
 
     wmm_model = WMM(12, 'WMMcoef.csv')
+    # wmm: b frame with respect to eci frame (earth-centered)
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
+
+    # should we normalize?
+
     return np.concatenate( np.matmul(rotationMatrix,Bfield1), state[4:])
 
 
 
 def quaternion_rotation_matrix(Q):
-    """
+    '''
     Covert a quaternion into a full three-dimensional rotation matrix.
  
-    Input
-    :param Q: A 4 element array representing the quaternion (q0,q1,q2,q3) 
+    @params
+        Q: A 4 element array representing the quaternion (q0,q1,q2,q3) 
  
-    Output
-    :return: A 3x3 element matrix representing the full 3D rotation matrix. 
-             This rotation matrix converts a point in the local reference 
-             frame to a point in the global reference frame.
-    """
+    @returns
+        rot_matrix: A 3x3 element matrix representing the full 3D rotation matrix. 
+            This rotation matrix converts a point in the local reference 
+            frame to a point in the global reference frame.
+    '''
     # Extract the values from Q
     q0 = Q[0]
     q1 = Q[1]
@@ -64,29 +87,30 @@ def quaternion_rotation_matrix(Q):
     return rot_matrix
 
 
-
-n = 10
-state = np.random.rand(n)
-transformed = np.array()
-# need some kind of generator for random long/lat coordinates, height, and time
-#   arrays needed for controls: 
-    # lat_gd (np.array): array holding the geodesic latitude associated with a state
-    # lon (np.array): array holding the longtitude associated with a state
-    # h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
-    # t (np.array): array of times associated with an array of states, given in decimal years
-controls = [[]]
-
-# Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
-transformed.append(transformed, np.array(hfunc(state, controls)))
-
-transformed.append(transformed, np.array(state[4:]))
-
-# transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])
-
-
-
-
 if __name__ == '__main__':
+
+
+    n = 10
+    state = np.random.rand(n)
+    transformed = np.array()
+    # need some kind of generator for random long/lat coordinates, height, and time
+    #   arrays needed for controls: 
+        # lat_gd (np.array): array holding the geodesic latitude associated with a state
+        # lon (np.array): array holding the longtitude associated with a state
+        # h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
+        # t (np.array): array of times associated with an array of states, given in decimal years
+    controls = [[]]
+
+    # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
+    transformed.append(transformed, np.array(hfunc(state, controls)))
+
+    transformed.append(transformed, np.array(state[4:]))
+
+    # transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])
+
+
+
+
 
     q = np.array([1,0,1,1])
     val = np.linalg.norm(q)

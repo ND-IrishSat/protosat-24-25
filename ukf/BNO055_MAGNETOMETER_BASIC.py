@@ -1,3 +1,11 @@
+'''
+BNOO55_magnetometer_basic.py
+Authors: Claudia Kuczun
+Last modified: 11/5/2023
+
+Interfaces with and calibrates BN0055 magnetometer to get data for IrishSat Kalman Filter
+'''
+
 # SPDX-FileCopyrightText: 2021 ladyada for Adafruit Industries
 # SPDX-License-Identifier: MIT
 

@@ -6,13 +6,16 @@ Last modified 10/7/23
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
-    biggest priority: implementing hfunc
     find correct value for zCov and noise (r, q)
     adding gps component/control input vector for EOMs (u_k)
     update EOMs with new inertia
     optimize for loops and numpy arrays
     test with different data sets
     remake sigma points?
+    x, y, z to lat, long
+    if name == main
+    docstrings
+    fake x, y, z generation?
 '''
 
 import numpy as np
@@ -27,8 +30,8 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 
-# from BNO055_MAGNETOMETER_BASIC import calibrate
-# from BNO055_MAGNETOMETER_BASIC import get_data
+# from BNO055_magnetometer_basic import calibrate
+# from BNO055_magnetometer_basic import get_data
 
 ##################################################################################################################
 ## AttitudePropagator - the important part, propagates states numerically using constant angular velocity model ##

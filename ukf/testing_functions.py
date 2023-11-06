@@ -1,5 +1,5 @@
 '''
-testingFunctions.py
+testing_functions.py
 Authors: Andrew Gaylord and Alex Casillas
 Last modified: 10/31/2023
 
@@ -39,16 +39,6 @@ def speedTest (func, inputs, n):
 
     print("Average time over {} iterations: {} ms".format(n, average))
     return average
-
-
-def alex(a, b, c):
-    sum = 0
-    for i in range(c):
-        sum += a * b
-
-
-# speedTest(alex, [3, 5, 10000], 10000)
-
 
 if __name__ == '__main__':
 

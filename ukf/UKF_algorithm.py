@@ -3,7 +3,7 @@ UKF_algorithm.py
 Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
 Last modified 10/7/23
 
-UKF algorithm for IrishSat based on following resource:
+Unscented Kalman Filter algorithm for IrishSat based on following resource:
 https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
 
 Variables needed throughout UKF process:
@@ -18,7 +18,6 @@ Variables needed throughout UKF process:
   predCovid = matrix of predicted covariance (n x n)
   g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
   h = matrix of transformed sigma points (in the measurement space) (2*n+1 x m)
-  q_wmm = B field represented as quaternion (1 x 4)
   meanInMes = means in the measurement space (1 x m)
   covidInMes = covariance matrix of points in measurement space (m x m)
   z = sensor data (1 x n except switched to 1 x m for some calculations)
@@ -180,39 +179,6 @@ def EOMs(state, u_k):
     return x_predicted
 
 
-def H_func(state, q_wmm): 
-    '''
-    H_func
-        transforms sigma points from state space to measurement space by running transformation and removing unnecessary first element of quaternion
-
-    @params
-        state: estimate in state space (1 x n)
-        # update with description of control vector + update var name everywhere
-        q_wmm: B field of ECI frame (measurement space) represented as quaternion (1 x 4, first element 0)
-            [0, bx, by, bz] normalized by dividing by magnitude
-    @returns
-        transformed: state estimate in measurement space (1 x m)
-    '''
-    # I think this is how we use what hfunc returns unless we want to get rid of H_func in this file entirely
-
-    # observation vector
-    transformed = np.array()
-
-    # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
-    transformed.append(transformed, np.array(hfunc(state, q_wmm)))
-
-    transformed.append(transformed, np.array(state[4:]))
-
-    # is there a better way to create transformed except appending?
-    # maybe: 
-    # transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])
-
-    #should we normalized obversation vector?
-    #should already be normal, but isn't occasually due to rounding errors. Could normalize sometimes
-    
-    return transformed
-
-
 def quaternionMultiply(a, b):
     '''
     quaternionMultiply
@@ -328,7 +294,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
         passedCov: covariance matrix of state (n x n)
         r: noise vector of predictions (1 x n)
         q: noise vector of sensors (1 x m)
-        u_k: control input vector for EOMs step (gps data)
+        u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
     @returns
         means: calculated state estimate at current time (1 x n)
@@ -346,13 +312,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     crossCo = np.zeros((n,m))
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((2 * n + 1,m))
-    
-    # change to gps control variables
-    q_wmm = []
-    q_wmm.append(0)
-    q_wmm.append(data[0])
-    q_wmm.append(data[1])
-    q_wmm.append(data[2])
     
     # z = passedMeans
     z = []
@@ -419,7 +378,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     sigTemp = sigma(z, zCov, n, scaling)
 
     # update with gps control vector instead of q_wmm
-    meanInMes, h = generateMeans(H_func, q_wmm, sigTemp, w1, w2, n, m)
+    meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
 
     """
