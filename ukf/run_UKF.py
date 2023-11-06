@@ -7,14 +7,11 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 
 TODO:
     find correct value for zCov and noise (r, q)
-    adding gps component/control input vector for EOMs (u_k)
     update EOMs with new inertia
+    adding gps component/control input vector for EOMs?
     optimize for loops and numpy arrays
     test with different data sets
     remake sigma points?
-    x, y, z to lat, long
-    if name == main
-    docstrings
     fake x, y, z generation?
 '''
 
@@ -259,7 +256,11 @@ def run_ukf_textfile(start, cov, r, q, filename):
     i = 1
     u_k = []
     while(data):
-        # u_k = dataFromGPS()
+        # get gps data and add time stamp
+        u_k = get_gps_data()
+        u_k = ecef_to_latlong(u_k[0], u_k[1], u_k[2])
+        u_k.append(2023.8123)
+        # run ukf and visualize output
         start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
         game_visualize(np.array([start[:4]]), i)
 
@@ -294,7 +295,9 @@ def run_ukf_sensor(state, cov, r, q):
     # while(1):
     #     time.sleep(0.5)
     #     data = get_data()
-    #       u_k = getDataGPS()
+        # u_k = get_gps_data()
+        # u_k = ecef_to_latlong(u_k[0], u_k[1], u_k[2])
+        # u_k.append(2023.8123)
     #     # do not use data if B-field is all zeros 
     #     if check_zeros(data): continue 
 

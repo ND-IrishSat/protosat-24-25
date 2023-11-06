@@ -3,14 +3,14 @@ hfunc.py
 Authors: Micheal Paulucci
 Last modified: 11/5/2023
 
-Transformation function hfunc for IrishSat Unscented Kalman Filter. Requires wmm.py and associated files. 
+Transformation function hfunc for IrishSat Unscented Kalman Filter. Requires wmm.py and associated files.
 '''
 
 import numpy as np
 import matplotlib.pyplot as plt
 from wmm import WMM
-
 from mpl_toolkits.mplot3d import Axes3D
+
 
 def hfunc(state, controls):
     '''
@@ -43,7 +43,6 @@ def hfunc(state, controls):
     # should we normalize?
 
     return np.concatenate( np.matmul(rotationMatrix,Bfield1), state[4:])
-
 
 
 def quaternion_rotation_matrix(Q):
