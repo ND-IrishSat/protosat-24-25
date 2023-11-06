@@ -26,6 +26,7 @@ import time
 from pyquaternion import Quaternion
 
 import UKF_algorithm
+import gps_interface
 
 # from BNO055_magnetometer_basic import calibrate
 # from BNO055_magnetometer_basic import get_data
@@ -257,8 +258,8 @@ def run_ukf_textfile(start, cov, r, q, filename):
     u_k = []
     while(data):
         # get gps data and add time stamp
-        u_k = get_gps_data()
-        u_k = ecef_to_latlong(u_k[0], u_k[1], u_k[2])
+        u_k = gps_interface.get_gps_data()
+        u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
         u_k.append(2023.8123)
         # run ukf and visualize output
         start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
@@ -296,8 +297,8 @@ def run_ukf_sensor(state, cov, r, q):
     # while(1):
     #     time.sleep(0.5)
     #     data = get_data()
-        # u_k = get_gps_data()
-        # u_k = ecef_to_latlong(u_k[0], u_k[1], u_k[2])
+        # u_k = gps_interface.get_gps_data()
+        # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
         # u_k.append(2023.8123)
     #     # do not use data if B-field is all zeros 
     #     if check_zeros(data): continue 
