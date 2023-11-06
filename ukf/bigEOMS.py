@@ -1,14 +1,13 @@
-# c g/cm^2
-
-
-
-''' This module contains the class definition for the improved equations of motion for ProtoSat
+''' 
+bigEOMS.py
+This module contains the class definition for the improved equations of motion for IrishSat
     
     IrishSat
     Juwan Jeremy Jacobe
     University of Notre Dame 
     14 April 2022
 '''
+# c g/cm^2
 
 class bigEOMS:
     ''' Equations of motions for the state of the system of ProtoSat, where the state is made up of quaternion components

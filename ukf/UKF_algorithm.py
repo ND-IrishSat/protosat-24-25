@@ -1,23 +1,23 @@
 '''
 UKF_algorithm.py
 Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
-Last modified 9/26/23
+Last modified 10/7/23
 
-UKF algorithm for IrishSat based on following resource:
+Unscented Kalman Filter algorithm for IrishSat based on following resource:
 https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
 
 Variables needed throughout UKF process:
   n = dimensionality of model (10)
   m = dimension of measurement space that excludes first 0 of quaternion (9)
-  r = noise vector for predictions (we choose this & make it) (n)
-  q = noise vector for sensors (provided on data sheet for sensors) (m)
+  r = noise vector for predictions (we choose this & make it) (1 x n)
+  q = noise vector for sensors (provided on data sheet for sensors) (1 x m)
   scaling = parameter for sigma point generation (3 - n)
-  cov = initial covariance matrix (n x n)
+  means = mean of gaussian of estimated states so far (maybe???) (1 x n)
+  cov = covariance matrix (n x n)
   predMeans = matrix of predicted means (1 x n)
   predCovid = matrix of predicted covariance (n x n)
   g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
   h = matrix of transformed sigma points (in the measurement space) (2*n+1 x m)
-  q_wmm = B field represented as quaternion (1 x 4)
   meanInMes = means in the measurement space (1 x m)
   covidInMes = covariance matrix of points in measurement space (m x m)
   z = sensor data (1 x n except switched to 1 x m for some calculations)
@@ -26,103 +26,92 @@ Variables needed throughout UKF process:
 
 import numpy as np
 import math
-from bigEOMS import *
-import random
+import bigEOMS
 import scipy
 import scipy.linalg
-#from statsmodels import *
-#from statsmodels.stats import correlation_tools
+from hfunc import hfunc
 
-"""
-Calculate sigma points
-Use mean and covariance matrices to make sigma point matrix
-"""
 
 def sigma(means, cov, n, scaling):
-    #temp=np.zeros((len(cov,n)))
+    '''
+    sigma
+        creates sigma point matrix based on formula that represents distribution of means and cov
 
-  
-    '''hardcode 10 here'''
+    @params
+        means: mean of gaussian of estimated states so far (maybe???). Also first column of sigma matrix (1 x n)
+        cov: covariance matrix of state (n x n)
+        n: dimensionality of model
+        scaling: how far from mean we distribute our points, used in sigma point formula
+    @returns
+        sigmaMatrix: matrix of sigma points (2 * n + 1, n) 
+    '''
+    # intialize 2N + 1 sigma points to zeroes
     sigmaMatrix = np.zeros((2*n+1,n))
     temp = np.zeros((n, n))
 
-    # intialize 2N + 1 sigma points to zeroes
+    # for i in range(len(cov)):
+    #   for j in range(len(cov[i])):
+    #     temp[i][j] = cov[i][j]  * (n + scaling)
 
-    #print("MATRIX INSIDE SIGMA: ", sigmaMatrix)
-    #set first row to means here?
-    for i in range(len(cov)):
-      for j in range(len(cov[i])):
-        #from website formula
-        temp[i][j] = cov[i][j]  * (n + scaling)
-    # temp=cov*(n+scaling)
-    # temp = cov
-    # print(temp)
+    # sigma point formula from website
+    temp = np.multiply(cov, (n + scaling))
 
-    # print("TEMP BEFORE", temp)
-
-    # print("E VALUES: ", np.linalg.eigvalsh(temp))
-    # P, L, U = scipy.linalg.lu(temp)
-
-    # temp = correlation_tools.cov_nearest(temp)
-    # temp = np.transpose(scipy.linalg.cholesky(temp,lower=True))
-    # temp = scipy.linalg.cholesky(temp,lower=True)
-    # print(len(temp), "   ", len(temp[0]))
+    # take the square root of the matrix
     temp = scipy.linalg.sqrtm(temp)
+
+    # first column of sigma matrix is means
     sigmaMatrix[0] = means
 
-    # print("TEMP AFTER ", temp)
-    
     # traverse N (10) dimensions, calculating all sigma points
-    for i in range(n):
-        sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
-        sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    # for i in range(n):
+    #     sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
+    #     sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    sigmaMatrix[1:(n+1)] = np.add(means, temp)
+    sigmaMatrix[(n+1):(2*n+1)] = np.subtract(means, temp)
 
     # return the sigma matrix (21 columns)
-    # print("CALING FUNC", sigmaMatrix)
     return sigmaMatrix
 
 
-"""
-Equations of motion
-Using the current state of the system, output the new predicted state of the system 
-Use the new collected means & covariance to make next sigma point matrix using the Equations of Motion
-"""
-
-def EOMs(state):
-    ''' Transformation function x_k_plus = f(x_k, u_k)
-    
-        Args:
-            state: State of the system vector
-                [a b c d w_x w_y w_z theta_dot_RW1 theta_dot_RW2 theta_dot_RW3]
-              
-            u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
-                [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
-                
-            I_body_tensor: Moment of inertia tensor of the cubesat
-                [[I_XX  I_XY  I_XZ]
-                 [I_YX  I_YY  I_YZ]
-                 [I_ZX  I_ZY  I_ZZ]]
-            
-            I_RW: Moment of inertias of the three reaction wheels
-                [I_RW1 I_RW2 I_RW3]
-                
-            dt: The timestep between the current state and predicted state
-            
-            func: instance of EoMs object, defined in eoms.py
+def EOMs(state, u_k):
     '''
-    func = bigEOMS()
+    EOMs
+        uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
+        change dt within to control time step
+        u_k: control input vector for magnetorquers?
 
+    @params
+        state: column of sigma point matrix to propogate (1 x n)
+            [a b c d w_x w_y w_z theta_dot_RW1 theta_dot_RW2 theta_dot_RW3]
+    @returns
+        x_predicted: next step based on Euler's method (1 x n)
+    '''
+
+    # func: instance of EoMs object, defined in eoms.py
+    func = bigEOMS.bigEOMS()
+
+    # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
+                # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
     u_k = np.zeros(6)
+
+    # I_body_tensor: Moment of inertia tensor of the cubesat
+                # [[I_XX  I_XY  I_XZ]
+                #  [I_YX  I_YY  I_YZ]
+                #  [I_ZX  I_ZY  I_ZZ]]
     I_body_tensor = [[1728.7579, -60.6901, -8.7583],
                      [-60.6901, 1745.997, 53.4338],
                      [-8.7583, 53.4338, 1858.2584]]
+    
+    # I_RW: Moment of inertias of the three reaction wheels
+                # [I_RW1 I_RW2 I_RW3]
     I_RW = [578.5944, 578.5944, 578.5944]
+
+    # dt: The timestep between the current state and predicted state
     dt = 0.1
 
     # Initialize prediction
     x_predicted = np.zeros(len(state))
 
-    ## Grab intermediate values
     # Grab components of state vector
     a = state[0]
     b = state[1]
@@ -190,188 +179,142 @@ def EOMs(state):
     return x_predicted
 
 
-"""
-H function: update function (predict measurement from predicted state)
-  transform sigma points to measurement space. Only quaternian needs to change. 
-  state space -> measurement space
-
-
-Functions of getting predicted measurement from magnetometer (quaternion of B-field in body frame) from state (quaternion of body frame with reference to ECI)
-"""
-
-
-def observe_a_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return b_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf) - a_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm) + c_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf) + d_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf)
-
-
-def observe_b_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return a_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf) - c_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) + b_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm) + d_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf)
-
-
-def observe_c_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return a_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf) + b_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) + c_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm) - d_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf)
-
-
-def observe_d_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm):
-    return a_kf*(a_kf*d_wmm - b_kf*c_wmm + b_wmm*c_kf) - b_kf*(a_kf*c_wmm + b_kf*d_wmm - b_wmm*d_kf) + c_kf*(a_kf*b_wmm - c_kf*d_wmm + c_wmm*d_kf) + d_kf*(b_kf*b_wmm + c_kf*c_wmm + d_kf*d_wmm)
-
-
-# Observation function: z = h(x_k, u_k)
-# might add a gps aspect to better calculate body frame
-def H_func(state, q_wmm):  #magnetic field to quaternion RE-ADD q_wmm
-    ''' Observation function:
-    
-        Args:
-            q_wmm: quaternion of B_field w/ respect to the ECI frame. FIRST VALUE SHOULD BE 0
-            state: state x_k of system
-            
-                              a_kf
-                              b_kf
-                              c_kf
-                              d_kf
-                              w_x
-                     x_kf =   w_y
-                              w_z
-                              theta_dot_RW1
-                              theta_dot_RW2
-                              theta_dot_RW3
-
-           
-        The observation function maps that measurement z_kf from state x_kf such that
-        z_kf = h(x_kf), where z_kf in this case is the following vector
-        
-                              a_B^BF      
-                              b_B^BF
-                              c_B^BF
-                              d_B^BF
-                    z_kf =    w_x
-                              w_y
-                              w_z
-                              theta_dot_RW1
-                              theta_dot_RW2
-                              theta_dot_RW3
-    
-    '''
-
-    # Grab components from vectors
-    a_kf = state[0]
-    b_kf = state[1]
-    c_kf = state[2]
-    d_kf = state[3]
-    w_x = state[4]
-    w_y = state[5]
-    w_z = state[6]
-    theta_dot_RW1 = state[7]
-    theta_dot_RW2 = state[8]
-    theta_dot_RW3 = state[9]
-
-    a_wmm = q_wmm[0]
-    b_wmm = q_wmm[1]
-    c_wmm = q_wmm[2]
-    d_wmm = q_wmm[3]
-    #print(a_kf, b_kf, c_kf, d_kf, b_wmm, c_wmm, d_wmm)
-    # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
-    a_B_BF = 0  # For now, assume this will always be zero. Trust P. Wensing?
-    '''CHANGED'''
-    # a_B_BF = observe_a_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
-    b_B_BF = observe_b_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
-    c_B_BF = observe_c_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
-    d_B_BF = observe_d_B_BF(a_kf, b_kf, c_kf, d_kf, a_wmm, b_wmm, c_wmm, d_wmm)
-
-    # Observation vector
-    za = np.array([
-        b_B_BF, c_B_BF, d_B_BF, w_x, w_y, w_z, theta_dot_RW1,
-        theta_dot_RW2, theta_dot_RW3
-    ])
-
-    
-    #normalized version if we need it idk
-    #should already be normal, but isn't occasually due to rounding errors. Could normalize sometimes
-    '''
-    normalize=1/math.sqrt(abs(a_B_BF*a_B_BF + b_B_BF*b_B_BF + c_B_BF*c_B_BF + d_B_BF*d_B_BF))
-    Nza = np.array([
-        a_B_BF * normalize, b_B_BF * normalize, c_B_BF * normalize, 
-        d_B_BF * normalize, w_x, w_y, w_z, theta_dot_RW1,
-        theta_dot_RW2, theta_dot_RW3
-    ])
-    '''
-    
-    return za
-
-
-"""
-Get the means in the measurement space (used in cross-covariance and final mean calculation)
-  Using sigma points, p
-  ???? what is this
-"""
-# get new info from sensors
-
-#def getQvmm ():
-"""
-  This is stuff that Claudia is writing that we are getting from the magnetorquers
-  Going to normalize aswell (divide by magnitude of bx by and bz)
-  """
-# q_wmm is supposed to be B field represented as quaternion. Bx / magnatude(B)
-
-
-  #return [0, bx, by, bz]
-
-
-
-# custom function to perform quaternion multiply on two passed-in matrices
 def quaternionMultiply(a, b):
+    '''
+    quaternionMultiply
+        custom function to perform quaternion multiply on two passed-in matrices
+
+    @params
+        a, b: quaternion matrices (1 x 4)
+    @returns
+        multiplied quaternion matrix
+    '''
     return [[a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]],
             [a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]],
             [a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]],
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
-# add state parameter??
-def UKF(passedMeans, passedCov, r, q, data):
 
-    # f = open("data_temp.txt", "r")
-    # full = f.read()
-    # split = full.split(")")
-    # split = split[:-1]
-    # split2 = []
-    # for thing in split:
-    #     temp = thing.split(",")
-    #     # if(len(temp)<3):
-    #     #     continue
-    #     for t in range(0, len(temp)): 
-    #         temp[t] = float(temp[t][1:])
+def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
+    '''
+    generateMeans
+        generate mean after passing sigma point distribution through a transformation function
+        also stores and returns all transformed sigma points
+            
+    @params
+        func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        controlVector: additional input needed for func (u_k or q_wmm)
+        sigmaPoints: sigma point matrix (2xn+1 x n)
+        w1, w2: weight for first and all other sigma points, respectively
+        n: dimensionality of model 
+        dimensionality: dimensionality of what state we are generating for (n or m)
+    @returns
+        means: mean of distribution in state or measurement space (1 x n or 1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+    '''
+    # initialize means and new sigma matrix with correct dimensionality
+    means = np.zeros(dimensionality)
+    transformedSigma = np.zeros((2 * n + 1, dimensionality))
+
+    # pass all sigma points to the transformation function
+    for i in range(1, n * 2 + 1):
+        x = func(sigmaPoints[i], controlVector)
+        # store calculated sigma point in transformed sigma matrix
+        transformedSigma[i] = x
+        # update mean with point
+        means = np.add(means, x)
+
+    # apply weight to mean without first point
+    means *= w2
+
+    # pass first sigma point through transformation function
+    x = func(sigmaPoints[0], controlVector) 
+    # store new point as first element in transformed sigma matrix
+    transformedSigma[0] = x
+
+    # adjust the means for first value and multiply by correct weight
+    means = np.add(means, x*w1)
+
+    return means, transformedSigma
+
+
+def generateCov(means, transformedSigma, w1, w2, n, noise):
+    '''
+    generateCov
+        generates covariance matrix from website equation based on means and sigma points
+        uncoment noise addition once r and q are figured out
         
-    #     split2.append(temp)
-    # # split2 = split.split(",")
-    # # print(split2)
-    # gyro = []
-    # mag = []
-    # for i in range(len(split2)):
-    #     if(i%2==0):
-    #         gyro.append(split2[i])
-    #     else:
-    #         mag.append(split2[i])
-    # print(len(gyro))
-    # print(len(mag))
+    @params
+        means: means in state or measurement space (1 x n or 1 x m)
+        transformedSigma: stored result of passing sigma points through the EOMs or H_func (n*2+1 x m or n*2+1 x n)
+        w1, w2: weight for first and all other sigma points, respectively
+        n: dimensionality of model 
+        noise: noise value array to apply to our cov matrix (r or q)
+    @returns
+        cov: covariance matrix in state or measurement space (n x n or m x m)
+    '''
+    # find dimension of cov by looking at size of sigma point array
+    # prediction points will have n columns, measurement points will have m columns
+    covDimension = transformedSigma.shape[1]
+    
+    # initialize cov with proper dimensionality
+    cov = np.zeros((covDimension, covDimension))
+
+    # for all transformed sigma points, apply covariance formula
+    for i in range(1, n * 2 + 1):
+        # subtract mean from sigma point and multiply by itself transposed
+        arr = np.subtract(transformedSigma[i], means)[np.newaxis]
+        arr = np.matmul(arr.transpose(), arr)
+        cov = np.add(cov, arr)
+    
+    # separate out first value and update with correct weight
+    arr = np.subtract(transformedSigma[0], means)[np.newaxis]
+    d = np.matmul(arr.transpose(), arr) * w1
+
+    # use other weight for remaining values
+    cov *= w2
+
+    # add back first element
+    cov = np.add(cov, d)
+
+    # add noise to covariance matrix
+    # cov = np.add(cov, noise)
+
+    return cov
 
 
 
+def UKF(passedMeans, passedCov, r, q, u_k, data):
+    '''
+    UKF
+        estimates state at time step based on sensor data, noise, and equations of motion
+
+    @params
+        passedMeans: means of previous states (1 x n)
+        passedCov: covariance matrix of state (n x n)
+        r: noise vector of predictions (1 x n)
+        q: noise vector of sensors (1 x m)
+        u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
+        data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
+    @returns
+        means: calculated state estimate at current time (1 x n)
+        cov: covariance matrix (n x n)
+    '''
+
+    # initialize vars (top of file for descriptions)
     n = 10
     m = 9
     cov = passedCov
-    #cov = []
+    predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
     meanInMes = np.zeros(m)
-    covidInMes = np.zeros(m)
-    h = np.zeros((2*n+1,m))
+    covidInMes = np.zeros((m, m))
+    crossCo = np.zeros((n,m))
     g = np.zeros((n * 2 + 1, n))
-    # q_wmm = [0, 5, 5, 5]
-    q_wmm = []
-    q_wmm.append(0)
-    q_wmm.append(data[0])
-    q_wmm.append(data[1])
-    q_wmm.append(data[2])
+    h = np.zeros((2 * n + 1,m))
+    
     # z = passedMeans
-    z=[]
+    z = []
     z.append(0)
     z.append(data[0])
     z.append(data[1])
@@ -385,10 +328,11 @@ def UKF(passedMeans, passedCov, r, q, data):
 
     scaling = 3-n
     w1 = scaling / (n + scaling) # weight for first value
-    w2 = 1 / (2 * ( n + scaling)) # weight for all other values
+    w2 = 1 / (2 * (n + scaling)) # weight for all other values
     
     # track the average of the estimated K states so far
     means = passedMeans
+
 
     """
     Calculate mean of Gaussian (populates the global predicted means matrix)
@@ -396,53 +340,25 @@ def UKF(passedMeans, passedCov, r, q, data):
     2. Apply the EOMs to the temporary (stored) sigma points
     2. Calculate the means of sigma points without weights
     4. Calculate the new predicted means by applying predetermined weights
-    Let the sigma matrix = the starting sigma point matrix
+    Initialize sigma matrix to the starting sigma point matrix
     """
-    predMeans = np.zeros(n)
-    # initialize the means array to zeroes
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     # oldSig = sigTemp
 
-    for i in range(1, n * 2 + 1):  # generate 2N+1 sigma points
-        x = EOMs(sigTemp[i])  # use state estimation equations
-        g[i] = x  # add the next entry to g matrix
-        predMeans = np.add(predMeans,x)  # calculate means of sigma points w/out weights
-
-    # apply weights to predicted means
-    predMeans *= w2   # w2 for later weights
-    x = EOMs(sigTemp[0])  # calculate EoMs for first sigma point
-    g[0] = x  # add first sigma point to first index in g(x)
-    predMeans = np.add(predMeans, x*w1)  # w1 for first weight
+    predMeans, g = generateMeans(EOMs, u_k, sigTemp, w1, w2, n, n)
     
+
     """
     Calculate predicted covariance of Gaussian
     """
-    # for all sigma points
-    for i in range(1, n * 2 + 1):
-        arr = np.subtract(g[i], predMeans)[np.newaxis]
-        # subtract the predicted mean from the transformed sigma points
+    predCovid = generateCov(predMeans, g, w1, w2, n, r)
 
-        arr = np.matmul(arr.transpose(), arr)
-        # matrix multiplication: multiply the matrix by itself transposed!
-        predCovid = np.add(predCovid, arr)
 
-    arr = np.subtract(g[0], predMeans)[np.newaxis]
-    predCovid*=w2
-    d = np.matmul(arr.transpose(), arr)*w1  # d: separates out first value
-
-    # add d back to predicted covariance matrix
-    predCovid = np.add(predCovid, d)
-    # print("PREDICTED COVARIANCE: ", predCovid)
-  
     """ 
     Mean to measurement
     """
-    #qvmm = getQvmm()
-    # create temporary sigma points
-    # sigTemp = sensorSigma(z, n, scaling)
-    # b = np.random.randint(0,1,size=(10,10))
-    # zCov = (b + b.T)/2 #create symmetric covariance
+    # create arbitrary covariance for sensors
     zCov = [[.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, .1, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, .1, 0, 0, 0, 0, 0, 0, 0],
@@ -455,68 +371,32 @@ def UKF(passedMeans, passedCov, r, q, data):
             [0, 0, 0, 0, 0, 0, 0, 0, 0, .1]
     ]
     for i in range(n):
-        zCov[i][i] = .2
+        zCov[i][i] = .05
     # zCov = cov
-    # z = means
-    sigTemp = sigma(z, zCov, n, scaling)
-    
-    # pass the sigma point to the h function
-    for i in range(1, n * 2 + 1):
-        x = H_func(sigTemp[i], q_wmm)
-        # x = sigTemp[i] 
-        '''works'''
-        # transforms sigma points into measurement space
-        h[i] = x  # store the calculated point in the h matrix
-        meanInMes = np.add(meanInMes, x)  # update mean in measurement mean
-
-    meanInMes *= w2  # weight for later value
-
-    x = H_func(sigTemp[0], q_wmm)  # get first mapped point
-    # x = sigTemp[0]
-    '''works'''
-    h[0] = x  # set the first element in h matrix
-
-    # adjust the means in measurement space for first value
-    meanInMes = np.add(meanInMes, [i * w1 for i in x])
-    # meanInMes = np.add(meanInMes, (x * w1))
-
-
-    # print("MEANS IN MEASUREMENT: ", meanInMes)
   
+    # create temporary sigma points
+    sigTemp = sigma(z, zCov, n, scaling)
+
+    # update with gps control vector instead of q_wmm
+    meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
+
+
     """
     Creates covariance matrix in measurement space
     """
-    for i in range(1, n * 2 + 1):
-        arr = np.subtract(h[i], meanInMes)[np.newaxis]
-        arr = np.matmul(arr.transpose(), arr)
-        covidInMes = np.add(covidInMes, arr)
-    
-    arr = np.subtract(h[0], meanInMes)[np.newaxis]
-    d = np.matmul(arr.transpose(), arr)  #ordering?
-
-    for i in range(m):
-        for j in range(m):
-            covidInMes[i][j] *= w2
-            d[i][j] *= w1
-    covidInMes = np.add(covidInMes, d)
-    '''remove/add sensor noise here '''
-    # covidInMes=np.add(covidInMes,q) 
+    covidInMes = generateCov(meanInMes, h, w1, w2, n, q)
 
 
-    # print("COVARIANCE IN MEASUREMENT: ", list(covidInMes), "\n")
-
-    
     '''
-    Cross covariance matrix (t): remaking sigma points from new data, unsure if provides advantage
-    (this is the cross variance matrix between state space and predicted space)
+    Cross covariance matrix (t) between state space and predicted space
 
     Remake sigma points here now that we have new data up to the group
     '''
-    # print("\n\nREMAKING SIGMA POINTS\n\n")
     # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
-    crossCo = np.zeros((n,m))
+    # sig = sigma(z, zCov, n, scaling)
 
+    # use formula from website to compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
         arr2 = np.subtract(h[i], meanInMes)[np.newaxis]
@@ -532,37 +412,38 @@ def UKF(passedMeans, passedCov, r, q, data):
     arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], meanInMes)[np.newaxis]
 
+    # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
 
-    for i in range(n):
-        for j in range(m):
-            crossCo[i][j] *= w2
-            d[i][j] *= w1
+    # multiply by weights for first and other values
+    np.multiply(crossCo, w2)
+    np.multiply(d, w1)
 
+    # add first value back into cross covariance
     crossCo = np.add(crossCo, d)
 
 
     """
     Kalman gain and final update
     """
-    # print("CROSS COVARIANCE: ", crossCo, "\nINVERTED COVARIANCE: ", np.linalg.inv(covidInMes))
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
     # nxm
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
-    # print("KALMAN: ", kalman)
 
     z = z[1:]
-    # print("ADDING TO MEANS: ", np.matmul(kalman, np.subtract(z, meanInMes)))
+  
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
 
+    # 2 options for updated cov:
+    
+    # option 1:
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-
-    # this one doesn't work with different n and m for some reason, but second one is wrong i think
     # cov = np.matmul(np.subtract(np.identity(m), np.matmul(kalman, crossCo)), predCovid)
-    cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
+    # this one doesn't work with different n and m for some reason
 
-    # if don't transpose we could do row col and might be more efficient when put into the mf eoms just an idea
-    # could use it for readability at first and then when actual code is put in then change idk
+    # option 2:
+    # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
+    cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
 
     return [means, cov]
