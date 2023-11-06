@@ -6,13 +6,13 @@ Last modified 10/7/23
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
+    interface with gps sensor, find what frame it gives us (ECEF or ECI?)
     find correct value for zCov and noise (r, q)
     update EOMs with new inertia
     adding gps component/control input vector for EOMs?
     optimize for loops and numpy arrays
     test with different data sets
     remake sigma points?
-    fake x, y, z generation?
 '''
 
 import numpy as np
@@ -264,6 +264,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
         start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
         game_visualize(np.array([start[:4]]), i)
 
+        # continue to get data from file until empty
         data = f.readline()
         if(data == ''):
             break

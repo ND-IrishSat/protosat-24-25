@@ -9,7 +9,7 @@ Interfaces with and calibrates GPS used on CubeSat
 def get_gps_data():
     '''
     get_gps_data
-        TODO: Interfaces with gps sensor and returns result
+        TODO: Interfaces with gps sensor and returns result in ECEF?? or ECI??
 
     @returns
         np array of ecef coordinates (x, y, z)
@@ -32,6 +32,8 @@ def generate_gps():
 def ecef_to_latlong(x, y, z):
     """
     This function takes ECEF coordinates and converts them to WGS84 latitude, longitude, and altitude
+    found online but we can easily find a different one
+    such as https://gis.stackexchange.com/questions/230160/converting-wgs84-to-ecef-in-python
     
     Parameters:
         x (float): The x-coordinate in meters

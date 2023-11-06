@@ -25,24 +25,28 @@ def hfunc(state, controls):
         state array in measurement space (1 x m, as first element of quaternion becomes 0)
     '''
 
+    # find rotation matrix of state quaternion
     quaternion = state[:4]
     rotationMatrix = quaternion_rotation_matrix(quaternion)
 
-    #need to convert this from xyz gps (jiwan has the code already on his person)
+    # get lat, long, and height from control input vector
     lat = controls[0] 
     long = controls[1]
     height = controls[2] 
 
-    time = controls[3] #formatted as 2023.percentage of the year in month type stuff
+    # time data formatted as 2023.percentage of the year in month type stuff
+    time = controls[3] 
 
+    # calculate wmm: b frame with respect to eci frame (earth-centered)
     wmm_model = WMM(12, 'WMMcoef.csv')
-    # wmm: b frame with respect to eci frame (earth-centered)
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
 
     # should we normalize?
 
-    return np.concatenate( np.matmul(rotationMatrix,Bfield1), state[4:])
+    # combine rotation matrix and b field of earth
+    # other elements of state have 1 to 1 conversion, so add back before returning
+    return np.concatenate(np.matmul(rotationMatrix,Bfield1), state[4:])
 
 
 def quaternion_rotation_matrix(Q):
