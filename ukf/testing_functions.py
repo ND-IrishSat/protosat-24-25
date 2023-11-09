@@ -52,14 +52,15 @@ if __name__ == '__main__':
     for i in range(m):
         r[i]=random.random()
         q[i]=random.random() * .1
-    u_k = []
+    u_k = [35.69314751, -114.13385513, 424.7491012, np.array([2023.811])]
     data = np.random.rand(6)
 
     # speedTest(UKF_algorithm.sigma, [means, cov, n, scaling], 10000)
     # about half a millisecond
 
-    speedTest(UKF_algorithm.UKF, [means, cov, r, q, u_k, data], 10000)
+    speedTest(UKF_algorithm.UKF, [means, cov, r, q, u_k, data], 1000)
     # about 7.9 ms
+    # 90 ms with new hfunc?!?!
 
 
 

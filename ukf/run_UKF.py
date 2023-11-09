@@ -21,12 +21,16 @@ import pygame
 from pygame.locals import * 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import time
+import datetime as dt
 
 from pyquaternion import Quaternion
 
 import UKF_algorithm
 import gps_interface
+
+# import PySOL
+# from PySOL import sol_sim
+# from PySOL import orb_tools as ot
 
 # from BNO055_magnetometer_basic import calibrate
 # from BNO055_magnetometer_basic import get_data
@@ -246,6 +250,25 @@ def run_ukf_textfile(start, cov, r, q, filename):
         q: noise vector for sensors (1 x m)
         filename: text file of cleaned sensor data to read from (any length)
     '''
+
+    # t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
+    # sim = Simulation(TIME = t0, mag_deg= 12)
+
+    # OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
+    # sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
+
+
+    # DT = dt.timedelta(hours = 0.1)
+    # sim.propogate(DT, resolution =  1)
+    # orb_laln = sim.scs[0].state_mat.LALN
+    # orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
+
+    # print(sim.scs[0].state_mat.R_ECEF.shape)
+    # print(orb_laln)
+    # print(orb_h)
+
+
+
     f = open(filename, "r")
     data = f.readline()
     splitData = data.split(",")

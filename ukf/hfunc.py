@@ -46,7 +46,7 @@ def hfunc(state, controls):
 
     # combine rotation matrix and b field of earth
     # other elements of state have 1 to 1 conversion, so add back before returning
-    return np.concatenate(np.matmul(rotationMatrix,Bfield1), state[4:])
+    return np.concatenate((np.matmul(rotationMatrix,Bfield1).ravel(), np.array(state[4:])))
 
 
 def quaternion_rotation_matrix(Q):
