@@ -9,3 +9,7 @@ Members: make sure to clone the repository and work on a feature-branch, not on 
 For PySOL repo: https://git-scm.com/book/en/v2/Git-Tools-Submodules
 - Files from external repository will not be included, need to manually download them to your local repository
 - If newly cloning this repository, and want to add all the files from the PySOL submodule (repository), run the following instead of normal git clone: "git clone --recurse-submodules https://github.com/ND-IrishSat/protosat-23-24.git"
+
+To update your code and get the new PySOL repo:
+1. git pull (this will not automatically include the submodule files)
+2. git submodule update --init
