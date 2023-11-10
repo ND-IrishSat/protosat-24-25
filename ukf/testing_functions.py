@@ -12,7 +12,10 @@ import scipy
 import timeit
 import run_UKF
 import UKF_algorithm
+from hfunc import *
 import random
+from wmm import WMM
+
 
 
 
@@ -37,8 +40,9 @@ def speedTest (func, inputs, n):
 
     average = (total / n) * 1000
 
-    print("Average time over {} iterations: {} ms".format(n, average))
+    print("Average time of {} over {} iterations: {} ms".format(func.__name__, n, average))
     return average
+
 
 if __name__ == '__main__':
 
@@ -53,6 +57,8 @@ if __name__ == '__main__':
         r[i]=random.random()
         q[i]=random.random() * .1
     u_k = [35.69314751, -114.13385513, 424.7491012, np.array([2023.811])]
+    # u_k = [35.69314751, -114.13385513, 424.7491012, 2023.811]
+
     data = np.random.rand(6)
 
     # speedTest(UKF_algorithm.sigma, [means, cov, n, scaling], 10000)
@@ -62,6 +68,12 @@ if __name__ == '__main__':
     # about 7.9 ms
     # 90 ms with new hfunc?!?!
 
+    # Bfield = bfield_calc(u_k)
+    # speedTest(hfunc, [means, Bfield], 1000)
+    # .01 ms
+
+    # speedTest(bfield_calc, [u_k], 1000)
+    # 8.6 or 7
 
 
 

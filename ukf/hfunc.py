@@ -12,7 +12,7 @@ from wmm import WMM
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def hfunc(state, controls):
+def hfunc(state, Bfield):
     '''
     hfunc
         transformation from state space to measurement space using magnetic field with respect to the earth at given time
@@ -29,6 +29,14 @@ def hfunc(state, controls):
     quaternion = state[:4]
     rotationMatrix = quaternion_rotation_matrix(quaternion)
 
+    # should we normalize?
+
+    # combine rotation matrix and b field of earth
+    # other elements of state have 1 to 1 conversion, so add back before returning
+    return np.concatenate((np.matmul(rotationMatrix,Bfield).ravel(), np.array(state[4:])))
+
+
+def bfield_calc(controls):
     # get lat, long, and height from control input vector
     lat = controls[0] 
     long = controls[1]
@@ -42,11 +50,7 @@ def hfunc(state, controls):
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
 
-    # should we normalize?
-
-    # combine rotation matrix and b field of earth
-    # other elements of state have 1 to 1 conversion, so add back before returning
-    return np.concatenate((np.matmul(rotationMatrix,Bfield1).ravel(), np.array(state[4:])))
+    return Bfield1
 
 
 def quaternion_rotation_matrix(Q):
