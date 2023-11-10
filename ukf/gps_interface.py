@@ -6,6 +6,9 @@ Last modified: 11/5/2023
 Interfaces with and calibrates GPS used on CubeSat
 '''
 
+import numpy as np
+import pyproj
+
 def get_gps_data():
     '''
     get_gps_data
@@ -45,11 +48,11 @@ def ecef_to_latlong(x, y, z):
     """
 
     # Define the ECEF and WGS84 coordinate systems
-    ecef = Proj(proj='geocent', ellps='WGS84', datum='WGS84')
-    wgs84 = Proj(proj='latlong', ellps='WGS84', datum='WGS84')
+    ecef = pyproj.Proj(proj='geocent', ellps='WGS84', datum='WGS84')
+    wgs84 = pyproj.Proj(proj='latlong', ellps='WGS84', datum='WGS84')
     
     # Convert the ECEF coordinates to WGS84 latitude and longitude
-    lon, lat, alt = transform(ecef, wgs84, x, y, z, radians=False)
+    lon, lat, alt = pyproj.transform(ecef, wgs84, x, y, z, radians=False)
     
     # Return the latitude and longitude
     return np.array([lat, lon, alt])
