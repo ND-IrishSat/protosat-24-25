@@ -29,7 +29,8 @@ import math
 import bigEOMS
 import scipy
 import scipy.linalg
-from hfunc import hfunc
+from hfunc import *
+from typing import Optional
 
 
 def sigma(means, cov, n, scaling):
@@ -196,6 +197,7 @@ def quaternionMultiply(a, b):
 
 
 def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
+    # Bfield: Optional[np.array]
     '''
     generateMeans
         generate mean after passing sigma point distribution through a transformation function
@@ -377,8 +379,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     # create temporary sigma points
     sigTemp = sigma(z, zCov, n, scaling)
 
+    Bfield = bfield_calc(u_k)
+
     # update with gps control vector instead of q_wmm
-    meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
+    meanInMes, h = generateMeans(hfunc, Bfield, sigTemp, w1, w2, n, m)
 
 
     """
