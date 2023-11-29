@@ -289,6 +289,10 @@ def run_ukf_textfile(start, cov, r, q, filename):
         # u_k = gps_interface.get_gps_data()
         # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2]) # add time
         u_k = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
+        # u_k = np.array([np.array([splitData[0]]), np.array([splitData[1]]), np.array([splitData[2]]), np.array([2022.257])])
+        # u_k = np.array([np.array([splitData[3]]), np.array([splitData[4]]), np.array([splitData[5]]), np.array([2022.257])])
+
+
 
         # run ukf and visualize output
         start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
@@ -298,8 +302,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
         data = f.readline()
         if(data == ''):
             break
-        splitData = data.split(",")
-        splitData = [float(x) for x in splitData]
+        splitData = [float(x) for x in data.split(",")]
         i+=1
 
     f.close()

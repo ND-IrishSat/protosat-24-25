@@ -380,6 +380,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     sigTemp = sigma(z, zCov, n, scaling)
 
     Bfield = bfield_calc(u_k)
+    # Bfield = u_k[:3]
 
     # print("BFIELD: ", Bfield)
 
