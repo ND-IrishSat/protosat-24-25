@@ -27,6 +27,7 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 import gps_interface
+from happy_sensors import get_imu_data
 
 # import PySOL
 # from PySOL import sol_sim
@@ -297,6 +298,23 @@ def run_ukf_textfile(start, cov, r, q, filename):
         i+=1
 
     f.close()
+
+
+def run_ukf_sensor_iteration(state, cov, r, q, i):
+    data = get_imu_data()
+    u_k = gps_interface.get_gps_data()
+    u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
+    u_k.append(2023.8123)
+
+    # do not use data if B-field is all zeros 
+    if check_zeros(data): 
+        return "Error" 
+
+    state, cov = UKF_algorithm.UKF(state, cov, r, q, u_k, data)
+    # Visualize only if needed
+    # game_visualize(np.array([state[:4]]), i) 
+
+    return state, cov
 
 
 def run_ukf_sensor(state, cov, r, q):
