@@ -28,9 +28,13 @@ from pyquaternion import Quaternion
 import UKF_algorithm
 import gps_interface
 
-# import PySOL
-# from PySOL import sol_sim
-# from PySOL import orb_tools as ot
+# from ukf.PySOL import spacecraft as sp
+# from ukf.PySol.spacecraft import *
+from PySOL.sol_sim import *
+import PySOL.spacecraft as sp
+import PySOL.orb_tools as ot
+# from ukf.PySOL import sol_sim
+# from ukf.PySOL import orb_tools as ot
 
 # from BNO055_magnetometer_basic import calibrate
 # from BNO055_magnetometer_basic import get_data
@@ -250,40 +254,42 @@ def run_ukf_textfile(start, cov, r, q, filename):
         q: noise vector for sensors (1 x m)
         filename: text file of cleaned sensor data to read from (any length)
     '''
+    # startTime = 2022.321
+    t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
+    # times = [t0.year + (t0.month * 30 + t0.day + t0.hours / 24 + t0.minutes / 1440) / 365]
+    # sim = sol_sim.Simulation(TIME = t0, mag_deg= 12)
+    sim = Simulation(TIME = t0, mag_deg= 12)
 
-    # t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
-    # sim = Simulation(TIME = t0, mag_deg= 12)
-
-    # OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
-    # sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
+    timeChange = .1
+    OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
+    sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
 
 
-    # DT = dt.timedelta(hours = 0.1)
-    # sim.propogate(DT, resolution =  1)
-    # orb_laln = sim.scs[0].state_mat.LALN
-    # orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
+    DT = dt.timedelta(hours = timeChange)
+    sim.propogate(DT, resolution =  1)
+    orb_laln = sim.scs[0].state_mat.LALN
+    orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
 
     # print(sim.scs[0].state_mat.R_ECEF.shape)
-    # print(orb_laln)
-    # print(orb_h)
+    print(len(orb_laln))
+    print(len(orb_h))
 
 
 
     f = open(filename, "r")
     data = f.readline()
-    splitData = data.split(",")
-    splitData = [float(x) for x in splitData]
+    splitData = [float(x) for x in data.split(",")]
     # start[0] = splitData[0]
     # start[1] = splitData[1]
     # start[2] = splitData[2]
     # start[3] = splitData[3]
     i = 1
-    u_k = []
     while(data):
         # get gps data and add time stamp
-        u_k = gps_interface.get_gps_data()
-        u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
-        u_k.append(2023.8123)
+        # u_k = gps_interface.get_gps_data()
+        # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2]) # add time
+        u_k = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
+
         # run ukf and visualize output
         start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
         game_visualize(np.array([start[:4]]), i)

@@ -20,7 +20,10 @@ def hfunc(state, Bfield):
 
     @params
         state: state estimate of system-quaternion, angular velocity, reaction wheel speed (1 x n)
-        controls: gps and time data needed to calculate magnetic field with respect to the earth (latitude, longitude, height, time arrays)
+        Bfield: B field of state (1 x 3)
+            used to be controls: gps and time data needed to calculate magnetic field with respect to the earth 
+            (latitude, longitude, height, time arrays)
+            but now we calculate that separately
     @returns
         state array in measurement space (1 x m, as first element of quaternion becomes 0)
     '''

@@ -381,8 +381,12 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
 
     Bfield = bfield_calc(u_k)
 
+    # print("BFIELD: ", Bfield)
+
     # update with gps control vector instead of q_wmm
     meanInMes, h = generateMeans(hfunc, Bfield, sigTemp, w1, w2, n, m)
+
+    # print("MEAN IN MEASUREMENT: ", meanInMes)
 
 
     """
@@ -450,4 +454,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
     cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
 
+    # print("MEANS AT END: ", means)
+    # print("COV AT END: ", cov)
     return [means, cov]
