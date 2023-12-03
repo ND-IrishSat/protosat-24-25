@@ -20,7 +20,7 @@ def hfunc(state, Bfield):
 
     @params
         state: state estimate of system-quaternion, angular velocity, reaction wheel speed (1 x n)
-        Bfield: B field of state (1 x 3)
+        Bfield: B field of state (1 x 3) in milliteslas???
             used to be controls: gps and time data needed to calculate magnetic field with respect to the earth 
             (latitude, longitude, height, time arrays)
             but now we calculate that separately
@@ -52,8 +52,9 @@ def bfield_calc(controls):
     wmm_model = WMM(12, 'WMMcoef.csv')
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
+    converted = Bfield1 / 1000
 
-    return Bfield1
+    return converted
 
 
 def quaternion_rotation_matrix(Q):

@@ -13,6 +13,12 @@ TODO:
     optimize for loops and numpy arrays
     test with different data sets
     remake sigma points?
+
+    stop tracking reaction wheel speed and make it control input instead
+    try idealized test cases
+    can use numpy to sample gaussian noise, just need to find magnitude
+    enforce normalization at end of iteration: done
+
 '''
 
 import numpy as np
@@ -256,17 +262,18 @@ def run_ukf_textfile(start, cov, r, q, filename):
     '''
     # startTime = 2022.321
     t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
-    # times = [t0.year + (t0.month * 30 + t0.day + t0.hours / 24 + t0.minutes / 1440) / 365]
     # sim = sol_sim.Simulation(TIME = t0, mag_deg= 12)
     sim = Simulation(TIME = t0, mag_deg= 12)
 
-    timeChange = .1
+    # how long we're simulating for
+    duration = .02
     OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
     sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
 
 
-    DT = dt.timedelta(hours = timeChange)
-    sim.propogate(DT, resolution =  1)
+    DT = dt.timedelta(hours = duration)
+    # resolution = timestep. Must match with rest of ukf
+    sim.propogate(DT, resolution =  .1)
     orb_laln = sim.scs[0].state_mat.LALN
     orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
 
@@ -278,7 +285,10 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     f = open(filename, "r")
     data = f.readline()
-    splitData = [float(x) for x in data.split(",")]
+    splitData = np.array([float(x) for x in data.split(",")])
+    # for correct units of magnet field, we divide result of wmm by 1000
+    # splitData[:3] = splitData[:3] / 1000
+
     # start[0] = splitData[0]
     # start[1] = splitData[1]
     # start[2] = splitData[2]
@@ -288,6 +298,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
         # get gps data and add time stamp
         # u_k = gps_interface.get_gps_data()
         # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2]) # add time
+
         u_k = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
         # u_k = np.array([np.array([splitData[0]]), np.array([splitData[1]]), np.array([splitData[2]]), np.array([2022.257])])
         # u_k = np.array([np.array([splitData[3]]), np.array([splitData[4]]), np.array([splitData[5]]), np.array([2022.257])])
@@ -354,6 +365,9 @@ if __name__ == "__main__":
         q[i]=random.random() * .1
 
     start = np.random.rand(n)
+    normal = np.linalg.norm(start[0:4])
+    start[0:4] = start[0:4]/normal
+    # start = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     cov = np.zeros((n,n))
     for i in range(n):

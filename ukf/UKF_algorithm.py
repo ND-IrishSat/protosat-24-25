@@ -324,6 +324,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     z.append(data[3])
     z.append(data[4])
     z.append(data[5])
+    # bad assumption: reaction wheel velocity shouldn't be constant
     z.append(passedMeans[7])
     z.append(passedMeans[8])
     z.append(passedMeans[9])
@@ -443,6 +444,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
   
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
+    normal = np.linalg.norm(means[0:4])
+    means[0:4] = means[0:4]/normal
 
     # 2 options for updated cov:
     
