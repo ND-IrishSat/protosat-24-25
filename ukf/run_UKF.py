@@ -312,6 +312,51 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     f.close()
 
+def run_basic_test():
+    '''
+    removed hfunc and passed u_k as magnetic field
+    
+    removed normalization
+    
+    low zCov and higher r, q yields best results
+    '''
+    n = 7
+    m = n - 1
+
+    start = np.zeros(n)
+    cov = np.zeros((n, n))
+    # cov = np.random.rand(n, n)
+    noiseMagnitude = .02
+    # r=np.random.rand(n) * .1
+    r = np.random.normal(0, noiseMagnitude, 1000)
+    # q=np.random.rand(m) * .1
+    noiseMagnitude = .075
+    q = np.random.normal(0, noiseMagnitude, 1000)
+
+
+    # edit code so that lat/long/hieght are not needed 
+    # make u_k = magnetic field for this test only 
+    u_k = np.zeros(3)
+
+    reaction_speeds = np.zeros(3)
+
+    # we want magnetomer reading to be constant, rest to be 0
+    data = np.zeros(m)
+    data[0] = 0
+    data[1] = 1
+    data[2] = 0
+    i = 1
+    while(1):
+        # r=np.random.rand(n) * .1
+        # q=np.random.rand(m) * .1
+        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, data)
+        game_visualize(np.array([start[:4]]), i)
+
+        i += 1
+
+
+
+
 
 def run_ukf_sensor(state, cov, r, q):
     '''
@@ -370,7 +415,10 @@ if __name__ == "__main__":
     filename = "sensor_data_2.txt"
 
     # tests ukf with pre-generated and cleaned data file
-    run_ukf_textfile(start, cov, r, q, filename)
+    # run_ukf_textfile(start, cov, r, q, filename)
 
     # must uncomment BNO055 imports to use in real-time with sensor
     # run_ukf_sensor(start, cov, r, q)
+
+    # run basic ideal test
+    run_basic_test()

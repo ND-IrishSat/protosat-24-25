@@ -282,7 +282,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     cov = np.add(cov, d)
 
     # add noise to covariance matrix
-    # cov = np.add(cov, noise)
+    cov = np.add(cov, noise)
 
     return cov
 
@@ -318,7 +318,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((2 * n + 1,m))
     
-    # z = passedMeans
     z = []
     z.append(0)
     z.append(data[0])
@@ -327,10 +326,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     z.append(data[3])
     z.append(data[4])
     z.append(data[5])
-    # bad assumption: reaction wheel velocity shouldn't be constant
-    # z.append(passedMeans[7])
-    # z.append(passedMeans[8])
-    # z.append(passedMeans[9])
 
     scaling = 3-n
     w1 = scaling / (n + scaling) # weight for first value
@@ -374,19 +369,19 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
             [0, 0, 0, 0, 0, 0, .1]
     ]
     for i in range(n):
-        zCov[i][i] = .05
+        zCov[i][i] = .01
     # zCov = cov
   
     # create temporary sigma points
     sigTemp = sigma(z, zCov, n, scaling)
 
-    Bfield = bfield_calc(u_k)
+    # Bfield = bfield_calc(u_k)
     # Bfield = u_k[:3]
 
     # print("BFIELD: ", Bfield)
 
     # update with gps control vector instead of q_wmm
-    meanInMes, h = generateMeans(hfunc, Bfield, sigTemp, w1, w2, n, m)
+    meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
     # print("MEAN IN MEASUREMENT: ", meanInMes)
 
@@ -444,8 +439,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
   
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
-    normal = np.linalg.norm(means[0:4])
-    means[0:4] = means[0:4]/normal
+    # normal = np.linalg.norm(means[0:4])
+    # means[0:4] = means[0:4]/normal
 
     # 2 options for updated cov:
     
