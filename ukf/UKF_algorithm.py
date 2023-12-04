@@ -74,12 +74,14 @@ def sigma(means, cov, n, scaling):
     return sigmaMatrix
 
 
-def EOMs(state, u_k):
+def EOMs(state, reaction_speeds):
     '''
     EOMs
         uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
         change dt within to control time step
-        u_k: control input vector for magnetorquers?
+        reaction_speeds: reaction wheel velocities (1 x 3)
+        u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
+                [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
 
     @params
         state: column of sigma point matrix to propogate (1 x n)
@@ -121,9 +123,9 @@ def EOMs(state, u_k):
     w_x = state[4]
     w_y = state[5]
     w_z = state[6]
-    theta_dot_RW1 = state[7]
-    theta_dot_RW2 = state[8]
-    theta_dot_RW3 = state[9]
+    theta_dot_RW1 = reaction_speeds[0]
+    theta_dot_RW2 = reaction_speeds[1]
+    theta_dot_RW3 = reaction_speeds[2]
 
     # Grab moment of inertias
     I_xx = I_body_tensor[0][0]
@@ -164,18 +166,18 @@ def EOMs(state, u_k):
         M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
         I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
         I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[7] = state[7] + dt * func.theta_ddot_RW1(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[8] = state[8] + dt * func.theta_ddot_RW2(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[9] = state[9] + dt * func.theta_ddot_RW3(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+    # x_predicted[7] = state[7] + dt * func.theta_ddot_RW1(
+    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
+    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
+    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+    # x_predicted[8] = state[8] + dt * func.theta_ddot_RW2(
+    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
+    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
+    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+    # x_predicted[9] = state[9] + dt * func.theta_ddot_RW3(
+    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
+    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
+    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
 
     return x_predicted
 
@@ -286,7 +288,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
 
 
 
-def UKF(passedMeans, passedCov, r, q, u_k, data):
+def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     '''
     UKF
         estimates state at time step based on sensor data, noise, and equations of motion
@@ -297,6 +299,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
         r: noise vector of predictions (1 x n)
         q: noise vector of sensors (1 x m)
         u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
+        reaction_speeds: control input for reaction wheel speeds (1 x 3)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
     @returns
         means: calculated state estimate at current time (1 x n)
@@ -304,8 +307,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
 
     # initialize vars (top of file for descriptions)
-    n = 10
-    m = 9
+    n = 7
+    m = 6
     cov = passedCov
     predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
@@ -325,9 +328,9 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     z.append(data[4])
     z.append(data[5])
     # bad assumption: reaction wheel velocity shouldn't be constant
-    z.append(passedMeans[7])
-    z.append(passedMeans[8])
-    z.append(passedMeans[9])
+    # z.append(passedMeans[7])
+    # z.append(passedMeans[8])
+    # z.append(passedMeans[9])
 
     scaling = 3-n
     w1 = scaling / (n + scaling) # weight for first value
@@ -349,7 +352,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     # oldSig = sigTemp
 
-    predMeans, g = generateMeans(EOMs, u_k, sigTemp, w1, w2, n, n)
+    predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
 
     """
@@ -362,16 +365,13 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     Mean to measurement
     """
     # create arbitrary covariance for sensors
-    zCov = [[.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, .1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, .1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, .1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, .1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, .1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, .1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, .1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, .1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, .1]
+    zCov = [[.1, 0, 0, 0, 0, 0, 0],
+            [0, .1, 0, 0, 0, 0, 0],
+            [0, 0, .1, 0, 0, 0, 0],
+            [0, 0, 0, .1, 0, 0, 0],
+            [0, 0, 0, 0, .1, 0, 0],
+            [0, 0, 0, 0, 0, .1, 0],
+            [0, 0, 0, 0, 0, 0, .1]
     ]
     for i in range(n):
         zCov[i][i] = .05
@@ -458,6 +458,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
     cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
 
-    # print("MEANS AT END: ", means)
-    # print("COV AT END: ", cov)
+    print("MEANS AT END: ", means)
+    print("COV AT END: ", cov)
     return [means, cov]

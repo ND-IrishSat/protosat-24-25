@@ -289,10 +289,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     # for correct units of magnet field, we divide result of wmm by 1000
     # splitData[:3] = splitData[:3] / 1000
 
-    # start[0] = splitData[0]
-    # start[1] = splitData[1]
-    # start[2] = splitData[2]
-    # start[3] = splitData[3]
+    reaction_speeds = np.zeros(3)
     i = 1
     while(data):
         # get gps data and add time stamp
@@ -300,13 +297,10 @@ def run_ukf_textfile(start, cov, r, q, filename):
         # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2]) # add time
 
         u_k = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
-        # u_k = np.array([np.array([splitData[0]]), np.array([splitData[1]]), np.array([splitData[2]]), np.array([2022.257])])
-        # u_k = np.array([np.array([splitData[3]]), np.array([splitData[4]]), np.array([splitData[5]]), np.array([2022.257])])
-
 
 
         # run ukf and visualize output
-        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
+        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, reaction_speeds, splitData)
         game_visualize(np.array([start[:4]]), i)
 
         # continue to get data from file until empty
@@ -355,8 +349,8 @@ def run_ukf_sensor(state, cov, r, q):
 if __name__ == "__main__":
 
     # Initialize noises and starting state/cov to random values
-    n = 10
-    m = 9
+    n = 7
+    m = 6
 
     r=np.zeros(n)
     q=np.zeros(m)
