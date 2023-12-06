@@ -318,14 +318,14 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((2 * n + 1,m))
     
-    z = []
-    z.append(0)
-    z.append(data[0])
-    z.append(data[1])
-    z.append(data[2])
-    z.append(data[3])
-    z.append(data[4])
-    z.append(data[5])
+    z = np.array([0.0] + data)
+    # a = np.array([z, z, z, z, z, z, z])
+
+    # zCov = np.cov(a, rowvar=True)
+    # print("Z COVARIANCE: ", zCov)
+
+    # print("COV MATRIX: ", zCov)
+    
 
     scaling = 3-n
     w1 = scaling / (n + scaling) # weight for first value
@@ -345,6 +345,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
+    print("SIGMA POINTS", sigTemp)
     # oldSig = sigTemp
 
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
@@ -360,20 +361,21 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     Mean to measurement
     """
     # create arbitrary covariance for sensors
-    zCov = [[.1, 0, 0, 0, 0, 0, 0],
-            [0, .1, 0, 0, 0, 0, 0],
-            [0, 0, .1, 0, 0, 0, 0],
-            [0, 0, 0, .1, 0, 0, 0],
-            [0, 0, 0, 0, .1, 0, 0],
-            [0, 0, 0, 0, 0, .1, 0],
-            [0, 0, 0, 0, 0, 0, .1]
-    ]
-    for i in range(n):
-        zCov[i][i] = .01
+    # zCov = [[.1, 0, 0, 0, 0, 0, 0],
+    #         [0, .1, 0, 0, 0, 0, 0],
+    #         [0, 0, .1, 0, 0, 0, 0],
+    #         [0, 0, 0, .1, 0, 0, 0],
+    #         [0, 0, 0, 0, .1, 0, 0],
+    #         [0, 0, 0, 0, 0, .1, 0],
+    #         [0, 0, 0, 0, 0, 0, .1]
+    # ]
+    # for i in range(n):
+    #     zCov[i][i] = .005
+
     # zCov = cov
   
     # create temporary sigma points
-    sigTemp = sigma(z, zCov, n, scaling)
+    # sigTemp = sigma(z, zCov, n, scaling)
 
     # Bfield = bfield_calc(u_k)
     # Bfield = u_k[:3]
@@ -383,7 +385,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     # update with gps control vector instead of q_wmm
     meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
-    # print("MEAN IN MEASUREMENT: ", meanInMes)
+    print("MEAN IN MEASUREMENT: ", meanInMes)
+    print("H: ", h)
 
 
     """
@@ -433,6 +436,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
     # nxm
+    print("cross covariance: ", crossCo)
+    print("covidInMes: ", covidInMes)
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
 
     z = z[1:]

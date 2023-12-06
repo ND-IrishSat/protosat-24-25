@@ -324,13 +324,15 @@ def run_basic_test():
     m = n - 1
 
     start = np.zeros(n)
-    cov = np.zeros((n, n))
-    # cov = np.random.rand(n, n)
-    noiseMagnitude = .02
+    start[1] = 1
+    # cov = np.zeros((n, n))
+    cov = np.random.rand(n, n)
+
+    noiseMagnitude = .01
     # r=np.random.rand(n) * .1
     r = np.random.normal(0, noiseMagnitude, 1000)
     # q=np.random.rand(m) * .1
-    noiseMagnitude = .075
+    noiseMagnitude = .055
     q = np.random.normal(0, noiseMagnitude, 1000)
 
 
@@ -341,15 +343,17 @@ def run_basic_test():
     reaction_speeds = np.zeros(3)
 
     # we want magnetomer reading to be constant, rest to be 0
-    data = np.zeros(m)
-    data[0] = 0
-    data[1] = 1
-    data[2] = 0
+    data = [0,1,0,0,0,0]
+
+
+    f = open("test-still.txt", "r")
+    data = f.readline()
+    splitData = np.array([float(x) for x in data.split(",")])
+    splitData = splitData[6:]
+    
     i = 1
     while(1):
-        # r=np.random.rand(n) * .1
-        # q=np.random.rand(m) * .1
-        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, splitData[i])
         game_visualize(np.array([start[:4]]), i)
 
         i += 1
