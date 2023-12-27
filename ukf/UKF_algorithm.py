@@ -96,6 +96,10 @@ def EOMs(state, reaction_speeds):
     # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
                 # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
     u_k = np.zeros(6)
+    u_k[0] = reaction_speeds[0]
+    u_k[1] = reaction_speeds[1]
+    u_k[2] = reaction_speeds[2]
+
 
     # I_body_tensor: Moment of inertia tensor of the cubesat
                 # [[I_XX  I_XY  I_XZ]
@@ -308,7 +312,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     # initialize vars (top of file for descriptions)
     n = 7
-    m = 6
+    m = n - 1
     cov = passedCov
     predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
@@ -316,15 +320,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     covidInMes = np.zeros((m, m))
     crossCo = np.zeros((n,m))
     g = np.zeros((n * 2 + 1, n))
-    h = np.zeros((2 * n + 1,m))
+    h = np.zeros((n * 2 + 1, m))
     
     z = np.array([0.0] + data)
     # a = np.array([z, z, z, z, z, z, z])
-
-    # zCov = np.cov(a, rowvar=True)
-    # print("Z COVARIANCE: ", zCov)
-
-    # print("COV MATRIX: ", zCov)
     
 
     scaling = 3-n
@@ -346,10 +345,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
     print("SIGMA POINTS", sigTemp)
-    # oldSig = sigTemp
 
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
+    print("PREDICTED MEANS: ", predMeans)
 
     """
     Calculate predicted covariance of Gaussian
@@ -386,7 +385,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
     print("MEAN IN MEASUREMENT: ", meanInMes)
-    print("H: ", h)
 
 
     """
@@ -430,20 +428,20 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     # add first value back into cross covariance
     crossCo = np.add(crossCo, d)
 
-
     """
     Kalman gain and final update
     """
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
-    # nxm
-    print("cross covariance: ", crossCo)
+    # n x m
     print("covidInMes: ", covidInMes)
+    print("cross covariance: ", crossCo)
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
 
     z = z[1:]
   
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
+    # normalize the quaternion?
     # normal = np.linalg.norm(means[0:4])
     # means[0:4] = means[0:4]/normal
 

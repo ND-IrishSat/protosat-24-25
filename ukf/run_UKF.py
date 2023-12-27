@@ -317,8 +317,10 @@ def run_basic_test():
     removed hfunc and passed u_k as magnetic field
     
     removed normalization
+
+    removed zCov
     
-    low zCov and higher r, q yields best results
+    need to find optimal r, q
     '''
     n = 7
     m = n - 1
@@ -328,17 +330,18 @@ def run_basic_test():
     # cov = np.zeros((n, n))
     cov = np.random.rand(n, n)
 
-    noiseMagnitude = .01
+    noiseMagnitude = .005
     # r=np.random.rand(n) * .1
     r = np.random.normal(0, noiseMagnitude, 1000)
     # q=np.random.rand(m) * .1
-    noiseMagnitude = .055
+    # noiseMagnitude = .055
     q = np.random.normal(0, noiseMagnitude, 1000)
 
 
     # edit code so that lat/long/hieght are not needed 
     # make u_k = magnetic field for this test only 
     u_k = np.zeros(3)
+    u_k[1] = 1
 
     reaction_speeds = np.zeros(3)
 
@@ -346,14 +349,16 @@ def run_basic_test():
     data = [0,1,0,0,0,0]
 
 
-    f = open("test-still.txt", "r")
-    data = f.readline()
-    splitData = np.array([float(x) for x in data.split(",")])
-    splitData = splitData[6:]
+    # f = open("test-still.txt", "r")
+    # data = f.readline()
+    # splitData = np.array([float(x) for x in data.split(",")])
+    # splitData = splitData[6:]
     
     i = 1
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, splitData[i])
+        # start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, splitData[i])
+        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, data)
+
         game_visualize(np.array([start[:4]]), i)
 
         i += 1
