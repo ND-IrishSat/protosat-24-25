@@ -322,8 +322,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((n * 2 + 1, m))
     
-    z = np.array([0.0] + data)
-    # a = np.array([z, z, z, z, z, z, z])
+    # z = np.array([0.0] + data)
+    z = data
     
 
     scaling = 3-n
@@ -344,7 +344,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
-    print("SIGMA POINTS", sigTemp)
+    # print("SIGMA POINTS", sigTemp)
 
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
@@ -386,6 +386,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     print("MEAN IN MEASUREMENT: ", meanInMes)
 
+    # print("Transformed sigma points: ", h)
+
 
     """
     Creates covariance matrix in measurement space
@@ -396,17 +398,17 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     '''
     Cross covariance matrix (t) between state space and predicted space
 
-    Remake sigma points here now that we have new data up to the group
+    Remake sigma points here now that we have new data up to the group?
     '''
     # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
-    # sig = sigma(z, zCov, n, scaling)
 
     # use formula from website to compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
         arr2 = np.subtract(h[i], meanInMes)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
+        # print("     crossCo calc: ", arr1)
         crossCo = np.add(crossCo, arr1)
         # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
         # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
@@ -414,16 +416,17 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
         # crossCo = np.add(crossCo, arr1)
     '''switch ordering??'''
 
-    # arr1 = np.subtract(h[-1], meanInMes)[np.newaxis]
     arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], meanInMes)[np.newaxis]
+    # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
+    # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
 
     # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
 
     # multiply by weights for first and other values
-    np.multiply(crossCo, w2)
-    np.multiply(d, w1)
+    crossCo = np.multiply(crossCo, w2)
+    d = np.multiply(d, w1)
 
     # add first value back into cross covariance
     crossCo = np.add(crossCo, d)
@@ -433,11 +436,11 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
     # n x m
-    print("covidInMes: ", covidInMes)
+    print("covariance in measurement: ", covidInMes)
     print("cross covariance: ", crossCo)
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
 
-    z = z[1:]
+    # z = z[1:]
   
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))

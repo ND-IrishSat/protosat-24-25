@@ -325,8 +325,9 @@ def run_basic_test():
     n = 7
     m = n - 1
 
+    # quaternion and angular velocity should be zero
     start = np.zeros(n)
-    start[1] = 1
+    # start[1] = 1
     # cov = np.zeros((n, n))
     cov = np.random.rand(n, n)
 
@@ -342,11 +343,12 @@ def run_basic_test():
     # make u_k = magnetic field for this test only 
     u_k = np.zeros(3)
     u_k[1] = 1
+    u_k = np.array([1, 1, 1])
 
     reaction_speeds = np.zeros(3)
 
     # we want magnetomer reading to be constant, rest to be 0
-    data = [0,1,0,0,0,0]
+    data = [1, 1, 1,0,0,0]
 
 
     # f = open("test-still.txt", "r")
