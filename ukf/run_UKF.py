@@ -321,12 +321,19 @@ def run_basic_test():
     removed zCov
     
     need to find optimal r, q
+
+    got rid of different dimensionality for m: instead, everything uses 7
+
+    switched covariance calculation
+
+    fixed crossco calculation bug
     '''
     n = 7
-    m = n - 1
+    m = n
 
     # quaternion and angular velocity should be zero
     start = np.zeros(n)
+    start = np.array([0, 1, 0, 0, 0, 0, 0])
     # start[1] = 1
     # cov = np.zeros((n, n))
     cov = np.random.rand(n, n)
@@ -342,13 +349,15 @@ def run_basic_test():
     # edit code so that lat/long/hieght are not needed 
     # make u_k = magnetic field for this test only 
     u_k = np.zeros(3)
-    u_k[1] = 1
-    u_k = np.array([1, 1, 1])
+    # u_k[1] = 1
+    u_k = np.array([1, 0, 0])
 
     reaction_speeds = np.zeros(3)
 
     # we want magnetomer reading to be constant, rest to be 0
-    data = [1, 1, 1,0,0,0]
+    # data = [1, 1, 1,0,0,0]
+    data = [0, 1, 0, 0,0,0,0]
+
 
 
     # f = open("test-still.txt", "r")

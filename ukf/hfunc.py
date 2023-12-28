@@ -38,7 +38,9 @@ def hfunc(state, Bfield):
     # other elements of state have 1 to 1 conversion, so add back before returning
     # return np.concatenate((np.matmul(rotationMatrix,Bfield).ravel(), np.array(state[4:])))
 
-    return state[1:]
+    # return state[1:]
+    return state
+
 
 
 def bfield_calc(controls):

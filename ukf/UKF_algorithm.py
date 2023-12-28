@@ -312,7 +312,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     # initialize vars (top of file for descriptions)
     n = 7
-    m = n - 1
+    m = n
     cov = passedCov
     predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
@@ -436,9 +436,11 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
     # n x m
-    print("covariance in measurement: ", covidInMes)
-    print("cross covariance: ", crossCo)
+    # print("covariance in measurement: ", covidInMes)
+    # print("cross covariance: ", crossCo)
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
+
+    # print("KALMAN: ", kalman)
 
     # z = z[1:]
   
@@ -452,12 +454,12 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     
     # option 1:
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-    # cov = np.matmul(np.subtract(np.identity(m), np.matmul(kalman, crossCo)), predCovid)
+    cov = np.matmul(np.subtract(np.identity(m), np.matmul(kalman, crossCo)), predCovid)
     # this one doesn't work with different n and m for some reason
 
     # option 2:
     # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
-    cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
+    # cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
 
     print("MEANS AT END: ", means)
     print("COV AT END: ", cov)
