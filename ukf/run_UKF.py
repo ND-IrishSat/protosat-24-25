@@ -324,40 +324,35 @@ def run_basic_test():
 
     got rid of different dimensionality for m: instead, everything uses 7
 
-    switched covariance calculation
+    switched covariance calculation to option 1
 
-    fixed crossco calculation bug
+    fixed crosscovariance calculation bug
     '''
     n = 7
-    m = n
 
     # quaternion and angular velocity should be zero
-    start = np.zeros(n)
-    start = np.array([0, 1, 0, 0, 0, 0, 0])
-    # start[1] = 1
-    # cov = np.zeros((n, n))
+    start = np.array([0, 0, 1, 0, 0, 0, 0])
+
     cov = np.random.rand(n, n)
 
+    # we want magnetomer reading to be constant, rest to be 0
+    data = [0, 0, 1, 0, 0, 0, 0]
+
+
     noiseMagnitude = .005
-    # r=np.random.rand(n) * .1
     r = np.random.normal(0, noiseMagnitude, 1000)
-    # q=np.random.rand(m) * .1
-    # noiseMagnitude = .055
+    noiseMagnitude = .0025
     q = np.random.normal(0, noiseMagnitude, 1000)
 
 
     # edit code so that lat/long/hieght are not needed 
     # make u_k = magnetic field for this test only 
+    # not even used in this test case bc hfunc is disabled
     u_k = np.zeros(3)
-    # u_k[1] = 1
-    u_k = np.array([1, 0, 0])
+    # u_k = np.array([0, 1, 0])
 
+    # control input vector for eoms, zero for this test
     reaction_speeds = np.zeros(3)
-
-    # we want magnetomer reading to be constant, rest to be 0
-    # data = [1, 1, 1,0,0,0]
-    data = [0, 1, 0, 0,0,0,0]
-
 
 
     # f = open("test-still.txt", "r")
