@@ -96,9 +96,9 @@ def EOMs(state, reaction_speeds):
     # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
                 # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
     u_k = np.zeros(6)
-    u_k[0] = reaction_speeds[0]
-    u_k[1] = reaction_speeds[1]
-    u_k[2] = reaction_speeds[2]
+    # u_k[0] = reaction_speeds[0]
+    # u_k[1] = reaction_speeds[1]
+    # u_k[2] = reaction_speeds[2]
 
 
     # I_body_tensor: Moment of inertia tensor of the cubesat
@@ -359,22 +359,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """ 
     Mean to measurement
     """
-    # create arbitrary covariance for sensors
-    # zCov = [[.1, 0, 0, 0, 0, 0, 0],
-    #         [0, .1, 0, 0, 0, 0, 0],
-    #         [0, 0, .1, 0, 0, 0, 0],
-    #         [0, 0, 0, .1, 0, 0, 0],
-    #         [0, 0, 0, 0, .1, 0, 0],
-    #         [0, 0, 0, 0, 0, .1, 0],
-    #         [0, 0, 0, 0, 0, 0, .1]
-    # ]
-    # for i in range(n):
-    #     zCov[i][i] = .005
-
-    # zCov = cov
-  
-    # create temporary sigma points
-    # sigTemp = sigma(z, zCov, n, scaling)
 
     # Bfield = bfield_calc(u_k)
     # Bfield = u_k[:3]
@@ -408,13 +392,12 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
         arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
         arr2 = np.subtract(h[i], meanInMes)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        # print("     crossCo calc: ", arr1)
         crossCo = np.add(crossCo, arr1)
         # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
         # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
         # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
         # crossCo = np.add(crossCo, arr1)
-    '''switch ordering??'''
+    '''switch ordering?? tranpose should be on the h/meaninMes, not the sig/predMeans'''
 
     arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], meanInMes)[np.newaxis]

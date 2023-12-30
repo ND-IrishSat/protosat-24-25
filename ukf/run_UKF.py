@@ -314,30 +314,39 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
 def run_basic_test():
     '''
-    removed hfunc and passed u_k as magnetic field
-    
-    removed normalization
+    ideal test case for UKF: zeroed out, nonmoving cubesat
+    0 reaction wheel speed and angular velocity, constant magnetic field
+    no frame of reference transformation or gps implementation
 
-    removed zCov
-    
-    need to find optimal r, q
+    THINGS CHANGED FOR TEST CASE ONE:
+        removed hfunc and passed u_k as magnetic field
+        
+        removed normalization
 
-    got rid of different dimensionality for m: instead, everything uses 7
+        removed zCov
+        
+        need to find optimal r, q for each case
 
-    switched covariance calculation to option 1
+        got rid of different dimensionality for m: instead, everything uses 7
 
-    fixed crosscovariance calculation bug
+        switched covariance calculation to option 1
+
+        fixed crosscovariance calculation bug
+
+        what is control input vector in EOMs?
     '''
     n = 7
 
     # quaternion and angular velocity should be zero
     start = np.array([0, 0, 1, 0, 0, 0, 0])
+    # start = np.array([0, 1, 0, 0, 0, 0, 0])
 
 
-    # generate random cov until find one that works
-    # cov = np.random.rand(n, n)
+    # generate random cov until find one that works for desired orientation
+    cov = np.random.rand(n, n)
     # print("Starting cov: ", cov)
 
+    # functioning [0, 0, 1, 0, 0, 0, 0] starting cov
     cov = [
     [0.69725164, 0.19315984, 0.2832775,  0.3735261,  0.54702515, 0.46353052,
 0.6079563 ],
@@ -354,10 +363,26 @@ def run_basic_test():
     [0.32004209, 0.40196706, 0.78524302, 0.9844941,  0.18527825, 0.97597526,
   0.31972962]
   ]
+    
+    # functioning [0, 1, 0, 0, 0, 0, 0] starting cov
+#     cov = [[0.50830414, 0.47537675, 0.77004828, 0.59627864, 0.12089715, 0.75125198,
+#   0.89714238],
+#  [0.64573431, 0.30658319, 0.30152844, 0.17877576, 0.52458607, 0.61512279,
+#   0.46107642],
+#  [0.70992968, 0.4234175,  0.16309419, 0.30267742, 0.42853644, 0.57433347,
+#   0.91384443],
+#  [0.89523956, 0.72877348, 0.08727796, 0.57831622, 0.07739241, 0.54689399,
+#   0.15708898],
+#  [0.12187453, 0.6450451,  0.86425064, 0.22525721, 0.79197964, 0.72117946,
+#   0.78181564],
+#  [0.11911649, 0.16672314, 0.56963316, 0.47000069, 0.98772566, 0.86144774,
+#   0.02157576],
+#  [0.56530036, 0.20906463, 0.28074898, 0.37485807, 0.69929135, 0.22706317,
+#   0.09725908]]
 
     # we want magnetomer reading to be constant, rest to be 0
     data = [0, 0, 1, 0, 0, 0, 0]
-
+    # data = [0, 1, 0, 0, 0, 0, 0]
 
 
     noiseMagnitude = .005
@@ -366,18 +391,20 @@ def run_basic_test():
     q = np.random.normal(0, noiseMagnitude, 1000)
 
 
-    print("R: ", r[:10])
-    print("Q: ", q[:10])
-#     r[:10] = [ 0.00072222,  0.00584547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
+    # for smoothness at the beginning, can try random noises to find good starting values 
+    # print("R: ", r[:10])
+    # print("Q: ", q[:10])
+    
+    # functioning [0, 0, 1, 0, 0, 0, 0] noises
+#     r[:10] = [ 0.00072222,  0.00384547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
 #   0.0052347,   0.0036605,   0.00506041, -0.00103479]
 #     q[:10] = [-0.00375006, -0.00071075,  0.0004241,  -0.0014944,   0.00222291,  0.00088999,
 #   0.00338481,  0.0027458,   0.00346013,  0.00152124]
-    
-    r[:10] = [ 0.00072222,  0.00384547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
-  0.0052347,   0.0036605,   0.00506041, -0.00103479]
-    q[:10] = [-0.00375006, -0.00071075,  0.0004241,  -0.0014944,   0.00222291,  0.00088999,
-  0.00338481,  0.0027458,   0.00346013,  0.00152124]
-
+    # functioning [0, 1, 0, 0, 0, 0, 0] noises
+#     r[:10] = [-0.00295791, -0.00030439, -0.00266072,  0.00867703, -0.0003597,  -0.0091533,
+#  -0.0048222,  -0.00545613, -0.01036766, -0.00077585]
+#     q[:10] = [ 0.00083288,  0.0012302,  -0.00149358, -0.00445953,  0.0005876,  -0.00232486,
+#   0.00209268,  0.00337717,  0.00154955, -0.00357763]
 
 
     # edit code so that lat/long/hieght are not needed 
@@ -403,9 +430,6 @@ def run_basic_test():
         game_visualize(np.array([start[:4]]), i)
 
         i += 1
-
-
-
 
 
 def run_ukf_sensor(state, cov, r, q):
