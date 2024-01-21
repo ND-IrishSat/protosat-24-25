@@ -7,18 +7,13 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 
 TODO:
     interface with gps sensor, find what frame it gives us (ECEF or ECI?)
-    find correct value for zCov and noise (r, q)
-    update EOMs with new inertia
+    find correct value for noise (r, q)
+    update EOMs with new inertia + new reaction wheels
     adding gps component/control input vector for EOMs?
     optimize for loops and numpy arrays
     test with different data sets
-    remake sigma points?
 
-    stop tracking reaction wheel speed and make it control input instead
-    try idealized test cases
-    can use numpy to sample gaussian noise, just need to find magnitude
     enforce normalization at end of iteration: done
-
 '''
 
 import numpy as np
@@ -312,133 +307,6 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     f.close()
 
-def run_basic_test():
-    '''
-    ideal test case for UKF: zeroed out, nonmoving cubesat
-    0 reaction wheel speed and angular velocity, constant magnetic field
-    no frame of reference transformation or gps implementation
-
-    THINGS CHANGED FOR TEST CASE ONE:
-        removed hfunc and passed u_k as magnetic field
-        
-        removed normalization
-
-        removed zCov
-        
-        need to find optimal r, q for each case
-
-        got rid of different dimensionality for m: instead, everything uses 7
-
-        switched covariance calculation to option 1
-
-        fixed crosscovariance calculation bug
-
-        what is control input vector in EOMs?
-    '''
-    n = 7
-
-    # quaternion and angular velocity should be zero
-    start = np.array([0, 0, 1, 0, 0, 0, 0])
-    # start = np.array([0, 1, 0, 0, 0, 0, 0])
-
-
-    # generate random cov until find one that works for desired orientation
-    cov = np.random.rand(n, n)
-    print("Starting cov: ", cov)
-
-    # functioning [0, 0, 1, 0, 0, 0, 0] starting cov
-    cov = [
-    [0.69725164, 0.19315984, 0.2832775,  0.3735261,  0.54702515, 0.46353052,
-0.6079563 ],
-    [0.812174,   0.0818212,  0.31761017, 0.89989516, 0.68642012, 0.69382882,
-  0.06238006],
-    [0.37953172, 0.97342021, 0.7963321,  0.725747,   0.15673235, 0.63337385,
-  0.0477106 ],
-    [0.47889274, 0.2795725,  0.16519663, 0.37573347, 0.2132528,  0.25761643,
-  0.18048082],
-    [0.73630988, 0.64615023, 0.5177168,  0.36865933, 0.53541186, 0.43898805,
-  0.99204555],
-    [0.98414505, 0.54480905, 0.92512101, 0.07459746, 0.73757268, 0.58345553,
-  0.72295773],
-    [0.32004209, 0.40196706, 0.78524302, 0.9844941,  0.18527825, 0.97597526,
-  0.31972962]
-  ]
-    
-    # functioning [0, 1, 0, 0, 0, 0, 0] starting cov
-#     cov = [[0.50830414, 0.47537675, 0.77004828, 0.59627864, 0.12089715, 0.75125198,
-#   0.89714238],
-#  [0.64573431, 0.30658319, 0.30152844, 0.17877576, 0.52458607, 0.61512279,
-#   0.46107642],
-#  [0.70992968, 0.4234175,  0.16309419, 0.30267742, 0.42853644, 0.57433347,
-#   0.91384443],
-#  [0.89523956, 0.72877348, 0.08727796, 0.57831622, 0.07739241, 0.54689399,
-#   0.15708898],
-#  [0.12187453, 0.6450451,  0.86425064, 0.22525721, 0.79197964, 0.72117946,
-#   0.78181564],
-#  [0.11911649, 0.16672314, 0.56963316, 0.47000069, 0.98772566, 0.86144774,
-#   0.02157576],
-#  [0.56530036, 0.20906463, 0.28074898, 0.37485807, 0.69929135, 0.22706317,
-#   0.09725908]]
-
-    # we want magnetomer reading to be constant, rest to be 0
-    data = [0, 0, 1, 0, 0, 0, 0]
-    # data = [0, 1, 0, 0, 0, 0, 0]
-
-
-    noiseMagnitude = .005
-    r = np.random.normal(0, noiseMagnitude, 1000)
-    noiseMagnitude = .0025
-    q = np.random.normal(0, noiseMagnitude, 1000)
-
-
-    # for smoothness at the beginning, can try random noises to find good starting values 
-    print("R: ", r[:10])
-    print("Q: ", q[:10])
-    
-    # functioning [0, 0, 1, 0, 0, 0, 0] noises
-    r[:10] = [ 0.00072222,  0.00384547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
-  0.0052347,   0.0036605,   0.00506041, -0.00103479]
-    q[:10] = [-0.00375006, -0.00071075,  0.0004241,  -0.0014944,   0.00222291,  0.00088999,
-  0.00338481,  0.0027458,   0.00346013,  0.00152124]
-    # functioning [0, 1, 0, 0, 0, 0, 0] noises
-#     r[:10] = [-0.00295791, -0.00030439, -0.00266072,  0.00867703, -0.0003597,  -0.0091533,
-#  -0.0048222,  -0.00545613, -0.01036766, -0.00077585]
-#     q[:10] = [ 0.00083288,  0.0012302,  -0.00149358, -0.00445953,  0.0005876,  -0.00232486,
-#   0.00209268,  0.00337717,  0.00154955, -0.00357763]
-
-
-    # edit code so that lat/long/hieght are not needed 
-    # make u_k = magnetic field for this test only 
-    # not even used in this test case bc hfunc is disabled
-    u_k = np.zeros(3)
-    # u_k = np.array([0, 1, 0])
-
-    # control input vector for eoms, zero for this test
-    reaction_speeds = np.zeros(3)
-
-
-    # f = open("test-still.txt", "r")
-    # data = f.readline()
-    # splitData = np.array([float(x) for x in data.split(",")])
-    # splitData = splitData[6:]
-    
-    i = 1
-    while(1):
-        # start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, splitData[i])
-        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, data)
-
-        game_visualize(np.array([start[:4]]), i)
-        
-        # data[2] += .05
-        if 100 > i > 25 and data[1] < 1:
-            data[1] += .05
-        elif i > 100 and data[1] > 0:
-            data[1] -= .05
-        print("MEANS: ", start)
-        print("DATA: ", data)
-        print(" ")
-        i += 1
-
 
 def run_ukf_sensor(state, cov, r, q):
     '''
@@ -497,10 +365,7 @@ if __name__ == "__main__":
     filename = "sensor_data_2.txt"
 
     # tests ukf with pre-generated and cleaned data file
-    # run_ukf_textfile(start, cov, r, q, filename)
+    run_ukf_textfile(start, cov, r, q, filename)
 
     # must uncomment BNO055 imports to use in real-time with sensor
     # run_ukf_sensor(start, cov, r, q)
-
-    # run basic ideal test
-    run_basic_test()
