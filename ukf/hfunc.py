@@ -25,21 +25,20 @@ def hfunc(state, Bfield):
             (latitude, longitude, height, time arrays)
             but now we calculate that separately
     @returns
-        state array in measurement space (1 x m, as first element of quaternion becomes 0)
+        state array in measurement space (1 x n, with first element of quaternion becoming 0)
     '''
 
     # find rotation matrix of state quaternion
-    # quaternion = state[:4]
-    # rotationMatrix = quaternion_rotation_matrix(quaternion)
+    quaternion = state[:4]
+    rotationMatrix = quaternion_rotation_matrix(quaternion)
 
     # should we normalize?
+    # print("rot matrix * b field: ", np.matmul(rotationMatrix, Bfield).ravel())
 
     # combine rotation matrix and b field of earth
     # other elements of state have 1 to 1 conversion, so add back before returning
     # return np.concatenate((np.matmul(rotationMatrix,Bfield).ravel(), np.array(state[4:])))
-
-    # return state[1:]
-    return state
+    return np.concatenate((np.array([0]), np.concatenate((np.matmul(rotationMatrix, Bfield).ravel(), np.array(state[4:])))))
 
 
 

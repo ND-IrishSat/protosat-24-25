@@ -156,7 +156,7 @@ def game_visualize(states, i):
 
     @params
         states: quaternion matrix to visualize (1 x 4)
-        i: index of what step we are on (must start at 1 to properly initialize)
+        i: index of what step we are on (must start at 0 to properly initialize)
     ''' 
     vertices_cube = np.array([[1, -1, -1], [1, 1, -1],[-1, 1, -1],[-1, -1, -1],\
         [1, -1, 1],[1, 1, 1],[-1, -1, 1],[-1, 1, 1],[0,0,0],[0,-1,0],\
@@ -195,7 +195,7 @@ def game_visualize(states, i):
         (0,0)
         )
 
-    if(i == 1):
+    if(i == 0):
         pygame.init()
         display = (900, 700)
         pygame.display.set_mode(display, DOUBLEBUF|OPENGL)

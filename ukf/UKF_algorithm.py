@@ -348,7 +348,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
-    # print("PREDICTED MEANS: ", predMeans)
+    print("PREDICTED MEANS: ", predMeans)
 
     """
     Calculate predicted covariance of Gaussian
@@ -368,7 +368,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     # update with gps control vector instead of q_wmm
     meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
-    # print("MEAN IN MEASUREMENT: ", meanInMes)
+    print("MEAN IN MEASUREMENT: ", meanInMes)
 
     # print("Transformed sigma points: ", h)
 
