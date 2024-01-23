@@ -19,6 +19,7 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 from run_UKF import *
+import hfunc
 
 # from ukf.PySOL import spacecraft as sp
 # from ukf.PySol.spacecraft import *
@@ -132,6 +133,47 @@ def run_moving_test():
     '''
 
     # find n and use propogator to find quaternion
+    n = 1000
+    initQ = np.array([0, 0, 0, 1])
+    w = np.array([1, 0, 0])
+    t0 = 0
+    tf = 100
+    i = 1
+
+    # use attitude propagator to find actual quaternion for n steps
+    propagator = AttitudePropagator(q_init=initQ, w_init=w)
+
+    states = propagator.propagate_states(t0, tf, n)
+
+
+    # constant B field
+    B_true = np.array([0, 0, 1])
+
+    # calculate sensor b field for every time step
+    B_sens = np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[0]), B_true)])
+    for a in range(1, n):
+        B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
+
+    print(B_sens[:10])
+
+
+
+    while True:
+        
+        # create data of sensor magnetomer and angular velocity
+        data = [0] * 7
+        data[1] = B_sens[i][0]
+        data[2] = B_sens[i][1]
+        data[3] = B_sens[i][1]
+        data[4] = w[0]
+        data[5] = w[1]
+        data[6] = w[2]
+
+        
+        # game_visualize(np.array([states[i]]), i)
+        i += 1
+
+
 
     # use equation + rotation matrix + noise to find sensor b field
 
@@ -145,4 +187,5 @@ def run_moving_test():
 
 if __name__ == "__main__":
 
-    run_basic_test()
+    # run_basic_test()
+    run_moving_test()
