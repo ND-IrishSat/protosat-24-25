@@ -135,21 +135,21 @@ def run_moving_test():
     # find n and use propogator to find quaternion
     n = 1000
     initQ = np.array([0, 0, 0, 1])
-    start = [0, 0, 0, 1, 1, 0, 0]
-    w = np.array([1, 0, 0])
-    cov = np.identity(7) * 0.5
+    start = [0, 0, 0, 1, 0, 0.25, 0]
+    w = np.array([0, .25, 0])
+    cov = np.identity(7) * 0.1
     # constant B field
     B_true = np.array([0, 0, 1])
     reaction_speeds = np.zeros(3)
 
     noiseMagnitude = .001
-    r = np.random.normal(0, noiseMagnitude, 1000)
+    r = np.random.normal(0, noiseMagnitude, n)
     noiseMagnitude = .001
-    q = np.random.normal(0, noiseMagnitude, 1000)
-    r[:10] = [ 0.00072222,  0.00384547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
-  0.0052347,   0.0036605,   0.00506041, -0.00103479]
-    q[:10] = [-0.00375006, -0.00071075,  0.0004241,  -0.0014944,   0.00222291,  0.00088999,
-  0.00338481,  0.0027458,   0.00346013,  0.00152124]
+    q = np.random.normal(0, noiseMagnitude, n)
+    # r[:10] = [ 0.00072222,  0.00384547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
+#   0.0052347,   0.0036605,   0.00506041, -0.00103479]
+    # q[:10] = [-0.00375006, -0.00071075,  0.0004241,  -0.0014944,   0.00222291,  0.00088999,
+#   0.00338481,  0.0027458,   0.00346013,  0.00152124]
 
     t0 = 0
     tf = 100
@@ -163,25 +163,27 @@ def run_moving_test():
 
     # calculate sensor b field for every time step
     B_sens = np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[0]), B_true)])
+
     for a in range(1, n):
         B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
 
+    while i < 1000:
 
-    while True:
-        
         # create data of sensor magnetomer and angular velocity
         data = [0] * 7
         data[1] = B_sens[i][0]
         data[2] = B_sens[i][1]
-        data[3] = B_sens[i][1]
+        data[3] = B_sens[i][2]
         data[4] = w[0]
         data[5] = w[1]
         data[6] = w[2]
 
         # print(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
         start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
-        print("State: ", start)
-        # print("Ideal: ", states[i])
+        print("Data: ", data)
+        print("State: ", start[:4])
+        print("Ideal: ", states[i])
+        # print("Data: ", data)
         print("")
 
         game_visualize(np.array([start[:4]]), i)
