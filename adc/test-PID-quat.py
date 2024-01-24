@@ -19,11 +19,25 @@ def pid(state, target, prev, integral, dt, lwe, iwe, dwe): #dont need to pass de
     return (np.average(curr), prev, integral)
     
     
-    
+
+def quaternionMultiply(a, b):
+    '''
+    quaternionMultiply
+        custom function to perform quaternion multiply on two passed-in matrices
+
+    @params
+        a, b: quaternion matrices (1 x 4)
+    @returns
+        multiplied quaternion matrix
+    '''
+    return [[a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]],
+            [a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]],
+            [a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]],
+            [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
-def error(curr,target): #just a linear error function. Make sure that your error has direction (i.e. can be negative or positive. I think linear error might be simplest for what we are doing but other error funcs may work better who knows, certainly not me)
-    return np.subtract(target, curr)
+def error(state,target): #just a linear error function. Make sure that your error has direction (i.e. can be negative or positive. I think linear error might be simplest for what we are doing but other error funcs may work better who knows, certainly not me)
+    return np.subtract(target, state)
 
 
 if __name__ == '__main__':
