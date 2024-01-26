@@ -69,6 +69,8 @@ def run_basic_test():
 
     # we want magnetomer reading to be constant, rest to be 0
     data = [0, 0, 1, 0, 0, 0, 0]
+    # data = [0, 1, 0, 0, 0, 0]
+
     # data = [0, 1, 0, 0, 0, 0, 0]
 
     # gaussian noise
@@ -113,7 +115,6 @@ def run_basic_test():
 
 
 def run_moving_test():
-    
     ''''
     b field is the same but spinning
 
@@ -146,10 +147,17 @@ def run_moving_test():
     r = np.random.normal(0, noiseMagnitude, n)
     noiseMagnitude = .001
     q = np.random.normal(0, noiseMagnitude, n)
-    # r[:10] = [ 0.00072222,  0.00384547, -0.00737526,  0.00585633, -0.00058933,  0.00142955,
-#   0.0052347,   0.0036605,   0.00506041, -0.00103479]
-    # q[:10] = [-0.00375006, -0.00071075,  0.0004241,  -0.0014944,   0.00222291,  0.00088999,
-#   0.00338481,  0.0027458,   0.00346013,  0.00152124]
+
+    ''' SHOULD NOISE BE 2D MATRIX??? '''
+
+    # noise for magnetomer + angular velocity readings?
+    sensorNoise = np.random.normal(0, 0.005, 2000)
+    print(sensorNoise[:10])
+
+    # for a in range(20):
+    #     print(r[a],", ", end=" ")
+    # for b in range(20):
+    #     print(q[b],", ", end=" ")
 
     t0 = 0
     tf = 100
@@ -162,41 +170,41 @@ def run_moving_test():
 
 
     # calculate sensor b field for every time step
+    # rotation matrix(q) * true B field + noise
     B_sens = np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[0]), B_true)])
-
+    
     for a in range(1, n):
         B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
 
+    # need to add noise
+    # B_sens[:, 0] += sensorNoise[1000:]
+    # B_sens[:, 1] += sensorNoise[::2]
+    # B_sens[:, 2] += sensorNoise[:1000]
+
+    
     while i < 1000:
 
-        # create data of sensor magnetomer and angular velocity
-        data = [0] * 7
-        data[1] = B_sens[i][0]
-        data[2] = B_sens[i][1]
-        data[3] = B_sens[i][2]
-        data[4] = w[0]
-        data[5] = w[1]
-        data[6] = w[2]
+        # create sensor data matrix of magnetomer reading and angular velocity
+        data = [0] * 6
+        data[0] = B_sens[i][0]
+        data[1] = B_sens[i][1]
+        data[2] = B_sens[i][2]
+        data[3] = w[0]
+        data[4] = w[1]
+        data[5] = w[2]
 
+        # run ukf algorithm with B_true as u_k instead of gps data instead
         # print(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
         start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
         print("Data: ", data)
         print("State: ", start[:4])
         print("Ideal: ", states[i])
-        # print("Data: ", data)
         print("")
 
         game_visualize(np.array([start[:4]]), i)
         # game_visualize(np.array([states[i]]), i)
         i += 1
 
-
-
-    # use equation + rotation matrix + noise to find sensor b field
-
-    # bundle found b field with constant speed to get data for each step
-
-    # run loop: constant true u_k as magnetic field again instead of gps and no reaction wheel speed
 
 
 

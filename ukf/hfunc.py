@@ -38,7 +38,9 @@ def hfunc(state, Bfield):
     # combine rotation matrix and b field of earth
     # other elements of state have 1 to 1 conversion, so add back before returning
     # return np.concatenate((np.matmul(rotationMatrix,Bfield).ravel(), np.array(state[4:])))
-    return np.concatenate((np.array([0]), np.concatenate((np.matmul(rotationMatrix, Bfield).ravel(), np.array(state[4:])))))
+    # return np.concatenate((np.array([0]), np.concatenate((np.matmul(rotationMatrix, Bfield).ravel(), np.array(state[4:])))))
+    return np.concatenate((np.matmul(rotationMatrix, Bfield).ravel(), np.array(state[4:])))
+
 
 
 
