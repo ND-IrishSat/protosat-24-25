@@ -323,7 +323,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     g = np.zeros((n * 2 + 1, n))
     h = np.zeros((n * 2 + 1, m))
     
-    # z = np.array([0.0] + data)
     z = data
     
 
@@ -345,11 +344,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
-    # print("SIGMA POINTS", sigTemp)
 
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
-    # print("PREDICTED MEANS: ", predMeans)
+    print("PREDICTED MEANS: ", predMeans)
 
     """
     Calculate predicted covariance of Gaussian
@@ -369,7 +367,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     # update with gps control vector instead of q_wmm
     meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
-    # print("MEAN IN MEASUREMENT: ", meanInMes)
+    print("MEAN IN MEASUREMENT: ", meanInMes)
 
     # print("Transformed sigma points: ", h)
 
@@ -426,7 +424,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     # print("KALMAN: ", kalman)
 
-    # z = z[1:]
   
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))

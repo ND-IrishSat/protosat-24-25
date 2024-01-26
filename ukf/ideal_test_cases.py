@@ -136,16 +136,16 @@ def run_moving_test():
     # find n and use propogator to find quaternion
     n = 1000
     initQ = np.array([0, 0, 0, 1])
-    start = [0, 0, 0, 1, 0, 0.25, 0]
-    w = np.array([0, .25, 0])
+    start = [0, 0, 0, 1, 0, 2, 0]
+    w = np.array([0, 2, 0])
     cov = np.identity(7) * 0.1
     # constant B field
     B_true = np.array([0, 0, 1])
     reaction_speeds = np.zeros(3)
 
-    noiseMagnitude = .001
+    noiseMagnitude = .005
     r = np.random.normal(0, noiseMagnitude, n)
-    noiseMagnitude = .001
+    # noiseMagnitude = .001
     q = np.random.normal(0, noiseMagnitude, n)
 
     ''' SHOULD NOISE BE 2D MATRIX??? '''
@@ -176,7 +176,7 @@ def run_moving_test():
     for a in range(1, n):
         B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
 
-    # need to add noise
+    # need to add noise?
     # B_sens[:, 0] += sensorNoise[1000:]
     # B_sens[:, 1] += sensorNoise[::2]
     # B_sens[:, 2] += sensorNoise[:1000]
