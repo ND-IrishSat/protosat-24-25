@@ -287,7 +287,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     cov = np.add(cov, d)
 
     # add noise to covariance matrix
-    # cov = np.add(cov, noise)
+    cov = np.add(cov, noise)
 
     return cov
 
@@ -301,8 +301,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     @params
         passedMeans: means of previous states (1 x n)
         passedCov: covariance matrix of state (n x n)
-        r: noise vector of predictions (1 x n)
-        q: noise vector of sensors (1 x m)
+        r: noise vector of predictions (1 x n) WRONG
+        q: noise vector of sensors (1 x m) WRONG
         u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
         reaction_speeds: control input for reaction wheel speeds (1 x 3)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
@@ -352,7 +352,9 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
     Calculate predicted covariance of Gaussian
     """
-    predCovid = generateCov(predMeans, g, w1, w2, n, r)
+    predCovid = generateCov(predMeans, g, w1, w2, n, q)
+
+    # print("PRED COVID: ", predCovid)
 
 
     """ 
@@ -375,7 +377,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     """
     Creates covariance matrix in measurement space
     """
-    covidInMes = generateCov(meanInMes, h, w1, w2, n, q)
+    covidInMes = generateCov(meanInMes, h, w1, w2, n, r)
 
 
     '''
@@ -424,7 +426,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     # print("KALMAN: ", kalman)
 
-  
+    print("MEANS CALCULATION: ", np.matmul(kalman, np.subtract(z, meanInMes)))
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
     # normalize the quaternion?

@@ -27,6 +27,9 @@ from PySOL.sol_sim import *
 import PySOL.spacecraft as sp
 import PySOL.orb_tools as ot
 
+from filterpy.kalman import KalmanFilter
+from filterpy.common import Q_discrete_white_noise
+
 
 
 def run_basic_test():
@@ -100,7 +103,7 @@ def run_basic_test():
     # control input vector for eoms, zero for this test
     reaction_speeds = np.zeros(3)
     
-    i = 1
+    i = 0
     while(1):
         start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], u_k, reaction_speeds, data)
 
@@ -135,29 +138,69 @@ def run_moving_test():
 
     # find n and use propogator to find quaternion
     n = 1000
-    initQ = np.array([0, 0, 0, 1])
-    start = [0, 0, 0, 1, 0, 2, 0]
-    w = np.array([0, 2, 0])
-    cov = np.identity(7) * 0.1
+    dt = 0.1
+    dim = 7
+    dimMes = dim - 1
+    speed = 1
+    initQ = np.array([0, 0, 1, 0])
+    start = [0, 0, 1, 0, speed, 0, 0]
+    w = np.array([speed, 0, 0])
+    cov = np.identity(dim) * 0.1
     # constant B field
-    B_true = np.array([0, 0, 1])
+    B_true = np.array([1, 0, 0])
     reaction_speeds = np.zeros(3)
 
-    noiseMagnitude = .005
-    r = np.random.normal(0, noiseMagnitude, n)
-    # noiseMagnitude = .001
-    q = np.random.normal(0, noiseMagnitude, n)
+    # if model is less reliable: q > r
+    # measurement noise (m x m i think)
+    noiseMagnitude = 0.02
+    # r = np.random.normal(0, noiseMagnitude, n)
+    r = np.diag([noiseMagnitude] * dimMes)
 
-    ''' SHOULD NOISE BE 2D MATRIX??? '''
+    # process noise (n x n)
+    noiseMagnitude = 0.08
+    # q = np.random.normal(0, noiseMagnitude, n)
 
-    # noise for magnetomer + angular velocity readings?
-    sensorNoise = np.random.normal(0, 0.005, 2000)
-    print(sensorNoise[:10])
+    q = Q_discrete_white_noise(dim=3, dt=dt, var=0.01**2, block_size=2)
+    # https://filterpy.readthedocs.io/en/latest/common/common.html
+    # https://github.com/rlabbe/filterpy/blob/master/filterpy/kalman/UKF.py
 
-    # for a in range(20):
-    #     print(r[a],", ", end=" ")
-    # for b in range(20):
-    #     print(q[b],", ", end=" ")
+
+    q = np.zeros((dim, dim))
+    q [0][:4] = [2.77777778e-12, 8.33333333e-11, 1.66666667e-09, 1.66666667e-08]
+    q [1][:4] = [8.33333333e-11, 2.50000000e-09, 5.00000000e-08, 5.00000000e-07]
+    q [2][:4] = [1.66666667e-09, 5.00000000e-08, 1.00000000e-06, 1.00000000e-05]
+    q [3][:4] = [1.66666667e-08, 5.00000000e-07, 1.00000000e-05, 1.00000000e-05]
+    q [4][4:] = [2.5e-09, 5.0e-08, 5.0e-07]
+    q [5][4:] = [5.0e-08, 1.0e-06, 1.0e-05]
+    q [6][4:] = [5.0e-07, 1.0e-05, 1.0e-05]
+
+    q *= 100
+
+    q = np.diag([noiseMagnitude] * dim)
+
+    print(q.shape)
+    print(q)
+
+    # redundant measurement noise covariance estimation
+
+    # https://hackmd.io/@lancec/H1Ay6CizK
+
+    
+    # autocovariance least squares python
+    # https://quant.stackexchange.com/questions/8501/how-to-tune-kalman-filters-parameter
+    # https://www.sciencedirect.com/science/article/pii/S0959152407001631
+
+    # robust/adaptive
+    # https://ieeexplore.ieee.org/abstract/document/6626597?casa_token=oroiTLL1ZggAAAAA:5xW15OXvGpCazSla1h_okSAkxqDG1Qd97YpvJShmNIPHWya9Xy44HEdF0boURmmVAItZsjN1XRc
+    # https://www.mdpi.com/1424-8220/18/3/808
+    # https://ieeexplore.ieee.org/document/7231764
+    # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6470672/
+    # https://www.hindawi.com/journals/mpe/2015/218561/
+
+
+
+    ''' NOISE SHOULD BE 2D MATRIX '''
+
 
     t0 = 0
     tf = 100
@@ -177,15 +220,12 @@ def run_moving_test():
         B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
 
     # need to add noise?
-    # B_sens[:, 0] += sensorNoise[1000:]
-    # B_sens[:, 1] += sensorNoise[::2]
-    # B_sens[:, 2] += sensorNoise[:1000]
 
     
     while i < 1000:
 
         # create sensor data matrix of magnetomer reading and angular velocity
-        data = [0] * 6
+        data = [0] * dimMes
         data[0] = B_sens[i][0]
         data[1] = B_sens[i][1]
         data[2] = B_sens[i][2]
@@ -195,9 +235,11 @@ def run_moving_test():
 
         # run ukf algorithm with B_true as u_k instead of gps data instead
         # print(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
-        start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
+        # start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, r, q, list(B_true), reaction_speeds, data)
+
         print("Data: ", data)
-        print("State: ", start[:4])
+        print("State: ", start)
         print("Ideal: ", states[i])
         print("")
 
