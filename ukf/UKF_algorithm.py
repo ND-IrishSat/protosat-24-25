@@ -105,10 +105,11 @@ def EOMs(state, reaction_speeds):
                 # [[I_XX  I_XY  I_XZ]
                 #  [I_YX  I_YY  I_YZ]
                 #  [I_ZX  I_ZY  I_ZZ]]
-    I_body_tensor = [[1728.7579, -60.6901, -8.7583],
-                     [-60.6901, 1745.997, 53.4338],
-                     [-8.7583, 53.4338, 1858.2584]]
-    
+    #I_body_tensor = [[1728.7579, -60.6901, -8.7583],
+    #                 [-60.6901, 1745.997, 53.4338],
+    #                 [-8.7583, 53.4338, 1858.2584]]
+    I_body_tensor = np.identity(3)
+
     # I_RW: Moment of inertias of the three reaction wheels
                 # [I_RW1 I_RW2 I_RW3]
     I_RW = [578.5944, 578.5944, 578.5944]
@@ -287,7 +288,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     cov = np.add(cov, d)
 
     # add noise to covariance matrix
-    cov = np.add(cov, noise)
+    # cov = np.add(cov, noise)
 
     return cov
 
@@ -426,12 +427,12 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     # print("KALMAN: ", kalman)
 
-    print("MEANS CALCULATION: ", np.matmul(kalman, np.subtract(z, meanInMes)))
+    # print("MEANS CALCULATION: ", np.matmul(kalman, np.subtract(z, meanInMes)))
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
     # normalize the quaternion?
-    # normal = np.linalg.norm(means[0:4])
-    # means[0:4] = means[0:4]/normal
+    normal = np.linalg.norm(means[0:4])
+    means[0:4] = means[0:4]/normal
 
     # 2 options for updated cov:
     

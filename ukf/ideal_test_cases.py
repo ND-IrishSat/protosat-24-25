@@ -142,12 +142,14 @@ def run_moving_test():
     dim = 7
     dimMes = dim - 1
     speed = 1
-    initQ = np.array([0, 0, 1, 0])
-    start = [0, 0, 1, 0, speed, 0, 0]
-    w = np.array([speed, 0, 0])
-    cov = np.identity(dim) * 0.1
+    # initQ = np.array([0, 0, 1, 0])
+    # start = [0, 0, 1, 0, speed, 0, 0]
+    initQ = np.array([1, 0, 0, 0])
+    start = [1, 0, 0, 0, 0, speed, 0]
+    w = np.array([0, speed, 0])
+    cov = np.identity(dim) * 5e-10
     # constant B field
-    B_true = np.array([1, 0, 0])
+    B_true = np.array([0, 0, 1])
     reaction_speeds = np.zeros(3)
 
     # if model is less reliable: q > r
@@ -157,13 +159,13 @@ def run_moving_test():
     r = np.diag([noiseMagnitude] * dimMes)
 
     # process noise (n x n)
-    noiseMagnitude = 0.08
+    noiseMagnitude = 0.005
     # q = np.random.normal(0, noiseMagnitude, n)
 
+    '''
     q = Q_discrete_white_noise(dim=3, dt=dt, var=0.01**2, block_size=2)
     # https://filterpy.readthedocs.io/en/latest/common/common.html
     # https://github.com/rlabbe/filterpy/blob/master/filterpy/kalman/UKF.py
-
 
     q = np.zeros((dim, dim))
     q [0][:4] = [2.77777778e-12, 8.33333333e-11, 1.66666667e-09, 1.66666667e-08]
@@ -175,32 +177,24 @@ def run_moving_test():
     q [6][4:] = [5.0e-07, 1.0e-05, 1.0e-05]
 
     q *= 100
-
-    q = np.diag([noiseMagnitude] * dim)
-
-    print(q.shape)
-    print(q)
-
-    # redundant measurement noise covariance estimation
+        # redundant measurement noise covariance estimation
 
     # https://hackmd.io/@lancec/H1Ay6CizK
 
     
     # autocovariance least squares python
-    # https://quant.stackexchange.com/questions/8501/how-to-tune-kalman-filters-parameter
-    # https://www.sciencedirect.com/science/article/pii/S0959152407001631
+    https://quant.stackexchange.com/questions/8501/how-to-tune-kalman-filters-parameter
+    https://www.sciencedirect.com/science/article/pii/S0959152407001631
 
     # robust/adaptive
-    # https://ieeexplore.ieee.org/abstract/document/6626597?casa_token=oroiTLL1ZggAAAAA:5xW15OXvGpCazSla1h_okSAkxqDG1Qd97YpvJShmNIPHWya9Xy44HEdF0boURmmVAItZsjN1XRc
-    # https://www.mdpi.com/1424-8220/18/3/808
-    # https://ieeexplore.ieee.org/document/7231764
-    # https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6470672/
-    # https://www.hindawi.com/journals/mpe/2015/218561/
-
-
+    https://ieeexplore.ieee.org/abstract/document/6626597?casa_token=oroiTLL1ZggAAAAA:5xW15OXvGpCazSla1h_okSAkxqDG1Qd97YpvJShmNIPHWya9Xy44HEdF0boURmmVAItZsjN1XRc
+    https://www.mdpi.com/1424-8220/18/3/808
+    https://ieeexplore.ieee.org/document/7231764
+    https://www.hindawi.com/journals/mpe/2015/218561/
+    '''
+    q = np.diag([noiseMagnitude] * dim)
 
     ''' NOISE SHOULD BE 2D MATRIX '''
-
 
     t0 = 0
     tf = 100
@@ -211,10 +205,12 @@ def run_moving_test():
 
     states = propagator.propagate_states(t0, tf, n)
 
-
     # calculate sensor b field for every time step
     # rotation matrix(q) * true B field + noise
     B_sens = np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[0]), B_true)])
+    # print(states[:10])
+    # print("first calc: ", hfunc.quaternion_rotation_matrix(states[2]))
+    # print(np.matmul(hfunc.quaternion_rotation_matrix(states[2]), B_true))
     
     for a in range(1, n):
         B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
@@ -237,9 +233,11 @@ def run_moving_test():
         # print(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
         # start, cov = UKF_algorithm.UKF(start, cov, r[i], q[i], list(B_true), reaction_speeds, data)
         start, cov = UKF_algorithm.UKF(start, cov, r, q, list(B_true), reaction_speeds, data)
+        # start, cov = UKF_algorithm.UKF(start, cov, r, q, data[:3], reaction_speeds, data)
+
 
         print("Data: ", data)
-        print("State: ", start)
+        print("State: ", start[:4])
         print("Ideal: ", states[i])
         print("")
 

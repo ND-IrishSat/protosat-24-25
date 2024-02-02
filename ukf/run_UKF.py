@@ -205,8 +205,6 @@ def game_visualize(states, i):
 
     clock = pygame.time.Clock()
     Q_array = states[:, :4]  # array of quaternions (for each entry, take first four items -> array of [a,b,c,d])
-    for i in range(0, len(Q_array)):
-        Q_array[i][0] = 0
     i = 0
 
     num_states = states.shape[0]
