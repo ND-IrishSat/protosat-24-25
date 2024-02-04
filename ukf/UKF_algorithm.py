@@ -288,7 +288,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     cov = np.add(cov, d)
 
     # add noise to covariance matrix
-    # cov = np.add(cov, noise)
+    cov = np.add(cov, noise)
 
     return cov
 
@@ -348,7 +348,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
-    print("PREDICTED MEANS: ", predMeans)
+    # print("PREDICTED MEANS: ", predMeans)
 
     """
     Calculate predicted covariance of Gaussian
@@ -370,9 +370,7 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     # update with gps control vector instead of q_wmm
     meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
 
-    print("MEAN IN MEASUREMENT: ", meanInMes)
-
-    # print("Transformed sigma points: ", h)
+    # print("MEAN IN MEASUREMENT: ", meanInMes)
 
 
     """
@@ -386,7 +384,6 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     Remake sigma points here now that we have new data up to the group?
     '''
-    # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
 
     # use formula from website to compare our different sets of sigma points and our predicted/measurement means
@@ -430,30 +427,13 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     # print("MEANS CALCULATION: ", np.matmul(kalman, np.subtract(z, meanInMes)))
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
+
     # normalize the quaternion?
     normal = np.linalg.norm(means[0:4])
     means[0:4] = means[0:4]/normal
 
-    # 2 options for updated cov:
-    
-    # print("KALMAN: ", kalman)
-    # print("CROSS CO: ", crossCo)
-    # print(kalman.shape, "    ", crossCo.shape)
-    # print(np.matmul(np.transpose(kalman), crossCo))
-    # transpose cross co or kalman???
-    # print(np.subtract(np.identity(m), np.matmul(np.transpose(kalman), crossCo)).shape)
-    # print(predCovid.shape)
-
-    # option 1:
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
     cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCo))), predCovid)
-    # cov = np.matmul(np.subtract(np.identity(m), np.matmul(np.transpose(kalman), crossCo)), predCovid)
-
-
-    # this one doesn't work with different n and m for some reason
-    # option 2:
-    # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
-    # cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
 
     # print("MEANS AT END: ", means)
     # print("COV AT END: ", cov)
