@@ -74,12 +74,14 @@ def sigma(means, cov, n, scaling):
     return sigmaMatrix
 
 
-def EOMs(state, u_k):
+def EOMs(state, reaction_speeds):
     '''
     EOMs
         uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
         change dt within to control time step
-        u_k: control input vector for magnetorquers?
+        reaction_speeds: reaction wheel velocities (1 x 3)
+        u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
+                [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
 
     @params
         state: column of sigma point matrix to propogate (1 x n)
@@ -94,15 +96,20 @@ def EOMs(state, u_k):
     # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
                 # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
     u_k = np.zeros(6)
+    # u_k[0] = reaction_speeds[0]
+    # u_k[1] = reaction_speeds[1]
+    # u_k[2] = reaction_speeds[2]
+
 
     # I_body_tensor: Moment of inertia tensor of the cubesat
                 # [[I_XX  I_XY  I_XZ]
                 #  [I_YX  I_YY  I_YZ]
                 #  [I_ZX  I_ZY  I_ZZ]]
-    I_body_tensor = [[1728.7579, -60.6901, -8.7583],
-                     [-60.6901, 1745.997, 53.4338],
-                     [-8.7583, 53.4338, 1858.2584]]
-    
+    #I_body_tensor = [[1728.7579, -60.6901, -8.7583],
+    #                 [-60.6901, 1745.997, 53.4338],
+    #                 [-8.7583, 53.4338, 1858.2584]]
+    I_body_tensor = np.identity(3)
+
     # I_RW: Moment of inertias of the three reaction wheels
                 # [I_RW1 I_RW2 I_RW3]
     I_RW = [578.5944, 578.5944, 578.5944]
@@ -121,9 +128,9 @@ def EOMs(state, u_k):
     w_x = state[4]
     w_y = state[5]
     w_z = state[6]
-    theta_dot_RW1 = state[7]
-    theta_dot_RW2 = state[8]
-    theta_dot_RW3 = state[9]
+    theta_dot_RW1 = reaction_speeds[0]
+    theta_dot_RW2 = reaction_speeds[1]
+    theta_dot_RW3 = reaction_speeds[2]
 
     # Grab moment of inertias
     I_xx = I_body_tensor[0][0]
@@ -164,18 +171,18 @@ def EOMs(state, u_k):
         M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
         I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
         I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[7] = state[7] + dt * func.theta_ddot_RW1(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[8] = state[8] + dt * func.theta_ddot_RW2(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[9] = state[9] + dt * func.theta_ddot_RW3(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+    # x_predicted[7] = state[7] + dt * func.theta_ddot_RW1(
+    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
+    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
+    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+    # x_predicted[8] = state[8] + dt * func.theta_ddot_RW2(
+    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
+    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
+    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+    # x_predicted[9] = state[9] + dt * func.theta_ddot_RW3(
+    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
+    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
+    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
 
     return x_predicted
 
@@ -231,6 +238,7 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
 
     # pass first sigma point through transformation function
     x = func(sigmaPoints[0], controlVector) 
+    
     # store new point as first element in transformed sigma matrix
     transformedSigma[0] = x
 
@@ -280,13 +288,13 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     cov = np.add(cov, d)
 
     # add noise to covariance matrix
-    # cov = np.add(cov, noise)
+    cov = np.add(cov, noise)
 
     return cov
 
 
 
-def UKF(passedMeans, passedCov, r, q, u_k, data):
+def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
     '''
     UKF
         estimates state at time step based on sensor data, noise, and equations of motion
@@ -294,9 +302,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     @params
         passedMeans: means of previous states (1 x n)
         passedCov: covariance matrix of state (n x n)
-        r: noise vector of predictions (1 x n)
-        q: noise vector of sensors (1 x m)
+        r: noise vector of predictions (1 x n) WRONG
+        q: noise vector of sensors (1 x m) WRONG
         u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
+        reaction_speeds: control input for reaction wheel speeds (1 x 3)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
     @returns
         means: calculated state estimate at current time (1 x n)
@@ -304,8 +313,8 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     '''
 
     # initialize vars (top of file for descriptions)
-    n = 10
-    m = 9
+    n = 7
+    m = n - 1
     cov = passedCov
     predMeans = np.zeros(n)
     predCovid = np.zeros((n,n))
@@ -313,20 +322,10 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     covidInMes = np.zeros((m, m))
     crossCo = np.zeros((n,m))
     g = np.zeros((n * 2 + 1, n))
-    h = np.zeros((2 * n + 1,m))
+    h = np.zeros((n * 2 + 1, m))
     
-    # z = passedMeans
-    z = []
-    z.append(0)
-    z.append(data[0])
-    z.append(data[1])
-    z.append(data[2])
-    z.append(data[3])
-    z.append(data[4])
-    z.append(data[5])
-    z.append(passedMeans[7])
-    z.append(passedMeans[8])
-    z.append(passedMeans[9])
+    z = data
+    
 
     scaling = 3-n
     w1 = scaling / (n + scaling) # weight for first value
@@ -346,59 +345,46 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
     """
 
     sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
-    # oldSig = sigTemp
 
-    predMeans, g = generateMeans(EOMs, u_k, sigTemp, w1, w2, n, n)
+    predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
     
+    # print("PREDICTED MEANS: ", predMeans)
 
     """
     Calculate predicted covariance of Gaussian
     """
-    predCovid = generateCov(predMeans, g, w1, w2, n, r)
+    predCovid = generateCov(predMeans, g, w1, w2, n, q)
+
+    # print("PRED COVID: ", predCovid)
 
 
     """ 
     Mean to measurement
     """
-    # create arbitrary covariance for sensors
-    zCov = [[.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, .1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, .1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, .1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, .1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, .1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, .1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, .1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, .1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, .1]
-    ]
-    for i in range(n):
-        zCov[i][i] = .05
-    # zCov = cov
-  
-    # create temporary sigma points
-    sigTemp = sigma(z, zCov, n, scaling)
 
-    Bfield = bfield_calc(u_k)
+    # Bfield = bfield_calc(u_k)
+    # Bfield = u_k[:3]
+
+    # print("BFIELD: ", Bfield)
 
     # update with gps control vector instead of q_wmm
-    meanInMes, h = generateMeans(hfunc, Bfield, sigTemp, w1, w2, n, m)
+    meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
+
+    # print("MEAN IN MEASUREMENT: ", meanInMes)
 
 
     """
     Creates covariance matrix in measurement space
     """
-    covidInMes = generateCov(meanInMes, h, w1, w2, n, q)
+    covidInMes = generateCov(meanInMes, h, w1, w2, n, r)
 
 
     '''
     Cross covariance matrix (t) between state space and predicted space
 
-    Remake sigma points here now that we have new data up to the group
+    Remake sigma points here now that we have new data up to the group?
     '''
-    # sig = sigma(means, cov, n, scaling)
     sig = sigTemp
-    # sig = sigma(z, zCov, n, scaling)
 
     # use formula from website to compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
@@ -410,44 +396,45 @@ def UKF(passedMeans, passedCov, r, q, u_k, data):
         # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
         # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
         # crossCo = np.add(crossCo, arr1)
-    '''switch ordering??'''
+    '''switch ordering?? tranpose should be on the h/meaninMes, not the sig/predMeans'''
 
-    # arr1 = np.subtract(h[-1], meanInMes)[np.newaxis]
     arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], meanInMes)[np.newaxis]
+    # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
+    # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
 
     # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
 
     # multiply by weights for first and other values
-    np.multiply(crossCo, w2)
-    np.multiply(d, w1)
+    crossCo = np.multiply(crossCo, w2)
+    d = np.multiply(d, w1)
 
     # add first value back into cross covariance
     crossCo = np.add(crossCo, d)
-
 
     """
     Kalman gain and final update
     """
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
-    # nxm
+    # n x m
+    # print("covariance in measurement: ", covidInMes)
+    # print("cross covariance: ", crossCo)
     kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
 
-    z = z[1:]
-  
+    # print("KALMAN: ", kalman)
+
+    # print("MEANS CALCULATION: ", np.matmul(kalman, np.subtract(z, meanInMes)))
     # updated final mean = predicted + kalman(measurement - predicted in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
 
-    # 2 options for updated cov:
-    
-    # option 1:
+    # normalize the quaternion?
+    normal = np.linalg.norm(means[0:4])
+    means[0:4] = means[0:4]/normal
+
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-    # cov = np.matmul(np.subtract(np.identity(m), np.matmul(kalman, crossCo)), predCovid)
-    # this one doesn't work with different n and m for some reason
+    cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCo))), predCovid)
 
-    # option 2:
-    # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
-    cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
-
+    # print("MEANS AT END: ", means)
+    # print("COV AT END: ", cov)
     return [means, cov]

@@ -7,12 +7,13 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 
 TODO:
     interface with gps sensor, find what frame it gives us (ECEF or ECI?)
-    find correct value for zCov and noise (r, q)
-    update EOMs with new inertia
+    find correct value for noise (r, q)
+    update EOMs with new inertia + new reaction wheels
     adding gps component/control input vector for EOMs?
     optimize for loops and numpy arrays
     test with different data sets
-    remake sigma points?
+
+    enforce normalization at end of iteration: done
 '''
 
 import numpy as np
@@ -29,9 +30,13 @@ import UKF_algorithm
 import gps_interface
 from happy_sensors import get_imu_data
 
-# import PySOL
-# from PySOL import sol_sim
-# from PySOL import orb_tools as ot
+# from ukf.PySOL import spacecraft as sp
+# from ukf.PySol.spacecraft import *
+from PySOL.sol_sim import *
+import PySOL.spacecraft as sp
+import PySOL.orb_tools as ot
+# from ukf.PySOL import sol_sim
+# from ukf.PySOL import orb_tools as ot
 
 # from BNO055_magnetometer_basic import calibrate
 # from BNO055_magnetometer_basic import get_data
@@ -152,7 +157,7 @@ def game_visualize(states, i):
 
     @params
         states: quaternion matrix to visualize (1 x 4)
-        i: index of what step we are on (must start at 1 to properly initialize)
+        i: index of what step we are on (must start at 0 to properly initialize)
     ''' 
     vertices_cube = np.array([[1, -1, -1], [1, 1, -1],[-1, 1, -1],[-1, -1, -1],\
         [1, -1, 1],[1, 1, 1],[-1, -1, 1],[-1, 1, 1],[0,0,0],[0,-1,0],\
@@ -191,7 +196,7 @@ def game_visualize(states, i):
         (0,0)
         )
 
-    if(i == 1):
+    if(i == 0):
         pygame.init()
         display = (900, 700)
         pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
@@ -201,8 +206,6 @@ def game_visualize(states, i):
 
     clock = pygame.time.Clock()
     Q_array = states[:, :4]  # array of quaternions (for each entry, take first four items -> array of [a,b,c,d])
-    for i in range(0, len(Q_array)):
-        Q_array[i][0] = 0
     i = 0
 
     num_states = states.shape[0]
@@ -251,50 +254,54 @@ def run_ukf_textfile(start, cov, r, q, filename):
         q: noise vector for sensors (1 x m)
         filename: text file of cleaned sensor data to read from (any length)
     '''
+    # startTime = 2022.321
+    t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
+    # sim = sol_sim.Simulation(TIME = t0, mag_deg= 12)
+    sim = Simulation(TIME = t0, mag_deg= 12)
 
-    # t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
-    # sim = Simulation(TIME = t0, mag_deg= 12)
+    # how long we're simulating for
+    duration = .02
+    OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
+    sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
 
-    # OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
-    # sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
 
-
-    # DT = dt.timedelta(hours = 0.1)
-    # sim.propogate(DT, resolution =  1)
-    # orb_laln = sim.scs[0].state_mat.LALN
-    # orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
+    DT = dt.timedelta(hours = duration)
+    # resolution = timestep. Must match with rest of ukf
+    sim.propogate(DT, resolution =  .1)
+    orb_laln = sim.scs[0].state_mat.LALN
+    orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
 
     # print(sim.scs[0].state_mat.R_ECEF.shape)
-    # print(orb_laln)
-    # print(orb_h)
+    print(len(orb_laln))
+    print(len(orb_h))
 
 
 
     f = open(filename, "r")
     data = f.readline()
-    splitData = data.split(",")
-    splitData = [float(x) for x in splitData]
-    # start[0] = splitData[0]
-    # start[1] = splitData[1]
-    # start[2] = splitData[2]
-    # start[3] = splitData[3]
+    splitData = np.array([float(x) for x in data.split(",")])
+    # for correct units of magnet field, we divide result of wmm by 1000
+    # splitData[:3] = splitData[:3] / 1000
+
+    reaction_speeds = np.zeros(3)
     i = 1
-    u_k = []
     while(data):
         # get gps data and add time stamp
-        u_k = gps_interface.get_gps_data()
-        u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
-        u_k.append(2023.8123)
+        # u_k = gps_interface.get_gps_data()
+        # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2]) # add time
+
+        u_k = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
+
+
         # run ukf and visualize output
-        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, splitData)
+        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, reaction_speeds, splitData)
         game_visualize(np.array([start[:4]]), i)
 
         # continue to get data from file until empty
         data = f.readline()
         if(data == ''):
             break
-        splitData = data.split(",")
-        splitData = [float(x) for x in splitData]
+        splitData = [float(x) for x in data.split(",")]
         i+=1
 
     f.close()
@@ -353,8 +360,8 @@ def run_ukf_sensor(state, cov, r, q):
 if __name__ == "__main__":
 
     # Initialize noises and starting state/cov to random values
-    n = 10
-    m = 9
+    n = 7
+    m = 6
 
     r=np.zeros(n)
     q=np.zeros(m)
@@ -363,6 +370,9 @@ if __name__ == "__main__":
         q[i]=random.random() * .1
 
     start = np.random.rand(n)
+    normal = np.linalg.norm(start[0:4])
+    start[0:4] = start[0:4]/normal
+    # start = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 
     cov = np.zeros((n,n))
     for i in range(n):
