@@ -24,6 +24,7 @@ def hfunc(state, Bfield):
             used to be controls: gps and time data needed to calculate magnetic field with respect to the earth 
             (latitude, longitude, height, time arrays)
             but now we calculate that separately
+
     @returns
         state array in measurement space (1 x n, with first element of quaternion becoming 0)
     '''
@@ -42,6 +43,16 @@ def hfunc(state, Bfield):
 
 
 def bfield_calc(controls):
+    '''
+    bfield_calc
+        calculates the current true magnetic field based on gps data input
+    
+    @params
+        controls: gps and time data for current time step (latitude, longitude, height, time arrays) (1 x 4)
+
+    @returns
+        converted: true, earth centered (eci frame) magnetic field in ???? units (1 x 3)
+    '''
     # get lat, long, and height from control input vector
     lat = controls[0] 
     long = controls[1]

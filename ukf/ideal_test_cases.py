@@ -89,7 +89,7 @@ def run_basic_test():
     
     i = 0
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, u_k, reaction_speeds, data)
 
         game_visualize(np.array([start[:4]]), i)
         
@@ -107,7 +107,7 @@ def run_moving_test():
     Constant magnetic field, 0 reaction wheel speed
     Before running algorithm, calculate ideal true quaternion used to find magnetometer reading for every step
     Frame of reference transition is utilized in hfunc and to find magnetometer reading based on true quaternion and b field
-    Still incorrect r and q and no gps data
+    Still incorrect r and q and no gps data (u_k is passed as b field, not gps data)
     '''
 
     # number of steps to calculate
@@ -172,7 +172,7 @@ def run_moving_test():
 
         # run ukf algorithm for each iteration
         # note: for this test, b field is passed as u_k instead of gps data
-        start, cov = UKF_algorithm.UKF(start, cov, r, q, list(B_true), reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, data)
 
         # debug print statements
         # print("Data: ", data)

@@ -28,7 +28,7 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 import gps_interface
-from happy_sensors import get_imu_data
+# from happy_sensors import get_imu_data
 
 # from ukf.PySOL import spacecraft as sp
 # from ukf.PySol.spacecraft import *
@@ -235,6 +235,7 @@ def check_zeros(data):
 
     @params
         data: input from sensor real-time (1 x 6)
+        
     @returns
         true or false 
     '''
@@ -308,7 +309,8 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
 
 def run_ukf_sensor_iteration(state, cov, r, q, i):
-    data = get_imu_data()
+    # data = get_imu_data()
+    data = []
     u_k = gps_interface.get_gps_data()
     u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
     u_k.append(2023.8123)

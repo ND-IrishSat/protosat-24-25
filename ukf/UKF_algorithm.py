@@ -1,27 +1,27 @@
 '''
 UKF_algorithm.py
 Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
-Last modified 10/7/23
+Last modified 2/6/24
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
 https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
 
 Variables needed throughout UKF process:
-  n = dimensionality of model (10)
-  m = dimension of measurement space that excludes first 0 of quaternion (9)
-  r = noise vector for predictions (we choose this & make it) (1 x n)
-  q = noise vector for sensors (provided on data sheet for sensors) (1 x m)
+  n = dimensionality of model (7)
+  m = dimension of measurement space. Frame of reference of the satellite/sensors (6)
+  q: process noise covariance matrix (n x n)
+  r: measurement noise covariance matrix (m x m)
   scaling = parameter for sigma point generation (3 - n)
-  means = mean of gaussian of estimated states so far (maybe???) (1 x n)
-  cov = covariance matrix (n x n)
+  means = estimated current state (1 x n)
+  cov = covariance matrix of current state (n x n)
   predMeans = matrix of predicted means (1 x n)
-  predCovid = matrix of predicted covariance (n x n)
+  predCov = matrix of predicted covariance (n x n)
   g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
-  h = matrix of transformed sigma points (in the measurement space) (2*n+1 x m)
-  meanInMes = means in the measurement space (1 x m)
-  covidInMes = covariance matrix of points in measurement space (m x m)
-  z = sensor data (1 x n except switched to 1 x m for some calculations)
-  kalman = kalman gain for each step (n x m)
+  h = matrix of transformed sigma points (in the measurement space using hfunc) (2*n+1 x m)
+  mesMeans = means in the measurement space after nonlinear transformation (hfunc) (1 x m)
+  mesCov = covariance matrix of points in measurement space (m x m)
+  data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor at each step (1 x m)
+  kalman = kalman gain for each step, measures how much we should change based on our trust of sensors vs our model (n x m)
 '''
 
 import numpy as np
@@ -43,6 +43,7 @@ def sigma(means, cov, n, scaling):
         cov: covariance matrix of state (n x n)
         n: dimensionality of model
         scaling: how far from mean we distribute our points, used in sigma point formula
+
     @returns
         sigmaMatrix: matrix of sigma points (2 * n + 1, n) 
     '''
@@ -50,27 +51,20 @@ def sigma(means, cov, n, scaling):
     sigmaMatrix = np.zeros((2*n+1,n))
     temp = np.zeros((n, n))
 
-    # for i in range(len(cov)):
-    #   for j in range(len(cov[i])):
-    #     temp[i][j] = cov[i][j]  * (n + scaling)
-
-    # sigma point formula from website
-    temp = np.multiply(cov, (n + scaling))
-
-    # take the square root of the matrix
-    temp = scipy.linalg.sqrtm(temp)
-
+    # 1) sigma point generation
     # first column of sigma matrix is means
     sigmaMatrix[0] = means
 
-    # traverse N (10) dimensions, calculating all sigma points
-    # for i in range(n):
-    #     sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
-    #     sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    # take the square root of the inside
+    temp = scipy.linalg.sqrtm(np.multiply(cov, (n + scaling)))
+
+    # traverse n dimensions, calculating all other sigma points
+    # means + sqrt for 1 to n
     sigmaMatrix[1:(n+1)] = np.add(means, temp)
+    # means - sqrt for n + 1 to 2*n
     sigmaMatrix[(n+1):(2*n+1)] = np.subtract(means, temp)
 
-    # return the sigma matrix (21 columns)
+    # return the sigma matrix (2 * n + 1 columns)
     return sigmaMatrix
 
 
@@ -194,6 +188,7 @@ def quaternionMultiply(a, b):
 
     @params
         a, b: quaternion matrices (1 x 4)
+
     @returns
         multiplied quaternion matrix
     '''
@@ -217,6 +212,7 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
         w1, w2: weight for first and all other sigma points, respectively
         n: dimensionality of model 
         dimensionality: dimensionality of what state we are generating for (n or m)
+
     @returns
         means: mean of distribution in state or measurement space (1 x n or 1 x m)
         transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
@@ -260,6 +256,7 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
         w1, w2: weight for first and all other sigma points, respectively
         n: dimensionality of model 
         noise: noise value array to apply to our cov matrix (r or q)
+        
     @returns
         cov: covariance matrix in state or measurement space (n x n or m x m)
     '''
@@ -294,89 +291,68 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
 
 
 
-def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
+def UKF(means, cov, q, r, u_k, reaction_speeds, data):
     '''
     UKF
         estimates state at time step based on sensor data, noise, and equations of motion
 
     @params
-        passedMeans: means of previous states (1 x n)
-        passedCov: covariance matrix of state (n x n)
-        r: noise vector of predictions (1 x n) WRONG
-        q: noise vector of sensors (1 x m) WRONG
+        means: means of previous states (1 x n)
+        cov: covariance matrix of state (n x n)
+        q: process noise covariance matrix (n x n)
+        r: measurement noise covariance matrix (m x m)
         u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
         reaction_speeds: control input for reaction wheel speeds (1 x 3)
-        data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
+        data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x m)
+
     @returns
         means: calculated state estimate at current time (1 x n)
         cov: covariance matrix (n x n)
     '''
 
-    # initialize vars (top of file for descriptions)
-    n = 7
-    m = n - 1
-    cov = passedCov
-    predMeans = np.zeros(n)
-    predCovid = np.zeros((n,n))
-    meanInMes = np.zeros(m)
-    covidInMes = np.zeros((m, m))
-    crossCo = np.zeros((n,m))
-    g = np.zeros((n * 2 + 1, n))
-    h = np.zeros((n * 2 + 1, m))
+    # dimensionality of state space = dimension of means
+    n = len(means)
+    # dimensionality of measurement space = dimension of measurement noise
+    m = len(r)
     
-    z = data
+    # scaling factor (can be tweaked, research suggests 3 - n)
+    scaling = 3-n
+
+    # 1) sigma point generation
+    sigmaPoints = sigma(means, cov, n, scaling)
     
 
-    scaling = 3-n
+    # 2) weights calculation
     w1 = scaling / (n + scaling) # weight for first value
     w2 = 1 / (2 * (n + scaling)) # weight for all other values
-    
-    # track the average of the estimated K states so far
-    means = passedMeans
 
 
-    """
-    Calculate mean of Gaussian (populates the global predicted means matrix)
-    1. Store temporary sigma points
-    2. Apply the EOMs to the temporary (stored) sigma points
-    2. Calculate the means of sigma points without weights
-    4. Calculate the new predicted means by applying predetermined weights
-    Initialize sigma matrix to the starting sigma point matrix
-    """
-
-    sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
-
-    predMeans, g = generateMeans(EOMs, reaction_speeds, sigTemp, w1, w2, n, n)
+    # predictive step
+    predMeans, g = generateMeans(EOMs, reaction_speeds, sigmaPoints, w1, w2, n, n)
     
     # print("PREDICTED MEANS: ", predMeans)
+    
+    # predicted covariance + process noise q
+    predCov = generateCov(predMeans, g, w1, w2, n, q)
 
-    """
-    Calculate predicted covariance of Gaussian
-    """
-    predCovid = generateCov(predMeans, g, w1, w2, n, q)
-
-    # print("PRED COVID: ", predCovid)
+    # print("PRED COVID: ", predCov)
 
 
-    """ 
-    Mean to measurement
-    """
-
+    # finds true B field based on gps data
     # Bfield = bfield_calc(u_k)
-    # Bfield = u_k[:3]
+
+    # for ideal tests only, use u_k as b field vector and skip calculating it from the gps data
+    Bfield = u_k
 
     # print("BFIELD: ", Bfield)
 
-    # update with gps control vector instead of q_wmm
-    meanInMes, h = generateMeans(hfunc, u_k, sigTemp, w1, w2, n, m)
+    # non linear transformation into measurement space
+    mesMeans, h = generateMeans(hfunc, Bfield, sigmaPoints, w1, w2, n, m)
 
-    # print("MEAN IN MEASUREMENT: ", meanInMes)
+    # print("MEAN IN MEASUREMENT: ", mesMeans)
 
-
-    """
-    Creates covariance matrix in measurement space
-    """
-    covidInMes = generateCov(meanInMes, h, w1, w2, n, r)
+    # measurement covariance + measurement noise r
+    mesCov = generateCov(mesMeans, h, w1, w2, n, r)
 
 
     '''
@@ -384,56 +360,56 @@ def UKF(passedMeans, passedCov, r, q, u_k, reaction_speeds, data):
 
     Remake sigma points here now that we have new data up to the group?
     '''
-    sig = sigTemp
+
+    crossCov = np.zeros((n,m))
 
     # use formula from website to compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
-        arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
-        arr2 = np.subtract(h[i], meanInMes)[np.newaxis]
+        arr1 = np.subtract(sigmaPoints[i], predMeans)[np.newaxis]
+        arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        crossCo = np.add(crossCo, arr1)
-        # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
-        # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
+        crossCov = np.add(crossCov, arr1)
+        # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
+        # arr2 = np.subtract(sigmaPoints[i], predMeans)[np.newaxis]
         # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        # crossCo = np.add(crossCo, arr1)
-    '''switch ordering?? tranpose should be on the h/meaninMes, not the sig/predMeans'''
+        # crossCov = np.add(crossCov, arr1)
+    '''switch ordering?? tranpose should be on the h/meaninMes, not the sigmaPoints/predMeans'''
 
-    arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
-    arr2 = np.subtract(h[0], meanInMes)[np.newaxis]
-    # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
-    # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
+    arr1 = np.subtract(sigmaPoints[0], predMeans)[np.newaxis]
+    arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
+    # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
+    # arr2 = np.subtract(sigmaPoints[i], predMeans)[np.newaxis]
 
     # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
 
     # multiply by weights for first and other values
-    crossCo = np.multiply(crossCo, w2)
+    crossCov = np.multiply(crossCov, w2)
     d = np.multiply(d, w1)
 
     # add first value back into cross covariance
-    crossCo = np.add(crossCo, d)
+    crossCov = np.add(crossCov, d)
 
     """
     Kalman gain and final update
     """
     # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
     # n x m
-    # print("covariance in measurement: ", covidInMes)
-    # print("cross covariance: ", crossCo)
-    kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
+    # print("covariance in measurement: ", mesCov)
+    # print("cross covariance: ", crossCov)
+    kalman = np.matmul(crossCov, np.linalg.inv(mesCov))
 
     # print("KALMAN: ", kalman)
 
-    # print("MEANS CALCULATION: ", np.matmul(kalman, np.subtract(z, meanInMes)))
-    # updated final mean = predicted + kalman(measurement - predicted in measurement space)
-    means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
+    # updated final mean = predicted + kalman(measurement data - predicted in measurement space)
+    means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
 
     # normalize the quaternion?
     normal = np.linalg.norm(means[0:4])
     means[0:4] = means[0:4]/normal
 
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-    cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCo))), predCovid)
+    cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCov))), predCov)
 
     # print("MEANS AT END: ", means)
     # print("COV AT END: ", cov)
