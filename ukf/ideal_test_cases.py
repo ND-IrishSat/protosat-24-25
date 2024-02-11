@@ -133,7 +133,7 @@ def run_moving_test():
 
     # note: if model is less reliable/changes quickly, then q > r
     # r: measurement noise (m x m)
-    noiseMagnitude = 0.02
+    noiseMagnitude = 0.01
     r = np.diag([noiseMagnitude] * dimMes)
 
     # q: process noise (n x n)

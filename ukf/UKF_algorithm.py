@@ -327,12 +327,13 @@ def UKF(means, cov, q, r, u_k, reaction_speeds, data):
     w2 = 1 / (2 * (n + scaling)) # weight for all other values
 
 
-    # predictive step
+    # 3) predictive step
+    # 3a) and 3b): pass sigma points through EOMs (g) and generate mean in state space
     predMeans, g = generateMeans(EOMs, reaction_speeds, sigmaPoints, w1, w2, n, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     
-    # predicted covariance + process noise q
+    # 3c) generate predicted covariance + process noise q
     predCov = generateCov(predMeans, g, w1, w2, n, q)
 
     # print("PRED COVID: ", predCov)
@@ -346,12 +347,13 @@ def UKF(means, cov, q, r, u_k, reaction_speeds, data):
 
     # print("BFIELD: ", Bfield)
 
-    # non linear transformation into measurement space
-    mesMeans, h = generateMeans(hfunc, Bfield, sigmaPoints, w1, w2, n, m)
+    # 4) non linear transformation
+    # 4a) and 4b): non linear transformation of predicted sigma points g into measurement space (h) and mean generation
+    mesMeans, h = generateMeans(hfunc, Bfield, g, w1, w2, n, m)
 
     # print("MEAN IN MEASUREMENT: ", mesMeans)
 
-    # measurement covariance + measurement noise r
+    # 4c) measurement covariance + measurement noise r
     mesCov = generateCov(mesMeans, h, w1, w2, n, r)
 
 
@@ -363,22 +365,22 @@ def UKF(means, cov, q, r, u_k, reaction_speeds, data):
 
     crossCov = np.zeros((n,m))
 
-    # use formula from website to compare our different sets of sigma points and our predicted/measurement means
+    # compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
-        arr1 = np.subtract(sigmaPoints[i], predMeans)[np.newaxis]
+        arr1 = np.subtract(g[i], predMeans)[np.newaxis]
         arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
         crossCov = np.add(crossCov, arr1)
         # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
-        # arr2 = np.subtract(sigmaPoints[i], predMeans)[np.newaxis]
+        # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
         # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
         # crossCov = np.add(crossCov, arr1)
-    '''switch ordering?? tranpose should be on the h/meaninMes, not the sigmaPoints/predMeans'''
+    '''switch ordering?? tranpose should be on the h/meaninMes, not the g/predMeans'''
 
-    arr1 = np.subtract(sigmaPoints[0], predMeans)[np.newaxis]
+    arr1 = np.subtract(g[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
     # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
-    # arr2 = np.subtract(sigmaPoints[i], predMeans)[np.newaxis]
+    # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
 
     # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)

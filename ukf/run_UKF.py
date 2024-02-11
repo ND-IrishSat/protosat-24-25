@@ -28,6 +28,7 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 import gps_interface
+import ideal_test_cases
 # from happy_sensors import get_imu_data
 
 # from ukf.PySOL import spacecraft as sp
@@ -383,7 +384,8 @@ if __name__ == "__main__":
     filename = "sensor_data_2.txt"
 
     # tests ukf with pre-generated and cleaned data file
-    run_ukf_textfile(start, cov, r, q, filename)
+    # run_ukf_textfile(start, cov, r, q, filename)
+    ideal_test_cases.run_moving_test()
 
     # must uncomment BNO055 imports to use in real-time with sensor
     # run_ukf_sensor(start, cov, r, q)
