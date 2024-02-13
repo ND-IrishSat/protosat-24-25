@@ -290,6 +290,54 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     return cov
 
 
+def generateCrossCov(predMeans, mesMeans, g, h, w1, w2, n):
+    '''
+    generateCrossCov
+        use equation 5a) to generate cross covariance between our means and sigma points in our state and measurement space
+
+    @params
+        predMeans: predicted means based on EOMs (1 x n)
+        mesMeans: predicted means in measurement space (1 x m)
+        g: sigma point matrix that has passed through the EOMs (n*2+1 x n)
+        h: sigma point matrix propogated through non-linear transformation h func (n*2+1 x m)
+        w1: weight for first value
+        w2: weight for other values
+        n: dimensionality of model
+    
+    @returns
+        crossCov: represents uncertainty between our state and measurement space estimates (n x m)
+    '''
+    m = len(mesMeans)
+    crossCov = np.zeros((n,m))
+
+    for i in range(1, n * 2 + 1):
+        arr1 = np.subtract(g[i], predMeans)[np.newaxis]
+        arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
+        arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
+        crossCov = np.add(crossCov, arr1)
+        # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
+        # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
+        # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
+        # crossCov = np.add(crossCov, arr1)
+    '''switch ordering?? tranpose should be on the h/meaninMes, not the g/predMeans'''
+
+    arr1 = np.subtract(g[0], predMeans)[np.newaxis]
+    arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
+    # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
+    # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
+
+    # seperate out first element
+    d = np.matmul(arr1.transpose(), arr2)
+
+    # multiply by weights for first and other values
+    crossCov = np.multiply(crossCov, w2)
+    d = np.multiply(d, w1)
+
+    # add first value back into cross covariance
+    crossCov = np.add(crossCov, d)
+
+    return crossCov
+
 
 def UKF(means, cov, q, r, u_k, reaction_speeds, data):
     '''
@@ -348,7 +396,7 @@ def UKF(means, cov, q, r, u_k, reaction_speeds, data):
     # print("BFIELD: ", Bfield)
 
     # 4) non linear transformation
-    # 4a) and 4b): non linear transformation of predicted sigma points g into measurement space (h) and mean generation
+    # 4a) and 4b): non linear transformation of predicted sigma points g into measurement space (h), and mean generation
     mesMeans, h = generateMeans(hfunc, Bfield, g, w1, w2, n, m)
 
     # print("MEAN IN MEASUREMENT: ", mesMeans)
@@ -357,61 +405,30 @@ def UKF(means, cov, q, r, u_k, reaction_speeds, data):
     mesCov = generateCov(mesMeans, h, w1, w2, n, r)
 
 
-    '''
-    Cross covariance matrix (t) between state space and predicted space
+    # 5) measurement updates
+    # 5a) cross covariance: compare our different sets of sigma points and our predicted/measurement means
+    crossCov = generateCrossCov(predMeans, mesMeans, g, h, w1, w2, n)
 
-    Remake sigma points here now that we have new data up to the group?
-    '''
-
-    crossCov = np.zeros((n,m))
-
-    # compare our different sets of sigma points and our predicted/measurement means
-    for i in range(1, n * 2 + 1):
-        arr1 = np.subtract(g[i], predMeans)[np.newaxis]
-        arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
-        arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        crossCov = np.add(crossCov, arr1)
-        # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
-        # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
-        # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        # crossCov = np.add(crossCov, arr1)
-    '''switch ordering?? tranpose should be on the h/meaninMes, not the g/predMeans'''
-
-    arr1 = np.subtract(g[0], predMeans)[np.newaxis]
-    arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
-    # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
-    # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
-
-    # seperate out first element
-    d = np.matmul(arr1.transpose(), arr2)
-
-    # multiply by weights for first and other values
-    crossCov = np.multiply(crossCov, w2)
-    d = np.multiply(d, w1)
-
-    # add first value back into cross covariance
-    crossCov = np.add(crossCov, d)
-
-    """
-    Kalman gain and final update
-    """
-    # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
-    # n x m
     # print("covariance in measurement: ", mesCov)
     # print("cross covariance: ", crossCov)
+
+    # 5b) calculate kalman gain (n x m) by multiplying cross covariance matrix and transposed predicted covariance
     kalman = np.matmul(crossCov, np.linalg.inv(mesCov))
 
     # print("KALMAN: ", kalman)
 
-    # updated final mean = predicted + kalman(measurement data - predicted in measurement space)
+    # 5c) updated final mean = predicted + kalman(measurement data - predicted means in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
 
-    # normalize the quaternion?
-    normal = np.linalg.norm(means[0:4])
-    means[0:4] = means[0:4]/normal
+    # normalize the quaternion to reduce small calculation errors over time
+    means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
 
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-    cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCov))), predCov)
+    # cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCov))), predCov)
+
+    # 5d) updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
+    cov = np.subtract(predCov, np.matmul(np.matmul(kalman, mesCov), kalman.transpose()))
+
 
     # print("MEANS AT END: ", means)
     # print("COV AT END: ", cov)
