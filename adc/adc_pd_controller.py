@@ -92,7 +92,7 @@ def pd_controller(state,target, omega, kp, kd):
     print('dela_q_out: ', delta_q_out)
     # loop through list to get 3 pwm vals
     for i in range(len(pwm)):
-        pwm[i] = -kp * sign(delta_q_out[0]) * delta_q_out[i] - kd * omega
+        pwm[i] = -kp * sign(delta_q_out[0]) * delta_q_out[i] - kd * omega[i]
     print('pwm: ', pwm)
 
     # transformation matrix for NASA configuration

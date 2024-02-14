@@ -83,5 +83,5 @@ def convert(RPM):
 
 # Test class and methods
 target = convert(int(input("ENTER RPM: ")))
-x = Motor(10,24,[1,2,3],0,target)
+x = Motor(10,24,[1,2,3],0,target)                                                                 
 x.setSpeed()
