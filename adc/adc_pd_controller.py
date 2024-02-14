@@ -50,6 +50,7 @@ def delta_q(state,target):
     delta_q
         returns error quaternion by taking quaternion product (x) of current 
         quaternion and inverse of goal quaternion
+        Attitude error kinematics is on pg 76 of Fundamentals book
 
     @params
         state, target: quaternion matrices (1 x 4) [q0, q1:3]
@@ -88,8 +89,8 @@ def pd_controller(state,target, omega, kp, kd):
     # initialize pwm vector
     pwm = [0,0,0]
     # find error quaternion
-    delta_q_out = delta_q(state, target)
-    print('dela_q_out: ', delta_q_out)
+    delta_q_out = delta_q(state, target) # outputs 4x1 with the first element being w
+    print("Error Quaternion: ", delta_q_out)
     # loop through list to get 3 pwm vals
     for i in range(len(pwm)):
         pwm[i] = -kp * sign(delta_q_out[0]) * delta_q_out[i+1] - kd * omega[i]
@@ -118,7 +119,7 @@ def pd_controller(state,target, omega, kp, kd):
     # convert output for 3 rx wheels to 4
     pwm = matrix_multipy(W_inv,pwm)
     # Convert back to 1x4 list
-    pwm = [pwm[0][0], pwm[1][0], pwm[2][0], pwm[3][0]]
+    pwm = [int(pwm[0][0]), int(pwm[1][0]), int(pwm[2][0]), int(pwm[3][0])]
 
     # Ensure pwm is always within limits of RPMs
     for i in range(4):
@@ -130,11 +131,11 @@ def pd_controller(state,target, omega, kp, kd):
     return pwm
 
 # Test to make sure it works
-test_state = [1.2, 2.5, 3.2, 4.1] # current quaternion
-test_target = [1, 0, 0, 0] # identity quaternion
-test_omega = 1 # rad/s
-kp = 100 
-kd = 100
+test_state = [-1, 0, 0, 0] # current quaternion
+test_target = [1, 0, 0, 0] # goal quaternion
+test_omega = [30,30,30] # rad/s
+kp = .05*MAX_PWM
+kd = .01*MAX_PWM
 
 test_pwm = pd_controller(test_state,test_target, test_omega, kp, kd)
 print(test_pwm)
