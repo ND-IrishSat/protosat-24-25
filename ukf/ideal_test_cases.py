@@ -27,9 +27,6 @@ from PySOL.sol_sim import *
 import PySOL.spacecraft as sp
 import PySOL.orb_tools as ot
 
-from filterpy.kalman import KalmanFilter
-from filterpy.common import Q_discrete_white_noise
-
 
 
 def run_basic_test():

@@ -1,10 +1,12 @@
 '''
 UKF_algorithm.py
 Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
-Last modified 2/6/24
+Last modified 2/13/24
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
-https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
+The Unscented Kalman Filter for Nonlinear Estimation 
+Eric A. Wan and Rudolph van der Merwe 
+Oregon Graduate Institute of Science & Technology 
 
 Variables needed throughout UKF process:
   n = dimensionality of model (7)
@@ -14,7 +16,7 @@ Variables needed throughout UKF process:
   scaling = parameter for sigma point generation (3 - n)
   means = estimated current state (1 x n)
   cov = covariance matrix of current state (n x n)
-  predMeans = matrix of predicted means (1 x n)
+  predMeans = matrix of predicted means based on physics EOMs (1 x n)
   predCov = matrix of predicted covariance (n x n)
   g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
   h = matrix of transformed sigma points (in the measurement space using hfunc) (2*n+1 x m)
@@ -199,10 +201,9 @@ def quaternionMultiply(a, b):
 
 
 def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
-    # Bfield: Optional[np.array]
     '''
     generateMeans
-        generate mean after passing sigma point distribution through a transformation function
+        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
         also stores and returns all transformed sigma points
             
     @params
@@ -223,6 +224,7 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
 
     # pass all sigma points to the transformation function
     for i in range(1, n * 2 + 1):
+        # 3a) and 4a)
         x = func(sigmaPoints[i], controlVector)
         # store calculated sigma point in transformed sigma matrix
         transformedSigma[i] = x
@@ -247,7 +249,7 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
 def generateCov(means, transformedSigma, w1, w2, n, noise):
     '''
     generateCov
-        generates covariance matrix from website equation based on means and sigma points
+        generates covariance matrix from equation 3c) and 4c) based on means and sigma points
         uncoment noise addition once r and q are figured out
         
     @params
@@ -315,16 +317,9 @@ def generateCrossCov(predMeans, mesMeans, g, h, w1, w2, n):
         arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
         crossCov = np.add(crossCov, arr1)
-        # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
-        # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
-        # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        # crossCov = np.add(crossCov, arr1)
-    '''switch ordering?? tranpose should be on the h/meaninMes, not the g/predMeans'''
 
     arr1 = np.subtract(g[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
-    # arr1 = np.subtract(h[i], mesMeans)[np.newaxis]
-    # arr2 = np.subtract(g[i], predMeans)[np.newaxis]
 
     # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
