@@ -28,7 +28,8 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 import gps_interface
-from happy_sensors import get_imu_data
+import ideal_test_cases
+# from happy_sensors import get_imu_data
 
 # from ukf.PySOL import spacecraft as sp
 # from ukf.PySol.spacecraft import *
@@ -235,6 +236,7 @@ def check_zeros(data):
 
     @params
         data: input from sensor real-time (1 x 6)
+        
     @returns
         true or false 
     '''
@@ -280,11 +282,12 @@ def run_ukf_textfile(start, cov, r, q, filename):
     f = open(filename, "r")
     data = f.readline()
     splitData = np.array([float(x) for x in data.split(",")])
+    # for test-still: accelerometer, gyro, magnetometer
     # for correct units of magnet field, we divide result of wmm by 1000
     # splitData[:3] = splitData[:3] / 1000
 
     reaction_speeds = np.zeros(3)
-    i = 1
+    i = 0
     while(data):
         # get gps data and add time stamp
         # u_k = gps_interface.get_gps_data()
@@ -308,7 +311,8 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
 
 def run_ukf_sensor_iteration(state, cov, r, q, i):
-    data = get_imu_data()
+    # data = get_imu_data()
+    data = []
     u_k = gps_interface.get_gps_data()
     u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
     u_k.append(2023.8123)
@@ -359,29 +363,29 @@ def run_ukf_sensor(state, cov, r, q):
 
 if __name__ == "__main__":
 
-    # Initialize noises and starting state/cov to random values
+    # Initialize noises and starting state/cov to random (?) values
     n = 7
-    m = 6
+    m = n - 1
 
-    r=np.zeros(n)
-    q=np.zeros(m)
-    for i in range(m):
-        r[i]=random.random()
-        q[i]=random.random() * .1
+    start = np.array([1, 0, 0, 0, 0, 0, 0])
 
-    start = np.random.rand(n)
-    normal = np.linalg.norm(start[0:4])
-    start[0:4] = start[0:4]/normal
-    # start = np.array([1, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    cov = np.identity(n) * 5e-10
 
-    cov = np.zeros((n,n))
-    for i in range(n):
-        cov[i][i]=random.random()
+
+    # r: measurement noise (m x m)
+    noiseMagnitude = 0.02
+    r = np.diag([noiseMagnitude] * m)
+
+    # q: process noise (n x n)
+    noiseMagnitude = 0.005
+    q = np.diag([noiseMagnitude] * n)
+
     
     filename = "sensor_data_2.txt"
 
     # tests ukf with pre-generated and cleaned data file
-    run_ukf_textfile(start, cov, r, q, filename)
+    # run_ukf_textfile(start, cov, r, q, filename)
+    ideal_test_cases.run_moving_test()
 
     # must uncomment BNO055 imports to use in real-time with sensor
     # run_ukf_sensor(start, cov, r, q)
