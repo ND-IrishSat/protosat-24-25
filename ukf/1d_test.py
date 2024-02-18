@@ -16,16 +16,17 @@ import time
 from happy_sensors import get_imu_data
 import hfunc
 
+MAX_PWM = 65535 # pwm val that gives max speed according to Tim
+
 
 def main(target=[1,0,0,0]):
 
     '''NOTE
         Things that are left to do:
-        - Write method to convert Hall sensor outputer (number & time) to 4 reaction_speeds
-        - Visualization inputs to view it correctly
+        - HALL SENSORS: method to convert Hall sensor outputs (number & time) to 4 reaction_speeds
+        - VISUALIZATION: inputs to view it correctly
     '''
 
-    # TODO: Set all for UKF
     dim = 7
     dim_mes = dim - 1
     state = 0
@@ -33,6 +34,7 @@ def main(target=[1,0,0,0]):
 
     # TODO: Check if this noise is correcy for first test
     #       Based on ideal_test_cases.py format/setup
+    # Maybe make them 0 for test?
     noise_mag = 0.02
     r = np.diag([noise_mag] * dim_mes)
     noise_mag = 0.005
@@ -43,9 +45,9 @@ def main(target=[1,0,0,0]):
     B_true = np.array([0, 0, 1])
 
     # Magnetic field from sensors
-    B_sens = np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[0]), B_true)])
-    for a in range(1, n):
-        B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(states[a]), B_true)]), axis=0)
+    B_sens = np.array([np.matmul(hfunc.quaternion_rotation_matrix(state[0]), B_true)])
+    for a in range(1, n): # TODO: get row of data from sensors!!
+        B_sens = np.append(B_sens, np.array([np.matmul(hfunc.quaternion_rotation_matrix(state[a]), B_true)]), axis=0)
 
     
     # Infinite loop to run until you kill it
@@ -57,6 +59,7 @@ def main(target=[1,0,0,0]):
         #       Write function to convert frequency/time of Hall sensor script into RPM!
         #       (In whatever units needed for UKF)
         reaction_speeds = []
+        reaction_speeds = get_hall_data() # NOTE: data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
 
         # Get current imu data (accel*3, gyro*3, mag*3)
         imu_data = get_imu_data()
@@ -64,9 +67,9 @@ def main(target=[1,0,0,0]):
 
         # Data array to pass into
         data = [0] * dim_mes
-        data[0] = B_sens[i][0]
-        data[1] = B_sens[i][1]
-        data[2] = B_sens[i][2]
+        data[0] = B_sens[0]
+        data[1] = B_sens[1]
+        data[2] = B_sens[2]
         data[3] = angular_vel[0]
         data[4] = angular_vel[1]
         data[5] = angular_vel[2]
@@ -75,7 +78,7 @@ def main(target=[1,0,0,0]):
         # Again, same format as idael_test_cases.py
         state, cov = UKF_algorithm.UKF(state, cov, r, q, list(B_true), reaction_speeds, data)
         
-        # Visualize if you want :D
+        # Visualize if you want
         # game_visualize(np.array([starst[:4]]), i)
         
         # Run PD controller
@@ -84,8 +87,8 @@ def main(target=[1,0,0,0]):
 
         # Sensor func to get currentangular velocity of cubesat
         omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
-        kp = 100 # TODO: Patrick said he would take care of this
-        kd = 100 # TODO
+        kp = .05*MAX_PWM
+        kd = .01*MAX_PWM
         
         # Run PD controller to generate output for reaction wheels
         pwm = pd_controller(curr_state, target, omega, kp, kd)
