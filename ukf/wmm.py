@@ -25,8 +25,11 @@ import numpy as np
 import time
 #import pyshtools.legendre as legendre
 import matplotlib.pyplot as plt
-
+import pandas as pd
 from legendre import ssn_lpmv
+import csv
+
+
 class WMMCoefficientLoader():
     ''' Class to load and hold model coefficients from reference epoch the WMM geomagnetic model for nth degree  
     model
@@ -59,7 +62,6 @@ class WMMCoefficientLoader():
         Args:
             file_name (str): name of csv file to read coefficients from
         '''
-        
         data = np.loadtxt('WMMcoef.csv')
         
         self.g_ = data[:, 0]
