@@ -6,14 +6,13 @@ Last modified 10/7/23
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
-    interface with gps sensor, find what frame it gives us (ECEF or ECI?)
-    find correct value for noise (r, q)
-    update EOMs with new inertia + new reaction wheels
+    interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
     adding gps component/control input vector for EOMs?
-    optimize for loops and numpy arrays
-    test with different data sets
 
-    enforce normalization at end of iteration: done
+    test with different data premade data sets
+    update pygame to four reaction wheel visualizer
+    update EOMs for 4 reaction wheels?
+    find correct values of q and r noise
 '''
 
 import numpy as np
@@ -23,6 +22,7 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import datetime as dt
+import matplotlib.animation as animation
 
 from pyquaternion import Quaternion
 
@@ -290,14 +290,14 @@ def run_ukf_textfile(start, cov, r, q, filename):
     i = 0
     while(data):
         # get gps data and add time stamp
-        # u_k = gps_interface.get_gps_data()
-        # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2]) # add time
+        # gps_data = gps_interface.get_gps_data()
+        # gps_data = gps_interface.ecef_to_latlong(gps_data[0], gps_data[1], gps_data[2]) # add time
 
-        u_k = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
+        gps_data = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
 
 
         # run ukf and visualize output
-        start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, reaction_speeds, splitData)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, splitData)
         game_visualize(np.array([start[:4]]), i)
 
         # continue to get data from file until empty
@@ -313,15 +313,15 @@ def run_ukf_textfile(start, cov, r, q, filename):
 def run_ukf_sensor_iteration(state, cov, r, q, i):
     # data = get_imu_data()
     data = []
-    u_k = gps_interface.get_gps_data()
-    u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
-    u_k.append(2023.8123)
+    gps_data = gps_interface.get_gps_data()
+    gps_data = gps_interface.ecef_to_latlong(gps_data[0], gps_data[1], gps_data[2])
+    gps_data.append(2023.8123)
 
     # do not use data if B-field is all zeros 
     if check_zeros(data): 
         return "Error" 
 
-    state, cov = UKF_algorithm.UKF(state, cov, r, q, u_k, data)
+    state, cov = UKF_algorithm.UKF(state, cov, r, q, gps_data, data)
     # Visualize only if needed
     # game_visualize(np.array([state[:4]]), i) 
 
@@ -343,19 +343,19 @@ def run_ukf_sensor(state, cov, r, q):
     # uncomment BNO055 imports to use
 
     # i = 1
-    # u_k = []
+    # gps_data = []
     # calibrate()
 
     # while(1):
     #     time.sleep(0.5)
     #     data = get_data()
-        # u_k = gps_interface.get_gps_data()
-        # u_k = gps_interface.ecef_to_latlong(u_k[0], u_k[1], u_k[2])
-        # u_k.append(2023.8123)
+        # gps_data = gps_interface.get_gps_data()
+        # gps_data = gps_interface.ecef_to_latlong(gps_data[0], gps_data[1], gps_data[2])
+        # gps_data.append(2023.8123)
     #     # do not use data if B-field is all zeros 
     #     if check_zeros(data): continue 
 
-    #     start, cov = UKF_algorithm.UKF(start, cov, r, q, u_k, data)
+    #     start, cov = UKF_algorithm.UKF(start, cov, r, q, gps_data, data)
     #     game_visualize(np.array([start[:4]]), i)
 
     #     i += 1
@@ -382,10 +382,12 @@ if __name__ == "__main__":
 
     
     filename = "sensor_data_2.txt"
+    # filename = "test-still.txt"
+
 
     # tests ukf with pre-generated and cleaned data file
-    # run_ukf_textfile(start, cov, r, q, filename)
-    ideal_test_cases.run_moving_test()
+    run_ukf_textfile(start, cov, r, q, filename)
+    # ideal_test_cases.run_moving_test()
 
     # must uncomment BNO055 imports to use in real-time with sensor
     # run_ukf_sensor(start, cov, r, q)

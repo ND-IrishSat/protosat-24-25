@@ -36,7 +36,7 @@ def run_basic_test():
     no frame of reference transformation or gps implementation
 
     THINGS CHANGED FOR TEST CASE ONE:
-        removed hfunc and passed u_k as magnetic field
+        removed hfunc and passed gps_data as magnetic field
         
         removed normalization
 
@@ -77,21 +77,22 @@ def run_basic_test():
     q = np.diag([noiseMagnitude] * n)
 
     # edit code so that lat/long/hieght are not needed 
-    # make u_k = magnetic field for this test only 
+    # make gps_data = magnetic field for this test only 
     # not even used in this test case bc hfunc is disabled
-    u_k = np.zeros(3)
+    gps_data = np.zeros(3)
 
     # control input vector for eoms, zero for this test
     reaction_speeds = np.zeros(3)
     
     i = 0
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, u_k, reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, data)
 
         game_visualize(np.array([start[:4]]), i)
+        # print(start[:4])
         
         # uncomment for cube to move
-        # if 100 > i > 25 and data[1] < 1:
+        # if 100 > i > 25:
         #     data[1] += .05
         # elif i > 100 and data[1] > 0:
         #     data[1] -= .05
@@ -104,7 +105,7 @@ def run_moving_test():
     Constant magnetic field, 0 reaction wheel speed
     Before running algorithm, calculate ideal true quaternion used to find magnetometer reading for every step
     Frame of reference transition is utilized in hfunc and to find magnetometer reading based on true quaternion and b field
-    Still incorrect r and q and no gps data (u_k is passed as b field, not gps data)
+    Still incorrect r and q and no gps data (gps_data is passed as b field, not gps data)
     '''
 
     # number of steps to calculate
@@ -141,6 +142,36 @@ def run_moving_test():
     tf = 100
     i = 0
 
+
+    # Defining reaction wheel speeds and external + internal torques
+    # w_rw_states = np.zeros((n, 4))
+    # w_rw_states[:, 0] = -3
+    # w_rw_states[:, 2] = 3
+    # tau_sat_states = np.zeros((n, 3))
+    # tau_rw_states = np.zeros((n, 3))
+
+    # # NASA Standard configuration for reaction wheels: place three normally with the three reaction wheels' spin axes lining up with the
+    # # axes of the satellite's body frame / principal axes. Place the fourth on a corner
+    # alph = 1/np.sqrt(3)
+    # beta = 1/np.sqrt(3)
+    # gamm = 1/np.sqrt(3)
+    # rw_config = np.array([[1, 0, 0, alph],
+    #                     [0, 1, 0, beta],
+    #                     [0, 0, 0, gamm]])
+
+    # # MOI tensor without reaction wheels
+    # I_body = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    # # Input a small inertia for reaction wheels about their spin axes
+    # I_w_spin = 0.005
+    # # Input no inertia for reaction wheels about the axes transverse to their spin axes (ideal case)
+    # I_w_trans = 0
+
+    # clover = Satellite(I_body, I_w_spin, I_w_trans, rw_config)
+    # states, w_states = clover.propagate_states(initQ, w, w_rw_states, tau_sat_states, tau_rw_states, t0, tf, n)
+    # # to implement sigma points?
+    # # q, w = Satelitte.eoms(sigmaPoints[:4], sigmaPoints[4:], controlVector, tau_sat, tau_rw)
+
+
     # initialize propogator object with inital quaternion and angular velocity
     propagator = AttitudePropagator(q_init=initQ, w_init=w)
 
@@ -168,7 +199,7 @@ def run_moving_test():
         data[5] = w[2]
 
         # run ukf algorithm for each iteration
-        # note: for this test, b field is passed as u_k instead of gps data
+        # note: for this test, b field is passed as gps_data instead of gps data
         start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, data)
 
         # debug print statements
