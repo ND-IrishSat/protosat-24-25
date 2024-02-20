@@ -18,7 +18,7 @@ Variables needed throughout UKF process:
   cov = covariance matrix of current state (n x n)
   predMeans = matrix of predicted means based on physics EOMs (1 x n)
   predCov = matrix of predicted covariance (n x n)
-  g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
+  f = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
   h = matrix of transformed sigma points (in the measurement space using hfunc) (2*n+1 x m)
   mesMeans = means in the measurement space after nonlinear transformation (hfunc) (1 x m)
   mesCov = covariance matrix of points in measurement space (m x m)
@@ -292,7 +292,7 @@ def generateCov(means, transformedSigma, w0, w1, n, noise):
     return cov
 
 
-def generateCrossCov(predMeans, mesMeans, g, h, w0, w1, n):
+def generateCrossCov(predMeans, mesMeans, f, h, w0, w1, n):
     '''
     generateCrossCov
         use equation 5a) to generate cross covariance between our means and sigma points in our state and measurement space
@@ -300,7 +300,7 @@ def generateCrossCov(predMeans, mesMeans, g, h, w0, w1, n):
     @params
         predMeans: predicted means based on EOMs (1 x n)
         mesMeans: predicted means in measurement space (1 x m)
-        g: sigma point matrix that has passed through the EOMs (n*2+1 x n)
+        f: sigma point matrix that has passed through the EOMs (n*2+1 x n)
         h: sigma point matrix propogated through non-linear transformation h func (n*2+1 x m)
         w0: weight for first value
         w1: weight for other values
@@ -313,12 +313,12 @@ def generateCrossCov(predMeans, mesMeans, g, h, w0, w1, n):
     crossCov = np.zeros((n,m))
 
     for i in range(1, n * 2 + 1):
-        arr1 = np.subtract(g[i], predMeans)[np.newaxis]
+        arr1 = np.subtract(f[i], predMeans)[np.newaxis]
         arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
         crossCov = np.add(crossCov, arr1)
 
-    arr1 = np.subtract(g[0], predMeans)[np.newaxis]
+    arr1 = np.subtract(f[0], predMeans)[np.newaxis]
     arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
 
     # seperate out first element
@@ -380,13 +380,13 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, data):
 
 
     # 3) predictive step
-    # 3a) and 3b): pass sigma points through EOMs (g) and generate mean in state space
-    predMeans, g = generateMeans(EOMs, reaction_speeds, sigmaPoints, w0_m, w1, n, n)
+    # 3a) and 3b): pass sigma points through EOMs (f) and generate mean in state space
+    predMeans, f = generateMeans(EOMs, reaction_speeds, sigmaPoints, w0_m, w1, n, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     
     # 3c) generate predicted covariance + process noise q
-    predCov = generateCov(predMeans, g, w0_c, w1, n, q)
+    predCov = generateCov(predMeans, f, w0_c, w1, n, q)
 
     # print("PRED COVID: ", predCov)
 
@@ -402,8 +402,8 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, data):
     # print("BFIELD: ", Bfield)
 
     # 4) non linear transformation
-    # 4a) and 4b): non linear transformation of predicted sigma points g into measurement space (h), and mean generation
-    mesMeans, h = generateMeans(hfunc, Bfield, g, w0_m, w1, n, m)
+    # 4a) and 4b): non linear transformation of predicted sigma points f into measurement space (h), and mean generation
+    mesMeans, h = generateMeans(hfunc, Bfield, f, w0_m, w1, n, m)
 
     # print("MEAN IN MEASUREMENT: ", mesMeans)
 
@@ -413,7 +413,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, data):
 
     # 5) measurement updates
     # 5a) cross covariance: compare our different sets of sigma points and our predicted/measurement means
-    crossCov = generateCrossCov(predMeans, mesMeans, g, h, w0_c, w1, n)
+    crossCov = generateCrossCov(predMeans, mesMeans, f, h, w0_c, w1, n)
 
     # print("covariance in measurement: ", mesCov)
     # print("cross covariance: ", crossCov)
