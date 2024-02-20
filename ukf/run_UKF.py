@@ -12,7 +12,7 @@ TODO:
     test with different data premade data sets
     update pygame to four reaction wheel visualizer
     update EOMs for 4 reaction wheels?
-    find correct values of q and r noise
+    find correct values of q and r noise (check out latex presentation)
 '''
 
 import numpy as np
@@ -29,6 +29,7 @@ from pyquaternion import Quaternion
 import UKF_algorithm
 import gps_interface
 import ideal_test_cases
+import hfunc
 # from happy_sensors import get_imu_data
 
 # from ukf.PySOL import spacecraft as sp
@@ -277,11 +278,18 @@ def run_ukf_textfile(start, cov, r, q, filename):
     print(len(orb_laln))
     print(len(orb_h))
 
+    # Get B field at current lat/long/altitude
+    curr_date_time= np.array([2024.1066])
+    lat = np.array([41.675])
+    long = np.array([-86.252])
+    alt = np.array([225.552]) # 740 feet (this is in meters)
+    B_true = hfunc.bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
 
     f = open(filename, "r")
     data = f.readline()
-    splitData = np.array([float(x) for x in data.split(",")])
+    splitData2 = np.array([float(x) for x in data.split(",")])
+    splitData = np.concatenate((splitData2[6:], splitData2[3:6]))
     # for test-still: accelerometer, gyro, magnetometer
     # for correct units of magnet field, we divide result of wmm by 1000
     # splitData[:3] = splitData[:3] / 1000
@@ -295,7 +303,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
         gps_data = np.array([np.array([orb_laln[i][0]]), np.array([orb_laln[i][1]]), np.array([orb_h[i]]), np.array([2022.257])])
 
-
+        gps_data = B_true
         # run ukf and visualize output
         start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, splitData)
         game_visualize(np.array([start[:4]]), i)
@@ -304,7 +312,9 @@ def run_ukf_textfile(start, cov, r, q, filename):
         data = f.readline()
         if(data == ''):
             break
-        splitData = [float(x) for x in data.split(",")]
+        splitData2 = [float(x) for x in data.split(",")]
+        splitData = np.concatenate((splitData2[6:], splitData2[3:6]))
+
         i+=1
 
     f.close()
@@ -363,7 +373,7 @@ def run_ukf_sensor(state, cov, r, q):
 
 if __name__ == "__main__":
 
-    # Initialize noises and starting state/cov to random (?) values
+    # Initialize noises and starting state/cov values
     n = 7
     m = n - 1
 
@@ -381,8 +391,8 @@ if __name__ == "__main__":
     q = np.diag([noiseMagnitude] * n)
 
     
-    filename = "sensor_data_2.txt"
-    # filename = "test-still.txt"
+    # filename = "sensor_data_2.txt"
+    filename = "test-still.txt"
 
 
     # tests ukf with pre-generated and cleaned data file
