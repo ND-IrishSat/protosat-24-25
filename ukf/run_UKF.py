@@ -10,7 +10,6 @@ TODO:
     adding gps component/control input vector for EOMs?
 
     test with different data premade data sets
-    update pygame to four reaction wheel visualizer
     update EOMs for 4 reaction wheels?
     find correct values of q and r noise (check out latex presentation)
 '''
@@ -128,7 +127,11 @@ class AttitudePropagator:
 ## Display and 3D rendering stuff, not very important tbh, unless you're into it, jk jk haha... unless?   ####
 ##############################################################################################################
 def rotate_points_by_quaternion(points, quaternion):
-    ''' Points are n by 3
+    ''' Rotates set of 3-vectors by the transformation described by the input quaternion
+
+        Args:
+            points (np.ndarray, (Nx3)): array of 3-vectors
+            quaternion (np.ndarray, (1x4)): quaternion, using q0, q1, q2, q3 convention where q0 is the scalar component
     
     '''
     v_prime = np.zeros(points.shape)
@@ -142,6 +145,8 @@ def rotate_points_by_quaternion(points, quaternion):
     return v_prime
 
 def Draw(vertices, edges):
+    ''' Draw edges using defined vertices
+    '''
     
     glBegin(GL_LINES)
 
@@ -151,21 +156,39 @@ def Draw(vertices, edges):
 
     glEnd()
 
+def game_visualize(states, a):
+    ''' Visualization of time evolution of state using PyGame + OpenGL
+    '''     
 
-def game_visualize(states, i):
-    '''
-    game_visualize 
-        uses pygames and AttitudePropagator class to visualize simple cube with our data (written by Juwan)
-
-    @params
-        states: quaternion matrix to visualize (1 x 4)
-        i: index of what step we are on (must start at 0 to properly initialize)
-    ''' 
+    # Initial vertices describe cube's position
     vertices_cube = np.array([[1, -1, -1], [1, 1, -1],[-1, 1, -1],[-1, -1, -1],\
-        [1, -1, 1],[1, 1, 1],[-1, -1, 1],[-1, 1, 1],[0,0,0],[0,-1,0],\
-        [-0.8,0.8,1],[-0.8,0.6,1],[-0.6,0.6,1],[-0.6,0.8,1],\
-        [-0.5, 0.6, 1], [-0.5,0.8,1], [-0.3,0.8,1],[-0.3,0.7,1],[-0.5,0.7,1], ])
-    edges_cube = (
+        [1, -1, 1],[1, 1, 1],[-1, -1, 1],[-1, 1, 1]])
+    
+    # Vertices defining label z on one of the cube's face
+    vertices_z_label = np.array([[-0.90, 0.90, 1], [-0.80, 0.90, 1], [-0.90, 0.80, 1], [-0.80, 0.80, 1]])
+    edges_z_label = (
+        (0, 1),
+        (1, 2),
+        (2, 3)
+    )
+
+    # Vertices defining label y on one of the cube's face
+    vertices_y_label = np.array([[-0.85, 1, 0.85], [-0.70, 1, 0.85], [-0.775, 1, 0.75], [-0.775, 1, 0.70]])
+    edges_y_label = (
+        (0, 2),
+        (1, 2),
+        (2, 3)
+    )
+
+    # Vertices defining label x on one of the cube's face
+    vertices_x_label = np.array([[1, -0.90, 0.90], [1, -0.80, 0.80], [1, -0.90, 0.80], [1, -0.80, 0.90]])
+    edges_x_label = (
+        (0, 1),
+        (2, 3)
+    )
+
+    # List of tuples describing set of commands of how to draw edges. Ex: The first tuple, (0, 1), describes a command to draw a line from vertix 0 to vertix 1
+    edges_cube = [
         (0,1),
         (0,3),
         (0,4),
@@ -178,33 +201,78 @@ def game_visualize(states, i):
         (5,1),
         (5,4),
         (5,7),
-        (8,9),
-        (0,6),
-        (3,4),
-        (10,11),
-        (11,12),
-        (12,13),
-        (14,15),
-        (15,16),
-        (16,17),
-        (17,18)
-        )
-    vertices_target_line = (
-        (0,0,0),
-        (0,-5,0)
-    )
-    edges_target_line = (
-        (0,1),
-        (0,0)
-        )
+        ]
 
-    if(i == 0):
+    # Define vertices of reaction wheels using lin space to define circle
+    num = 100
+    theta = np.linspace(0, 2*np.pi, num)
+    vertices_RW_z = np.zeros((num, 3))
+    vertices_RW_y = np.zeros((num, 3))
+    vertices_RW_x = np.zeros((num, 3))
+
+    sines = 0.5*np.cos(theta)
+    cosines = 0.5*np.sin(theta)    
+
+    vertices_RW_z[:, 0] = sines
+    vertices_RW_z[:, 1] = cosines
+    vertices_RW_z[:, 2] = 1.1*np.ones(num)
+
+    vertices_RW_y[:, 0] = cosines
+    vertices_RW_y[:, 1] = 1.1*np.ones(num)
+    vertices_RW_y[:, 2] = sines
+
+    vertices_RW_x[:, 0] = 1.1*np.ones(num)
+    vertices_RW_x[:, 1] = sines
+    vertices_RW_x[:, 2] = cosines
+
+    # Define two rotation matrices to create fourth reaction wheel from the x-reaction wheel
+    ang1 = np.pi/4
+    ang2 = -np.pi/4
+
+    c1 = np.cos(ang1)
+    s1 = np.sin(ang1)
+
+    Rz_mat = np.array([[c1, -s1, 0],
+                       [s1, c1, 0],
+                       [0, 0, 1]])
+    
+    c2 = np.cos(ang2)
+    s2 = np.sin(ang2)
+    
+    Ry_mat = np.array([[c2, 0, s2],
+                       [0, 1, 0],
+                       [-s2, 0, c2]])
+    
+    vertices_RW_4 = np.zeros((num, 3))
+
+    for i in np.arange(num):
+        vertices_RW_4[i, :] = np.matmul(Rz_mat, np.matmul(Ry_mat, vertices_RW_x[i, :] + np.array([0.40, 0, 0])))
+
+    # Define how to draw reaction wheel's edges
+    edges_RW = []
+
+    for i in np.arange(num-1):
+        edges_RW = edges_RW + [(i, i+1)]
+
+    edges_RW = edges_RW + [(num-1, 0)]
+
+    # Vertices describing the lines showing the satellite's x, y, z axes / body frame
+    vertices_x_axis = np.array([[0, 0, 0], [1.5, 0, 0]])
+    vertices_y_axis = np.array([[0, 0, 0], [0, 1.5, 0]])
+    vertices_z_axis = np.array([[0, 0, 0], [0, 0, 1.5]])
+
+    edges_axis = (
+        (0, 1),
+        (0, 0)
+    )
+
+    # Initialize window, perspective, and "view" of camera
+    if a == 0:
         pygame.init()
         display = (900, 700)
         pygame.display.set_mode(display, DOUBLEBUF|OPENGL)
-        gluPerspective(45, (display[0]/display[1]), 0.1, 50.0)
-        glTranslatef(0.0, 0.0, -5)
-
+        gluPerspective(50, (display[0]/display[1]), 0.1, 50.0)
+        glTranslatef(0.0, 0.0, -6)
 
     clock = pygame.time.Clock()
     Q_array = states[:, :4]  # array of quaternions (for each entry, take first four items -> array of [a,b,c,d])
@@ -212,19 +280,50 @@ def game_visualize(states, i):
 
     num_states = states.shape[0]
 
+    # Draw the states iteratively in PyGame
     while True:
-        clock.tick_busy_loop(15)
+        clock.tick_busy_loop(25)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT)
+
+        glEnable(GL_DEPTH_TEST)
+
         vertices_cube_new = rotate_points_by_quaternion(vertices_cube, Q_array[i])
+
+        vertices_z_label_new = rotate_points_by_quaternion(vertices_z_label, Q_array[i])
+        vertices_y_label_new = rotate_points_by_quaternion(vertices_y_label, Q_array[i])
+        vertices_x_label_new = rotate_points_by_quaternion(vertices_x_label, Q_array[i])
+
+        vertices_x_axis_new = rotate_points_by_quaternion(vertices_x_axis, Q_array[i])
+        vertices_y_axis_new = rotate_points_by_quaternion(vertices_y_axis, Q_array[i])
+        vertices_z_axis_new = rotate_points_by_quaternion(vertices_z_axis, Q_array[i])
+
+        vertices_RW_z_new = rotate_points_by_quaternion(vertices_RW_z, Q_array[i])
+        vertices_RW_y_new = rotate_points_by_quaternion(vertices_RW_y, Q_array[i])
+        vertices_RW_x_new = rotate_points_by_quaternion(vertices_RW_x, Q_array[i])
+        vertices_RW_4_new = rotate_points_by_quaternion(vertices_RW_4, Q_array[i])
+
         Draw(vertices_cube_new, edges_cube)
-        Draw(vertices_target_line, edges_target_line)
+
+        Draw(vertices_z_label_new, edges_z_label)
+        Draw(vertices_y_label_new, edges_y_label)
+        Draw(vertices_x_label_new, edges_x_label)
+
+        Draw(vertices_RW_z_new, edges_RW)
+        Draw(vertices_RW_y_new, edges_RW)
+        Draw(vertices_RW_x_new, edges_RW)
+        Draw(vertices_RW_4_new, edges_RW)
+
+        Draw(vertices_x_axis_new, edges_axis)
+        Draw(vertices_y_axis_new, edges_axis)
+        Draw(vertices_z_axis_new, edges_axis)
+
         pygame.display.flip()
-        i += 1  # go to next index in quaternion
+        i += 1
 
         if i == num_states:
             break
