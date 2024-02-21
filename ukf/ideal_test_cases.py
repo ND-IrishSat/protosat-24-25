@@ -142,35 +142,8 @@ def run_moving_test():
     tf = 100
     i = 0
 
-
-    # Defining reaction wheel speeds and external + internal torques
-    # w_rw_states = np.zeros((n, 4))
-    # w_rw_states[:, 0] = -3
-    # w_rw_states[:, 2] = 3
-    # tau_sat_states = np.zeros((n, 3))
-    # tau_rw_states = np.zeros((n, 3))
-
-    # # NASA Standard configuration for reaction wheels: place three normally with the three reaction wheels' spin axes lining up with the
-    # # axes of the satellite's body frame / principal axes. Place the fourth on a corner
-    # alph = 1/np.sqrt(3)
-    # beta = 1/np.sqrt(3)
-    # gamm = 1/np.sqrt(3)
-    # rw_config = np.array([[1, 0, 0, alph],
-    #                     [0, 1, 0, beta],
-    #                     [0, 0, 0, gamm]])
-
-    # # MOI tensor without reaction wheels
-    # I_body = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-    # # Input a small inertia for reaction wheels about their spin axes
-    # I_w_spin = 0.005
-    # # Input no inertia for reaction wheels about the axes transverse to their spin axes (ideal case)
-    # I_w_trans = 0
-
-    # clover = Satellite(I_body, I_w_spin, I_w_trans, rw_config)
-    # states, w_states = clover.propagate_states(initQ, w, w_rw_states, tau_sat_states, tau_rw_states, t0, tf, n)
-    # # to implement sigma points?
-    # # q, w = Satelitte.eoms(sigmaPoints[:4], sigmaPoints[4:], controlVector, tau_sat, tau_rw)
-
+    # uncomment to store results and visualize after calculating
+    # results = [[]]
 
     # initialize propogator object with inital quaternion and angular velocity
     propagator = AttitudePropagator(q_init=initQ, w_init=w)
@@ -202,6 +175,9 @@ def run_moving_test():
         # note: for this test, b field is passed as gps_data instead of gps data
         start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, data)
 
+        # uncomment to run fully and visualize after
+        # results.append(list(start[:4]))
+
         # debug print statements
         # print("Data: ", data)
         # print("State: ", start[:4])
@@ -214,6 +190,13 @@ def run_moving_test():
         # draw ideal state quaternion
         # game_visualize(np.array([states[i]]), i)
         i += 1
+
+    # uncomment to run fully and visualize after
+    # results = results[1:]
+    # print(results[:10])
+    # game_visualize(np.array(results), 0)
+
+    
 
 
 if __name__ == "__main__":
