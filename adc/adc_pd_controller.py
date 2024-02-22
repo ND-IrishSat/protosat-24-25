@@ -134,7 +134,9 @@ def pd_controller(state,target, omega, kp, kd):
 test_state = [-1, 0, 0, 0] # current quaternion
 test_target = [1, 0, 0, 0] # goal quaternion
 test_omega = [30,30,30] # rad/s
-kp = .05*MAX_PWM
+
+# Gains
+kp = .05*MAX_PWM # I think these would be good to start with
 kd = .01*MAX_PWM
 
 test_pwm = pd_controller(test_state,test_target, test_omega, kp, kd)
