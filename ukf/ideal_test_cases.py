@@ -36,7 +36,7 @@ def run_basic_test():
     no frame of reference transformation or gps implementation
 
     THINGS CHANGED FOR TEST CASE ONE:
-        removed hfunc and passed u_k as magnetic field
+        removed hfunc and passed gps_data as magnetic field
         
         removed normalization
 
@@ -77,21 +77,22 @@ def run_basic_test():
     q = np.diag([noiseMagnitude] * n)
 
     # edit code so that lat/long/hieght are not needed 
-    # make u_k = magnetic field for this test only 
+    # make gps_data = magnetic field for this test only 
     # not even used in this test case bc hfunc is disabled
-    u_k = np.zeros(3)
+    gps_data = np.zeros(3)
 
     # control input vector for eoms, zero for this test
     reaction_speeds = np.zeros(3)
     
     i = 0
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, u_k, reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, data)
 
         game_visualize(np.array([start[:4]]), i)
+        # print(start[:4])
         
         # uncomment for cube to move
-        # if 100 > i > 25 and data[1] < 1:
+        # if 100 > i > 25:
         #     data[1] += .05
         # elif i > 100 and data[1] > 0:
         #     data[1] -= .05
@@ -104,7 +105,7 @@ def run_moving_test():
     Constant magnetic field, 0 reaction wheel speed
     Before running algorithm, calculate ideal true quaternion used to find magnetometer reading for every step
     Frame of reference transition is utilized in hfunc and to find magnetometer reading based on true quaternion and b field
-    Still incorrect r and q and no gps data (u_k is passed as b field, not gps data)
+    Still incorrect r and q and no gps data (gps_data is passed as b field, not gps data)
     '''
 
     # number of steps to calculate
@@ -141,6 +142,9 @@ def run_moving_test():
     tf = 100
     i = 0
 
+    # uncomment to store results and visualize after calculating
+    # results = [[]]
+
     # initialize propogator object with inital quaternion and angular velocity
     propagator = AttitudePropagator(q_init=initQ, w_init=w)
 
@@ -168,8 +172,11 @@ def run_moving_test():
         data[5] = w[2]
 
         # run ukf algorithm for each iteration
-        # note: for this test, b field is passed as u_k instead of gps data
+        # note: for this test, b field is passed as gps_data instead of gps data
         start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, data)
+
+        # uncomment to run fully and visualize after
+        # results.append(list(start[:4]))
 
         # debug print statements
         # print("Data: ", data)
@@ -183,6 +190,13 @@ def run_moving_test():
         # draw ideal state quaternion
         # game_visualize(np.array([states[i]]), i)
         i += 1
+
+    # uncomment to run fully and visualize after
+    # results = results[1:]
+    # print(results[:10])
+    # game_visualize(np.array(results), 0)
+
+    
 
 
 if __name__ == "__main__":
