@@ -8,6 +8,7 @@ from adc_pd_controller import pd_controller
 import UKF_algorithm
 import time
 from happy_sensors import get_imu_data, calibrate
+from NewMotorTest import Motor
 from hfunc import *
 import os
 
@@ -47,7 +48,7 @@ def main(target=[1,0,0,0]):
     B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
 
-    old_reaction_speeds = []
+    old_reaction_speeds = np.array([0,0,0])
 
     # Infinite loop to run until you kill it
     i = 0
@@ -93,7 +94,20 @@ def main(target=[1,0,0,0]):
         # Run PD controller to generate output for reaction wheels
         pwm = pd_controller(curr_state, target, omega, kp, kd)
 
+        # Set motor pins
+        xMotorPin = 10
+        yMotorPin = 11
+        skewMotorPin = 12
+
         # Run actuator (reaction wheels) script
+        x = Motor(xMotorPin,24,[1,2,3],0,pwm(0))
+        y = Motor(yMotorPin,24,[1,2,3],0,pwm(1))
+        skew = Motor(skewMotorPin,24,[1,2,3],0,pwm(3))
+
+        x.setSpeed()
+        y.setSpeed()
+        skew.setSpeed()
+
         # TODO: Send commands to actuators
 
         # Ending time for loop

@@ -90,11 +90,11 @@ def pd_controller(state,target, omega, kp, kd):
     pwm = [0,0,0]
     # find error quaternion
     delta_q_out = delta_q(state, target) # outputs 4x1 with the first element being w
-    print("Error Quaternion: ", delta_q_out)
+    #print("Error Quaternion: ", delta_q_out)
     # loop through list to get 3 pwm vals
     for i in range(len(pwm)):
         pwm[i] = -kp * sign(delta_q_out[0]) * delta_q_out[i+1] - kd * omega[i]
-    print('pwm: ', pwm)
+    #print('pwm: ', pwm)
 
     # transformation matrix for NASA configuration
     alpha = 1/math.sqrt(3)
