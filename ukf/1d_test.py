@@ -62,9 +62,9 @@ def main(target=[1,0,0,0]):
         skewMotorPin = 12
 
         # Initialize Motor class from Tim's script to read and write to motors
-        x = Motor(xMotorPin,24,[1,2,3],0,pwm(0))
-        y = Motor(yMotorPin,24,[1,2,3],0,pwm(1))
-        skew = Motor(skewMotorPin,24,[1,2,3],0,pwm(3))
+        x = Motor(xMotorPin,24,[1,2,3],0,0)
+        y = Motor(yMotorPin,24,[1,2,3],0,0)
+        skew = Motor(skewMotorPin,24,[1,2,3],0,0) # pwm(2) is for z
         
         old_reaction_speeds = reaction_speeds
         # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
@@ -105,9 +105,12 @@ def main(target=[1,0,0,0]):
         pwm = pd_controller(curr_state, target, omega, kp, kd)
 
         # Set speed of each of the reaction wheels
-        x.setSpeed()
-        y.setSpeed()
-        skew.setSpeed()
+        x.target = pwm(0)
+        y.target = pwm(1)
+        skew.target = pwm(3)
+        x.setSpeed(x.target)
+        y.setSpeed(y.target)
+        skew.setSpeed(skew.target)
 
         # Ending time for loop
         end_time = time.time()
