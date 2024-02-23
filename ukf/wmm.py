@@ -25,11 +25,8 @@ import numpy as np
 import time
 #import pyshtools.legendre as legendre
 import matplotlib.pyplot as plt
-import pandas as pd
+
 from legendre import ssn_lpmv
-import csv
-
-
 class WMMCoefficientLoader():
     ''' Class to load and hold model coefficients from reference epoch the WMM geomagnetic model for nth degree  
     model
@@ -62,6 +59,7 @@ class WMMCoefficientLoader():
         Args:
             file_name (str): name of csv file to read coefficients from
         '''
+        
         data = np.loadtxt('WMMcoef.csv')
         
         self.g_ = data[:, 0]
@@ -207,8 +205,6 @@ class WMM():
         self.legendre = []
         for i in np.arange(0, self.t.shape[0], 1):
             self.legendre.append(ssn_lpmv(self.degree+1, np.sin(self.GCC[0, i])))
-            # self.legendre.append(ssn_lpmv(self.degree+1, np.sin(self.GCC[i])))
-
             #self.legendre.append(legendre.PlmSchmidt(self.degree+1, np.sin(self.GCC[0, i])))
         self.legendre = np.array(self.legendre)    
         
@@ -287,7 +283,7 @@ class WMM():
         
         # Convert inputted geodetic latitude, longtitude, altitude coordinates into spherical geocentric coordinates
         # of geocentric latitude, longtitude, and radius from center
-        self.calc_LLA2GCC(lon_gd, lat, h_ellp, t, degrees)
+        self.calc_LLA2GCC(lat, lon_gd, h_ellp, t, degrees)
         self.determine_coefficients()
         
         # Intermediate values, pulling lon, lat, r, and other values from self for better readability
@@ -375,3 +371,21 @@ class WMM():
         ''' Function to return the B field components in the ellipsoidal reference frame '''
         return self.Bfield_ellip
        
+# Testing WMM model
+if __name__ == "__main__":
+    
+    num = 10_000
+    lat = -80.0*np.ones(num)
+    lon1 = 240.0*np.ones(num)
+    
+    h = 100000*np.ones(num)
+    t = 2022.5*np.ones(num)
+    
+    time1 = time.time()
+    print(f'Calculating B field over {num} number of points at given time')
+    wmm_model = WMM(12, 'WMMcoef.csv')
+    wmm_model.calc_gcc_components(lat, lon1, h, t, degrees=True)
+    Bfield1 = wmm_model.get_Bfield()
+    time2 = time.time()
+    print(f'Bfield: {Bfield1}')
+    print(f'Calculated {num} number of times in {time2-time1} seconds')
