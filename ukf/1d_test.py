@@ -13,6 +13,7 @@ from hfunc import *
 import os
 
 MAX_PWM = 65535 # pwm val that gives max speed according to Tim
+MAX_RPM = 8800 # according to Tim
 
 
 def main(target=[1,0,0,0]):
@@ -31,7 +32,7 @@ def main(target=[1,0,0,0]):
 
     # Read starting state from sensors
     # start_data = get_imu_data()
-    state = np.array([1, 0, 0, 0, 0, 0, 0])
+    state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
     cov = np.identity(dim) * 5e-10
 
     # Noises = 0 for 1D test
@@ -49,6 +50,9 @@ def main(target=[1,0,0,0]):
 
 
     old_reaction_speeds = np.array([0,0,0])
+
+    # initialize pwm speeds
+    pwm = [0,0,0]
 
     # Infinite loop to run until you kill it
     i = 0
@@ -68,7 +72,13 @@ def main(target=[1,0,0,0]):
         
         old_reaction_speeds = reaction_speeds
         # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
-        reaction_speeds = get_hall_data() # TODO: data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
+        #reaction_speeds = get_hall_data() # TODO: data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
+
+        # Get reaction wheel speeds from pwm input
+        # Scale from pwm to rad/s
+        scale = MAX_RPM/MAX_PWM*2*np.pi/60
+
+        reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(2)])
 
         # Get current imu data (accel*3, gyro*3, mag*3)
         imu_data = get_imu_data()
