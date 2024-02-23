@@ -31,7 +31,6 @@ class Motor():
             for i in np.linspace(self.current,tar,num=10):
                 pca.channels[self.pin].duty_cycle = abs(i)
                 #add some delay, make thread? multiprocess?
-                print(i)
         else:
             pca.channels[self.pin].duty_cycle = abs(tar)
             pass
