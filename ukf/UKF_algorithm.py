@@ -90,7 +90,7 @@ class TEST1EOMS():
         for i in np.arange(self.rw_config.shape[1]):
             self.I_body = self.I_body + I_w_trans*(np.identity(3) - np.matmul(self.rw_config[:, i], np.transpose(self.rw_config[:, i]))) 
 
-    def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray):
+    def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray, dt: float):
         ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
         body + wheels w_sat, given current state + external torques
         
@@ -100,7 +100,7 @@ class TEST1EOMS():
             w_rw (np.ndarray, (1x4)): angular velocities of wheels (in respective wheel frame)
             tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
             alpha_rw (nd.ndarray, (1x4)): angular acceleration of the reaction wheels in their respective wheel frames
-
+            dt (float)
         Out:
             quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
             w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite
@@ -140,7 +140,13 @@ class TEST1EOMS():
         # First derivative of rw speeds = angular acceleration of wheels
         w_rw_dot = alpha_rw
         
-        return quaternion_dot, w_sat_dot, w_rw_dot
+        # Add propagation here
+        quaternion_new = quaternion + quaternion_dot*dt
+        w_sat_new = w_sat + w_sat_dot*dt
+
+        new_state = np.append(quaternion_new, w_sat_new)
+
+        return new_state
 
 def quaternionMultiply(a, b):
     '''
@@ -207,7 +213,7 @@ def generateMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
 
 
 
-def generateMeans2(func, sigmaPoints, w0, w1, n, dimensionality):
+def generateMeans2(func, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n, dimensionality):
     '''
     generateMeans
         generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
@@ -229,13 +235,12 @@ def generateMeans2(func, sigmaPoints, w0, w1, n, dimensionality):
     means = np.zeros(dimensionality)
     transformedSigma = np.zeros((2 * n + 1, dimensionality))
 
-
+    dt = 0.1
+    alpha = (reaction_speeds - old_reaction_speeds) / dt
     # pass all sigma points to the transformation function
     for i in range(1, n * 2 + 1):
         # 3a) and 4a)
-        x = func(sigmaPoints[i], controlVector)
-        alpha = 
-        x = func.eoms(q, w, reaction_speed, 0, angular accel of rw)
+        x = func.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
 
         # store calculated sigma point in transformed sigma matrix
         transformedSigma[i] = x
@@ -246,7 +251,7 @@ def generateMeans2(func, sigmaPoints, w0, w1, n, dimensionality):
     means *= w1
 
     # pass first sigma point through transformation function
-    x = func(sigmaPoints[0], controlVector) 
+    x = func.eoms(sigmaPoints[0][:4], sigmaPoints[0][4:], reaction_speeds, 0, alpha, dt)
     
     # store new point as first element in transformed sigma matrix
     transformedSigma[0] = x
@@ -401,7 +406,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     I_trans = 0
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
-    predMeans, f = generateMeans2(EOMS, sigmaPoints, w0_m, w1, n, n)
+    predMeans, f = generateMeans2(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     
