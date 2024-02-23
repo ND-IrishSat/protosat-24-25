@@ -70,118 +70,77 @@ def sigma(means, cov, n, scaling):
     return sigmaMatrix
 
 
-def EOMs(state, reaction_speeds):
-    '''
-    EOMs
-        uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
-        change dt within to control time step
-        reaction_speeds: reaction wheel velocities (1 x 3)
-        gps_data: Control input vector (Currently, magnetorquers are not being used, all set to 0)
-                [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
+class TEST1EOMS():
+    def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
+        
+        # Initially store moment of inertia tensor w/o reaction wheel inertias!
+        self.I_body = I_body
 
-    @params
-        state: column of sigma point matrix to propogate (1 x n)
-            [a b c d w_x w_y w_z theta_dot_RW1 theta_dot_RW2 theta_dot_RW3]
-    @returns
-        x_predicted: next step based on Euler's method (1 x n)
-    '''
+        # Store principal moment of inertia for reaction wheels about spin axis and about axis transverse to spin axis respectively
+        self.I_w_spin = I_w_spin
+        self.I_w_trans = I_w_trans
 
-    # func: instance of EoMs object, defined in eoms.py
-    func = bigEOMS.bigEOMS()
+        alpha = 1/np.sqrt(3)
+        beta = 1/np.sqrt(3)
+        gamma = 1/np.sqrt(3)
 
-    # gps_data: Control input vector (Currently, magnetorquers are not being used, all set to 0)
-                # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
-    gps_data = np.zeros(6)
-    # gps_data[0] = reaction_speeds[0]
-    # gps_data[1] = reaction_speeds[1]
-    # gps_data[2] = reaction_speeds[2]
+        self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
 
+        # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
+        for i in np.arange(self.rw_config.shape[1]):
+            self.I_body = self.I_body + I_w_trans*(np.identity(3) - np.matmul(self.rw_config[:, i], np.transpose(self.rw_config[:, i]))) 
 
-    # I_body_tensor: Moment of inertia tensor of the cubesat
-                # [[I_XX  I_XY  I_XZ]
-                #  [I_YX  I_YY  I_YZ]
-                #  [I_ZX  I_ZY  I_ZZ]]
-    #I_body_tensor = [[1728.7579, -60.6901, -8.7583],
-    #                 [-60.6901, 1745.997, 53.4338],
-    #                 [-8.7583, 53.4338, 1858.2584]]
-    I_body_tensor = np.identity(3)
+    def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray):
+        ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
+        body + wheels w_sat, given current state + external torques
+        
+        Args:
+            quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
+            w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
+            w_rw (np.ndarray, (1x4)): angular velocities of wheels (in respective wheel frame)
+            tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
+            alpha_rw (nd.ndarray, (1x4)): angular acceleration of the reaction wheels in their respective wheel frames
 
-    # I_RW: Moment of inertias of the three reaction wheels
-                # [I_RW1 I_RW2 I_RW3]
-    I_RW = [578.5944, 578.5944, 578.5944]
+        Out:
+            quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
+            w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite
+        '''
 
-    # dt: The timestep between the current state and predicted state
-    dt = 0.1
+        # Store norm of w_vect as separate variable, as w_magnitude. Also separate out components of w
+        w_x = w_sat[0]
+        w_y = w_sat[1]
+        w_z = w_sat[2]
 
-    # Initialize prediction
-    x_predicted = np.zeros(len(state))
+        ### THIS IS THE BIG OMEGA THAT MARKLEY AND CRASSIDIS USES, IT USES THE q1, q2, q3, q4 notation where first three make the axis while we use
+        # the q0, q1, q2, q3 notation where the latter three are the rotation axis
+        #w_sat_skew_mat = np.array([[0, -w_z, w_y, w_x],
+        #    [w_z, 0, -w_x, w_y],
+        #    [-w_y, w_x, 0, w_z],
+        #    [-w_x, -w_y, -w_z, 0]])
+        
+        ### THIS IS THE BIG OMEGA that should work for our scalar-component first notation (based on https://ahrs.readthedocs.io/en/latest/filters/angular.html)
+        w_sat_skew_mat = np.array([[0, -w_x, -w_y, -w_z],
+            [w_x, 0, w_z, -w_y],
+            [w_y, -w_z, 0, w_x],
+            [w_z, w_y, -w_x, 0]])
+        
+        # Construct vector describing reaction wheel angular momentum in the body frame. The product of rw_config and w_rw is the angular velocity of the wheels
+        # in the body frame
+        H_B_w = self.I_w_spin * np.matmul(self.rw_config, w_rw)
 
-    # Grab components of state vector
-    a = state[0]
-    b = state[1]
-    c = state[2]
-    d = state[3]
-    w_x = state[4]
-    w_y = state[5]
-    w_z = state[6]
-    theta_dot_RW1 = reaction_speeds[0]
-    theta_dot_RW2 = reaction_speeds[1]
-    theta_dot_RW3 = reaction_speeds[2]
+        # Similarly construct vector describing torque caused by reaction wheel angular momentum in the body frame
+        H_B_w_dot = self.I_w_spin * np.matmul(self.rw_config, alpha_rw)
 
-    # Grab moment of inertias
-    I_xx = I_body_tensor[0][0]
-    I_xy = I_body_tensor[0][1]
-    I_xz = I_body_tensor[0][2]
-    I_yx = I_body_tensor[1][0]
-    I_yy = I_body_tensor[1][1]
-    I_yz = I_body_tensor[1][2]
-    I_zx = I_body_tensor[2][0]
-    I_zy = I_body_tensor[2][1]
-    I_zz = I_body_tensor[2][2]
-    I_RW1_XX = I_RW[0]
-    I_RW2_YY = I_RW[1]
-    I_RW3_ZZ = I_RW[2]
+        # First derivative of quaternion
+        quaternion_dot = (1/2) * np.matmul(w_sat_skew_mat, quaternion)        
 
-    # Grab components of control input
-    t_motor1 = gps_data[0]
-    t_motor2 = gps_data[1]
-    t_motor3 = gps_data[2]
-    M_mt1 = gps_data[3]
-    M_mt2 = gps_data[4]
-    M_mt3 = gps_data[5]
+        # First derivative of angular velocity
+        w_sat_dot = np.matmul(np.linalg.inv(self.I_body), (tau_sat - H_B_w_dot - np.cross(w_sat, np.matmul(self.I_body, w_sat) + H_B_w)))
 
-    # Do Euler's method to get next state
-    x_predicted[0] = state[0] + dt * func.adot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[1] = state[1] + dt * func.bdot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[2] = state[2] + dt * func.cdot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[3] = state[3] + dt * func.ddot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[4] = state[4] + dt * func.w_dot_x(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[5] = state[5] + dt * func.w_dot_y(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[6] = state[6] + dt * func.w_dot_z(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    # x_predicted[7] = state[7] + dt * func.theta_ddot_RW1(
-    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    # x_predicted[8] = state[8] + dt * func.theta_ddot_RW2(
-    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    # x_predicted[9] = state[9] + dt * func.theta_ddot_RW3(
-    #     M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-    #     I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-    #     I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-
-    return x_predicted
-
+        # First derivative of rw speeds = angular acceleration of wheels
+        w_rw_dot = alpha_rw
+        
+        return quaternion_dot, w_sat_dot, w_rw_dot
 
 def quaternionMultiply(a, b):
     '''
@@ -244,6 +203,59 @@ def generateMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
     means = np.add(means, x*w0)
 
     return means, transformedSigma
+
+
+
+
+def generateMeans2(func, sigmaPoints, w0, w1, n, dimensionality):
+    '''
+    generateMeans
+        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
+        also stores and returns all transformed sigma points
+            
+    @params
+        func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        controlVector: additional input needed for func (gps_data or q_wmm)
+        sigmaPoints: sigma point matrix (2xn+1 x n)
+        w0, w1: weight for first and all other sigma points, respectively
+        n: dimensionality of model 
+        dimensionality: dimensionality of what state we are generating for (n or m)
+
+    @returns
+        means: mean of distribution in state or measurement space (1 x n or 1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+    '''
+    # initialize means and new sigma matrix with correct dimensionality
+    means = np.zeros(dimensionality)
+    transformedSigma = np.zeros((2 * n + 1, dimensionality))
+
+
+    # pass all sigma points to the transformation function
+    for i in range(1, n * 2 + 1):
+        # 3a) and 4a)
+        x = func(sigmaPoints[i], controlVector)
+        alpha = 
+        x = func.eoms(q, w, reaction_speed, 0, angular accel of rw)
+
+        # store calculated sigma point in transformed sigma matrix
+        transformedSigma[i] = x
+        # update mean with point
+        means = np.add(means, x)
+
+    # apply weight to mean without first point
+    means *= w1
+
+    # pass first sigma point through transformation function
+    x = func(sigmaPoints[0], controlVector) 
+    
+    # store new point as first element in transformed sigma matrix
+    transformedSigma[0] = x
+
+    # adjust the means for first value and multiply by correct weight
+    means = np.add(means, x*w0)
+
+    return means, transformedSigma
+
 
 
 def generateCov(means, transformedSigma, w0, w1, n, noise):
@@ -334,7 +346,7 @@ def generateCrossCov(predMeans, mesMeans, f, h, w0, w1, n):
     return crossCov
 
 
-def UKF(means, cov, q, r, gps_data, reaction_speeds, data):
+def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     '''
     UKF
         estimates state at time step based on sensor data, noise, and equations of motion
@@ -381,7 +393,15 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, data):
 
     # 3) predictive step
     # 3a) and 3b): pass sigma points through EOMs (f) and generate mean in state space
-    predMeans, f = generateMeans(EOMs, reaction_speeds, sigmaPoints, w0_m, w1, n, n)
+    I_body = np.array([[46535.388, 257.834, 536.12],
+              [257.834, 47934.771, -710.058],
+              [536.12, -710.058, 23138.181]])
+    I_body = I_body * 1e-7
+    I_spin = 5.1e-7
+    I_trans = 0
+    EOMS = TEST1EOMS(I_body, I_spin, I_trans)
+    
+    predMeans, f = generateMeans2(EOMS, sigmaPoints, w0_m, w1, n, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     

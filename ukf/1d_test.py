@@ -46,12 +46,16 @@ def main(target=[1,0,0,0]):
     alt = np.array([225.552]) # 740 feet (this is in meters)
     B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
+
+    old_reaction_speeds = []
+
     # Infinite loop to run until you kill it
     i = 0
     while (1):
         # Starting time for loop 
         start_time = time.time()
         
+        old_reaction_speeds = reaction_speeds
         # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
         reaction_speeds = get_hall_data() # TODO: data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
 
@@ -70,7 +74,7 @@ def main(target=[1,0,0,0]):
 
         # Run UKF
         # Again, same format as idael_test_cases.py
-        state, cov = UKF_algorithm.UKF(state, cov, q, r, B_true, reaction_speeds, data)
+        state, cov = UKF_algorithm.UKF(state, cov, q, r, B_true, reaction_speeds, old_reaction_speeds, data)
         
         # Visualize if you want
         game_visualize(np.array([state[:4]]), i)
