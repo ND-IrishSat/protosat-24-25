@@ -48,6 +48,10 @@ def main(target=[1,0,0,0]):
     alt = np.array([.225552]) # 740 feet (this is in Km!!)
     B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
+    # set negative of last element to match magnetometer
+    # Convert to North East Down to North East Up, matching X, Y, Z reference frame of magnetometer
+    B_true[2] *= -1
+
 
     old_reaction_speeds = np.array([0,0,0])
     reaction_speeds = np.array([0,0,0])
