@@ -55,6 +55,16 @@ def main(target=[1,0,0,0]):
     while (1):
         # Starting time for loop 
         start_time = time.time()
+
+        # Set motor pins
+        xMotorPin = 10
+        yMotorPin = 11
+        skewMotorPin = 12
+
+        # Initialize Motor class from Tim's script to read and write to motors
+        x = Motor(xMotorPin,24,[1,2,3],0,pwm(0))
+        y = Motor(yMotorPin,24,[1,2,3],0,pwm(1))
+        skew = Motor(skewMotorPin,24,[1,2,3],0,pwm(3))
         
         old_reaction_speeds = reaction_speeds
         # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
@@ -80,7 +90,7 @@ def main(target=[1,0,0,0]):
         # Visualize if you want
         game_visualize(np.array([state[:4]]), i)
         # Also, current quaternion of what we think it is
-        print("Current state: ", state[:4])
+        #print("Current state: ", state[:4])
 
         # Run PD controller
         curr_state = state
@@ -94,29 +104,18 @@ def main(target=[1,0,0,0]):
         # Run PD controller to generate output for reaction wheels
         pwm = pd_controller(curr_state, target, omega, kp, kd)
 
-        # Set motor pins
-        xMotorPin = 10
-        yMotorPin = 11
-        skewMotorPin = 12
-
-        # Run actuator (reaction wheels) script
-        x = Motor(xMotorPin,24,[1,2,3],0,pwm(0))
-        y = Motor(yMotorPin,24,[1,2,3],0,pwm(1))
-        skew = Motor(skewMotorPin,24,[1,2,3],0,pwm(3))
-
+        # Set speed of each of the reaction wheels
         x.setSpeed()
         y.setSpeed()
         skew.setSpeed()
-
-        # TODO: Send commands to actuators
 
         # Ending time for loop
         end_time = time.time()
 
         # Output total runtime for single loop iteration
-        print("Time to run single iteration of ADC loop: {:.2f}".format(end_time-start_time))
+        #print("Time to run single iteration of ADC loop: {:.2f}".format(end_time-start_time))
         # Clear screen
-        os.system('cls' if os.name == 'nt' else 'clear')
+        #os.system('cls' if os.name == 'nt' else 'clear')
 
         # Increment iteration count
         i += 1
