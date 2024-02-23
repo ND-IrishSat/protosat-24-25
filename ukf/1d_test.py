@@ -42,14 +42,16 @@ def main(target=[1,0,0,0]):
     q = np.diag([noise_mag] * dim)
 
     # Get B field at current lat/long/altitude
-    curr_date_time= np.array([2024.1066])
+    curr_date_time= np.array([2024.1266])
     lat = np.array([41.675])
     long = np.array([-86.252])
-    alt = np.array([225.552]) # 740 feet (this is in meters)
+    alt = np.array([.225552]) # 740 feet (this is in Km!!)
     B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
 
     old_reaction_speeds = np.array([0,0,0])
+    reaction_speeds = np.array([0,0,0])
+
 
     # initialize pwm speeds
     pwm = [0,0,0]
