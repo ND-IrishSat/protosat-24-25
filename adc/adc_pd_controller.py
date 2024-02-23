@@ -131,7 +131,7 @@ def pd_controller(state,target, omega, kp, kd):
     return pwm
 
 # Test to make sure it works
-test_state = [-1, 0, 0, 0] # current quaternion
+test_state = [-1, 1, 0, 0] # current quaternion
 test_target = [1, 0, 0, 0] # goal quaternion
 test_omega = [30,30,30] # rad/s
 
