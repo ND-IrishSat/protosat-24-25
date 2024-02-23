@@ -65,6 +65,8 @@ def bfield_calc(controls):
     wmm_model = WMM(12, 'WMMcoef.csv')
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
+    
+    # Convert nanotesla to microtesla
     converted = Bfield1 / 1000
 
     return converted
