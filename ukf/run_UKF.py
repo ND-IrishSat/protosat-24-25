@@ -1,6 +1,6 @@
 '''
 run_UKF.py
-Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
+Authors: Andrew Gaylord, Claudia Kuczun, Michael Paulucci, Alex Casillas, Anna Arnett
 Last modified 10/7/23
 
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
@@ -11,7 +11,7 @@ TODO:
     Hall sensor reading function
     update EOMs to 4 reaction wheels (and gps data...?)
 
-    find correct values of q and r noise (check out latex presentation)
+    find correct values of q and r noise (check out latex presentation/ask michael)
 '''
 
 import numpy as np

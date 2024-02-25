@@ -1,10 +1,11 @@
 '''
 1d_test.py
-Authors: Claudia Kuczun, Andrew Gaylord, Patrick Schwartz, Juwan Jeremy Jacob
+Authors: Claudia Kuczun, Andrew Gaylord, Patrick Schwartz, Juwan Jeremy Jacob, Alex Casillas
 Last updated: 2/25/24
 
-Main script for 1D systems integration test.
-Implements PID, hall sensors, IMU, and actuators to rotate cubeSat on frictionless table on 1 axis. 
+Main script for 1D systems integration test
+Collab test between GOAT lab and protoSat
+Implements UKF, PD, hall sensors, IMU, visualizer, and actuators to rotate cubeSat on frictionless table on 1 axis 
 
 '''
 import numpy as np
@@ -21,16 +22,18 @@ from NewMotorTest import Motor
 from hfunc import *
 
 MAX_PWM = 65535 # pwm val that gives max speed according to Tim
-MAX_RPM = 8800 # according to Tim
+MAX_RPM = 8100 # according to Tim
 
 
 def main(target=[1,0,0,0]):
 
     '''NOTE
-        - HALL SENSORS: method to convert Hall sensor outputs (number & time) to 4 reaction_speeds
+        - HALL SENSORS: need method to convert Hall sensor outputs (number & time) to 4 reaction_speeds
+        - things to take out for UKF only test: motor initialization, reaction wheel update, pd section (127-146)
         - What is starting state guess?
         - Set proper target quaternion?
         - check with patrick that we want pwm[3] instead of pwm[2]
+        - What is max RPM (8100 or 8800?)
     '''
 
     dim = 7
@@ -46,7 +49,7 @@ def main(target=[1,0,0,0]):
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
     cov = np.identity(dim) * 5e-10
 
-    # Noises = 0 for 1D test
+    # Noises = 0 for 1D test. when we test with hall sensors, ask micheal about which values to test
     noise_mag = 0
     r = np.diag([noise_mag] * dim_mes)
     noise_mag = 0
@@ -65,6 +68,7 @@ def main(target=[1,0,0,0]):
     B_true[2] *= -1
 
     # inialize current step and last step reaction wheel speeds
+    # for this test they're 1x3: x, y, skew wheels
     old_reaction_speeds = np.array([0,0,0])
     reaction_speeds = np.array([0,0,0])
 

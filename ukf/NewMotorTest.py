@@ -2,16 +2,16 @@ from board import SCL, SDA
 import busio
 from adafruit_pca9685 import PCA9685
 import RPi.GPIO as GPIO
-import time
 i2c_bus = busio.I2C(SCL, SDA)
 pca = PCA9685(i2c_bus)
 pca.frequency = 1500
 import numpy as np
 import time
 
-MAX_SPEED = 8100 # max speed in rpm
-CURRENT_SPEED = 2500 # current speed in rpm
-K = 65535 # max duty cycle
+# max speed in rpm
+MAX_SPEED = 8100 
+# max duty cycle
+K = 65535 
 
 class Motor():
     def __init__(self, pin, dir, hallList, current, target):
@@ -22,7 +22,8 @@ class Motor():
         self.target = target
         #GPIO.setup(23,GPIO.IN)
 
-    def setSpeed(self, target=None): #checks speed
+    def setSpeed(self, target=None):
+        # set speed to target or self.target as default
         if not target:
             target = self.target
         if abs(self.current - target) >= 10000:
@@ -37,6 +38,8 @@ class Motor():
         GPIO.output(self.dir, val)
 
     def checkDir(self):
+        # check if our target is in a direction that's opposite of our current direction
+        # if so, bring it down to zero before switching directions
         if self.current == 0 and self.target == 0:
             return
         elif self.current != self.target:
@@ -52,6 +55,7 @@ class Motor():
             self.setSpeed(self.target())
 
     def hallRead(self): #read hall data
+        # TODO
         pass
 
 def convert(RPM): #converts RPM to duty cycle
@@ -59,6 +63,8 @@ def convert(RPM): #converts RPM to duty cycle
         RPM = MAX_SPEED
     return (RPM / MAX_SPEED) * K
 
+
+# CURRENT_SPEED = 2500 # current speed in rpm
 # target = convert(int(input("ENTER RPM: ")))
 # x = Motor(10,24,[1,2,3],0,target)
 # x.setSpeed()

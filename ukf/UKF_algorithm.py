@@ -1,6 +1,6 @@
 '''
 UKF_algorithm.py
-Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
+Authors: Andrew Gaylord, Claudia Kuczun, Michael Paulucci, Alex Casillas, Anna Arnett
 Last modified 2/13/24
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
@@ -100,7 +100,7 @@ class TEST1EOMS():
         Args:
             quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
             w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
-            w_rw (np.ndarray, (1x4)): angular velocities of wheels (in respective wheel frame)
+            w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
             tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
             alpha_rw (nd.ndarray, (1x4)): angular acceleration of the reaction wheels in their respective wheel frames
             dt (float)
