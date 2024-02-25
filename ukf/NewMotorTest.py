@@ -9,13 +9,9 @@ pca.frequency = 1500
 import numpy as np
 import time
 
-maxSpeed = 8100 #max speed in rpm
-currentSpeed = 2500 # current speed in rpm
-k = 65535
-dirX = 0
-dirY = 0
-dirZ = 0
-
+MAX_SPEED = 8100 # max speed in rpm
+CURRENT_SPEED = 2500 # current speed in rpm
+K = 65535 # max duty cycle
 
 class Motor():
     def __init__(self, pin, dir, hallList, current, target):
@@ -26,13 +22,15 @@ class Motor():
         self.target = target
         #GPIO.setup(23,GPIO.IN)
 
-    def setSpeed(self, tar): #checks speed
-        if abs(self.current - tar) >= 10000:
-            for i in np.linspace(self.current,tar,num=10):
+    def setSpeed(self, target=None): #checks speed
+        if not target:
+            target = self.target
+        if abs(self.current - target) >= 10000:
+            for i in np.linspace(self.current,target,num=10):
                 pca.channels[self.pin].duty_cycle = abs(i)
-                #add some delay, make thread? multiprocess?
+                # add some delay, make thread? multiprocess?
         else:
-            pca.channels[self.pin].duty_cycle = abs(tar)
+            pca.channels[self.pin].duty_cycle = abs(target)
             pass
 
     def setDir(self, val): #sets direction
@@ -40,7 +38,7 @@ class Motor():
 
     def checkDir(self):
         if self.current == 0 and self.target == 0:
-            pass
+            return
         elif self.current != self.target:
             if self.target < 0 and self.current > 0:
                 self.setSpeed(0)
@@ -57,10 +55,13 @@ class Motor():
         pass
 
 def convert(RPM): #converts RPM to duty cycle
-    if RPM > maxSpeed:
-        RPM = maxSpeed
-    return (RPM / maxSpeed) * k
+    if RPM > MAX_SPEED:
+        RPM = MAX_SPEED
+    return (RPM / MAX_SPEED) * K
 
-target = convert(int(input("ENTER RPM: ")))
-x = Motor(10,24,[1,2,3],0,target)
-x.setSpeed()
+# target = convert(int(input("ENTER RPM: ")))
+# x = Motor(10,24,[1,2,3],0,target)
+# x.setSpeed()
+# dirX = 0
+# dirY = 0
+# dirZ = 0

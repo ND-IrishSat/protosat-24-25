@@ -56,7 +56,7 @@ def main(target=[1,0,0,0]):
     curr_date_time= np.array([2024.1266])
     lat = np.array([41.675])
     long = np.array([-86.252])
-    alt = np.array([.225552]) # 740 feet (this is in Km!!)
+    alt = np.array([.225552]) # 740 feet (this is in km!!)
     # calculate true B field at stenson-remick
     B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
