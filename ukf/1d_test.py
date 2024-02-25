@@ -1,3 +1,12 @@
+'''
+1d_test.py
+Authors: Claudia Kuczun, Andrew Gaylord, Patrick Schwartz, Juwan Jeremy Jacob
+Last updated: 2/25/24
+
+Main script for 1D systems integration test.
+Implements PID, hall sensors, IMU, and actuators to rotate cubeSat on frictionless table on 1 axis. 
+
+'''
 import numpy as np
 from pygame.locals import * 
 from OpenGL.GL import *
@@ -10,7 +19,6 @@ import time
 from happy_sensors import get_imu_data, calibrate
 from NewMotorTest import Motor
 from hfunc import *
-import os
 
 MAX_PWM = 65535 # pwm val that gives max speed according to Tim
 MAX_RPM = 8800 # according to Tim
@@ -22,7 +30,7 @@ def main(target=[1,0,0,0]):
         - HALL SENSORS: method to convert Hall sensor outputs (number & time) to 4 reaction_speeds
         - What is starting state guess?
         - Set proper target quaternion?
-        - is skew pwm[3] or pwm[2]?
+        - check with patrick that we want pwm[3] instead of pwm[2]
     '''
 
     dim = 7
@@ -61,7 +69,7 @@ def main(target=[1,0,0,0]):
     reaction_speeds = np.array([0,0,0])
 
     # initialize pwm speeds
-    pwm = np.array([0,0,0])
+    pwm = np.array([0,0,0,0])
 
     # Infinite loop to run until you kill it
     i = 0
@@ -88,7 +96,8 @@ def main(target=[1,0,0,0]):
         # we basically know how fast they'll be spinning based on what we told it last cycle
         # Scale from pwm to rad/s
         scale = MAX_RPM/MAX_PWM*2*np.pi/60
-        reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(2)])
+        # TODO: is this pwm[3] or pwm[2]???
+        reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(3)])
 
         # Get current imu data (accel*3, gyro*3, mag*3)
         imu_data = get_imu_data()

@@ -71,6 +71,9 @@ def sigma(means, cov, n, scaling):
 
 
 class TEST1EOMS():
+    '''
+    Equations of motion class for 1D test specifically--does not implement 3rd reaction wheel
+    '''
     def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
         
         # Initially store moment of inertia tensor w/o reaction wheel inertias!
@@ -166,6 +169,58 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
+def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n, dimensionality):
+    '''
+    generateMeans
+        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
+        also stores and returns all transformed sigma points
+            
+    @params
+        eomsClass: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        sigmaPoints: sigma point matrix (2xn+1 x n)
+        w0, w1: weight for first and all other sigma points, respectively
+        reaction_speeds/old_reaction_speeds: reaction wheel speeds for current and last time step (1 x 3 for 1d test)
+        n: dimensionality of model 
+        dimensionality: dimensionality of what state we are generating for (n or m)
+
+    @returns
+        means: mean of distribution in state or measurement space (1 x n or 1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+    '''
+    # initialize means and new sigma matrix with correct dimensionality
+    means = np.zeros(dimensionality)
+    transformedSigma = np.zeros((2 * n + 1, dimensionality))
+
+    # CHANGE TO PASS TO FUNCITON THROUGHOUT??
+    dt = 0.1
+    # calculate angular acceleration using old and current reaction wheel speeds
+    alpha = (reaction_speeds - old_reaction_speeds) / dt
+
+    # pass all sigma points to the transformation function
+    for i in range(1, n * 2 + 1):
+        # 3a) and 4a)
+        x = eomsClass.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
+
+        # store calculated sigma point in transformed sigma matrix
+        transformedSigma[i] = x
+        # update mean with point
+        means = np.add(means, x)
+
+    # apply weight to mean without first point
+    means *= w1
+
+    # pass first sigma point through transformation function
+    x = eomsClass.eoms(sigmaPoints[0][:4], sigmaPoints[0][4:], reaction_speeds, 0, alpha, dt)
+    
+    # store new point as first element in transformed sigma matrix
+    transformedSigma[0] = x
+
+    # adjust the means for first value and multiply by correct weight
+    means = np.add(means, x*w0)
+
+    return means, transformedSigma
+
+
 def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
     '''
     generateMeans
@@ -202,58 +257,6 @@ def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality
 
     # pass first sigma point through transformation function
     x = func(sigmaPoints[0], controlVector) 
-    
-    # store new point as first element in transformed sigma matrix
-    transformedSigma[0] = x
-
-    # adjust the means for first value and multiply by correct weight
-    means = np.add(means, x*w0)
-
-    return means, transformedSigma
-
-
-def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n, dimensionality):
-    '''
-    generateMeans
-        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
-        also stores and returns all transformed sigma points
-            
-    @params
-        eomsClass: transformation/predictive function we are passing sigma points through (H_func or EOMs)
-        controlVector: additional input needed for eomsClass (gps_data or q_wmm)
-        sigmaPoints: sigma point matrix (2xn+1 x n)
-        w0, w1: weight for first and all other sigma points, respectively
-        n: dimensionality of model 
-        dimensionality: dimensionality of what state we are generating for (n or m)
-
-    @returns
-        means: mean of distribution in state or measurement space (1 x n or 1 x m)
-        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
-    '''
-    # initialize means and new sigma matrix with correct dimensionality
-    means = np.zeros(dimensionality)
-    transformedSigma = np.zeros((2 * n + 1, dimensionality))
-
-    # CHANGE TO PASS TO FUNCITON THROUGHOUT??
-    dt = 0.1
-    # calculate angular acceleration using old and current reaction wheel speeds
-    alpha = (reaction_speeds - old_reaction_speeds) / dt
-
-    # pass all sigma points to the transformation function
-    for i in range(1, n * 2 + 1):
-        # 3a) and 4a)
-        x = eomsClass.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
-
-        # store calculated sigma point in transformed sigma matrix
-        transformedSigma[i] = x
-        # update mean with point
-        means = np.add(means, x)
-
-    # apply weight to mean without first point
-    means *= w1
-
-    # pass first sigma point through transformation function
-    x = eomsClass.eoms(sigmaPoints[0][:4], sigmaPoints[0][4:], reaction_speeds, 0, alpha, dt)
     
     # store new point as first element in transformed sigma matrix
     transformedSigma[0] = x
