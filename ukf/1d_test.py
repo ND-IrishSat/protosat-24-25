@@ -14,11 +14,11 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from run_UKF import *
 from PySOL.sol_sim import *
-from adc_pd_controller import pd_controller
+# from adc_pd_controller import pd_controller
 import UKF_algorithm
 import time
 from happy_sensors import get_imu_data, calibrate
-from NewMotorTest import Motor
+# from NewMotorTest import Motor
 from hfunc import *
 
 MAX_PWM = 65535 # pwm val that gives max speed according to Tim
@@ -82,14 +82,14 @@ def main(target=[1,0,0,0]):
         start_time = time.time()
 
         # set pins to control reaction wheel motors
-        xMotorPin = 10
-        yMotorPin = 11
-        skewMotorPin = 12
+        # xMotorPin = 10
+        # yMotorPin = 11
+        # skewMotorPin = 12
 
-        # Initialize Motor class from Tim's script to read and write to motors
-        x = Motor(xMotorPin,24,[1,2,3],0,0)
-        y = Motor(yMotorPin,24,[1,2,3],0,0)
-        skew = Motor(skewMotorPin,24,[1,2,3],0,0) # pwm(2) is for z
+        # # Initialize Motor class from Tim's script to read and write to motors
+        # x = Motor(xMotorPin,24,[1,2,3],0,0)
+        # y = Motor(yMotorPin,24,[1,2,3],0,0)
+        # skew = Motor(skewMotorPin,24,[1,2,3],0,0) # pwm(2) is for z
         
         old_reaction_speeds = reaction_speeds
         # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
@@ -99,9 +99,9 @@ def main(target=[1,0,0,0]):
         # Temporary solution instead of function: get reaction wheel speeds from pwm input
         # we basically know how fast they'll be spinning based on what we told it last cycle
         # Scale from pwm to rad/s
-        scale = MAX_RPM/MAX_PWM*2*np.pi/60
+        # scale = MAX_RPM/MAX_PWM*2*np.pi/60
         # TODO: is this pwm[3] or pwm[2]???
-        reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(3)])
+        # reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(3)])
 
         # Get current imu data (accel*3, gyro*3, mag*3)
         imu_data = get_imu_data()
@@ -125,25 +125,25 @@ def main(target=[1,0,0,0]):
         # print("Current state: ", state[:4])
 
         # Run PD controller
-        curr_state = state
-        target = [1,0,0,0]
+        # curr_state = state
+        # target = [1,0,0,0]
 
-        # Sensor func to get currentangular velocity of cubesat
-        omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
-        # PD gains parameters
-        kp = .05*MAX_PWM
-        kd = .01*MAX_PWM
+        # # Sensor func to get currentangular velocity of cubesat
+        # omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
+        # # PD gains parameters
+        # kp = .05*MAX_PWM
+        # kd = .01*MAX_PWM
         
-        # Run PD controller to generate output for reaction wheels
-        pwm = pd_controller(curr_state, target, omega, kp, kd)
+        # # Run PD controller to generate output for reaction wheels
+        # pwm = pd_controller(curr_state, target, omega, kp, kd)
 
-        # Set speed of each of the reaction wheels
-        x.target = pwm(0)
-        y.target = pwm(1)
-        skew.target = pwm(3)
-        x.setSpeed(x.target)
-        y.setSpeed(y.target)
-        skew.setSpeed(skew.target)
+        # # Set speed of each of the reaction wheels
+        # x.target = pwm(0)
+        # y.target = pwm(1)
+        # skew.target = pwm(3)
+        # x.setSpeed(x.target)
+        # y.setSpeed(y.target)
+        # skew.setSpeed(skew.target)
 
         # Ending time for loop
         end_time = time.time()
