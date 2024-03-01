@@ -1,6 +1,6 @@
 '''
 UKF_algorithm.py
-Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
+Authors: Andrew Gaylord, Claudia Kuczun, Michael Paulucci, Alex Casillas, Anna Arnett
 Last modified 2/13/24
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
@@ -71,6 +71,9 @@ def sigma(means, cov, n, scaling):
 
 
 class TEST1EOMS():
+    '''
+    Equations of motion class for 1D test specifically--does not implement 3rd reaction wheel
+    '''
     def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
         
         # Initially store moment of inertia tensor w/o reaction wheel inertias!
@@ -97,7 +100,7 @@ class TEST1EOMS():
         Args:
             quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
             w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
-            w_rw (np.ndarray, (1x4)): angular velocities of wheels (in respective wheel frame)
+            w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
             tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
             alpha_rw (nd.ndarray, (1x4)): angular acceleration of the reaction wheels in their respective wheel frames
             dt (float)
@@ -148,6 +151,7 @@ class TEST1EOMS():
 
         return new_state
 
+
 def quaternionMultiply(a, b):
     '''
     quaternionMultiply
@@ -165,7 +169,59 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
-def generateMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
+def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n, dimensionality):
+    '''
+    generateMeans
+        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
+        also stores and returns all transformed sigma points
+            
+    @params
+        eomsClass: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        sigmaPoints: sigma point matrix (2xn+1 x n)
+        w0, w1: weight for first and all other sigma points, respectively
+        reaction_speeds/old_reaction_speeds: reaction wheel speeds for current and last time step (1 x 3 for 1d test)
+        n: dimensionality of model 
+        dimensionality: dimensionality of what state we are generating for (n or m)
+
+    @returns
+        means: mean of distribution in state or measurement space (1 x n or 1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+    '''
+    # initialize means and new sigma matrix with correct dimensionality
+    means = np.zeros(dimensionality)
+    transformedSigma = np.zeros((2 * n + 1, dimensionality))
+
+    # CHANGE TO PASS TO FUNCITON THROUGHOUT??
+    dt = 0.1
+    # calculate angular acceleration using old and current reaction wheel speeds
+    alpha = (reaction_speeds - old_reaction_speeds) / dt
+
+    # pass all sigma points to the transformation function
+    for i in range(1, n * 2 + 1):
+        # 3a) and 4a)
+        x = eomsClass.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
+
+        # store calculated sigma point in transformed sigma matrix
+        transformedSigma[i] = x
+        # update mean with point
+        means = np.add(means, x)
+
+    # apply weight to mean without first point
+    means *= w1
+
+    # pass first sigma point through transformation function
+    x = eomsClass.eoms(sigmaPoints[0][:4], sigmaPoints[0][4:], reaction_speeds, 0, alpha, dt)
+    
+    # store new point as first element in transformed sigma matrix
+    transformedSigma[0] = x
+
+    # adjust the means for first value and multiply by correct weight
+    means = np.add(means, x*w0)
+
+    return means, transformedSigma
+
+
+def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
     '''
     generateMeans
         generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
@@ -209,58 +265,6 @@ def generateMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
     means = np.add(means, x*w0)
 
     return means, transformedSigma
-
-
-
-
-def generateMeans2(func, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n, dimensionality):
-    '''
-    generateMeans
-        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
-        also stores and returns all transformed sigma points
-            
-    @params
-        func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
-        controlVector: additional input needed for func (gps_data or q_wmm)
-        sigmaPoints: sigma point matrix (2xn+1 x n)
-        w0, w1: weight for first and all other sigma points, respectively
-        n: dimensionality of model 
-        dimensionality: dimensionality of what state we are generating for (n or m)
-
-    @returns
-        means: mean of distribution in state or measurement space (1 x n or 1 x m)
-        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
-    '''
-    # initialize means and new sigma matrix with correct dimensionality
-    means = np.zeros(dimensionality)
-    transformedSigma = np.zeros((2 * n + 1, dimensionality))
-
-    dt = 0.1
-    alpha = (reaction_speeds - old_reaction_speeds) / dt
-    # pass all sigma points to the transformation function
-    for i in range(1, n * 2 + 1):
-        # 3a) and 4a)
-        x = func.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
-
-        # store calculated sigma point in transformed sigma matrix
-        transformedSigma[i] = x
-        # update mean with point
-        means = np.add(means, x)
-
-    # apply weight to mean without first point
-    means *= w1
-
-    # pass first sigma point through transformation function
-    x = func.eoms(sigmaPoints[0][:4], sigmaPoints[0][4:], reaction_speeds, 0, alpha, dt)
-    
-    # store new point as first element in transformed sigma matrix
-    transformedSigma[0] = x
-
-    # adjust the means for first value and multiply by correct weight
-    means = np.add(means, x*w0)
-
-    return means, transformedSigma
-
 
 
 def generateCov(means, transformedSigma, w0, w1, n, noise):
@@ -397,16 +401,18 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
 
 
     # 3) predictive step
-    # 3a) and 3b): pass sigma points through EOMs (f) and generate mean in state space
+    # intertia constants from juwan
     I_body = np.array([[46535.388, 257.834, 536.12],
               [257.834, 47934.771, -710.058],
               [536.12, -710.058, 23138.181]])
     I_body = I_body * 1e-7
     I_spin = 5.1e-7
     I_trans = 0
+    # intialize 1D EOMs using intertia measurements of cubeSat
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
-    predMeans, f = generateMeans2(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n, n)
+    # 3a) and 3b): pass sigma points through EOMs (f) and generate mean in state space
+    predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     
@@ -428,7 +434,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
 
     # 4) non linear transformation
     # 4a) and 4b): non linear transformation of predicted sigma points f into measurement space (h), and mean generation
-    mesMeans, h = generateMeans(hfunc, Bfield, f, w0_m, w1, n, m)
+    mesMeans, h = generateMesMeans(hfunc, Bfield, f, w0_m, w1, n, m)
 
     # print("MEAN IN MEASUREMENT: ", mesMeans)
 
@@ -454,6 +460,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     # normalize the quaternion to reduce small calculation errors over time
     means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
 
+    # other cov update equation that i'm pretty sure is wrong
     # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
     # cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCov))), predCov)
 

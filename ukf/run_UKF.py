@@ -1,17 +1,17 @@
 '''
 run_UKF.py
-Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
+Authors: Andrew Gaylord, Claudia Kuczun, Michael Paulucci, Alex Casillas, Anna Arnett
 Last modified 10/7/23
 
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
     interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
-    adding gps component/control input vector for EOMs?
+    add to latex documentation: testing cases/results, R and Q research/results, more explanation
+    Hall sensor reading function
+    update EOMs to 4 reaction wheels (and gps data...?)
 
-    test with different data premade data sets
-    update EOMs for 4 reaction wheels?
-    find correct values of q and r noise (check out latex presentation)
+    find correct values of q and r noise (check out latex presentation/ask michael)
 '''
 
 import numpy as np
@@ -388,10 +388,8 @@ def run_ukf_textfile(start, cov, r, q, filename):
     f = open(filename, "r")
     data = f.readline()
     splitData2 = np.array([float(x) for x in data.split(",")])
+    # for test-still: accelerometer, gyro, magnetometer (microteslas)
     splitData = np.concatenate((splitData2[6:], splitData2[3:6]))
-    # for test-still: accelerometer, gyro, magnetometer
-    # for correct units of magnet field, we divide result of wmm by 1000
-    # splitData[:3] = splitData[:3] / 1000
 
     reaction_speeds = np.zeros(3)
     i = 0
