@@ -1,7 +1,7 @@
 '''
 UKF_algorithm.py
 Authors: Andrew Gaylord, Claudia Kuczun, Michael Paulucci, Alex Casillas, Anna Arnett
-Last modified 2/13/24
+Last modified 3/3/24
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
 The Unscented Kalman Filter for Nonlinear Estimation 
@@ -13,7 +13,7 @@ Variables needed throughout UKF process:
   m = dimension of measurement space. Frame of reference of the satellite/sensors (6)
   q: process noise covariance matrix (n x n)
   r: measurement noise covariance matrix (m x m)
-  scaling = parameter for sigma point generation (3 - n)
+  scaling = parameter for sigma point generation (equal to alpha^2 * (n + k) - n)
   means = estimated current state (1 x n)
   cov = covariance matrix of current state (n x n)
   predMeans = matrix of predicted means based on physics EOMs (1 x n)
@@ -169,27 +169,26 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
-def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n, dimensionality):
+def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n):
     '''
-    generateMeans
-        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
+    generatePredMeans
+        generate mean after passing sigma point distribution through a transformation function using equation 3b)
         also stores and returns all transformed sigma points
             
     @params
-        eomsClass: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        eomsClass: EOMs class to pass our sigma points through
         sigmaPoints: sigma point matrix (2xn+1 x n)
         w0, w1: weight for first and all other sigma points, respectively
         reaction_speeds/old_reaction_speeds: reaction wheel speeds for current and last time step (1 x 3 for 1d test)
-        n: dimensionality of model 
-        dimensionality: dimensionality of what state we are generating for (n or m)
+        n: dimensionality of state space
 
     @returns
         means: mean of distribution in state or measurement space (1 x n or 1 x m)
         transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
     '''
     # initialize means and new sigma matrix with correct dimensionality
-    means = np.zeros(dimensionality)
-    transformedSigma = np.zeros((2 * n + 1, dimensionality))
+    means = np.zeros(n)
+    transformedSigma = np.zeros((2 * n + 1, n))
 
     # CHANGE TO PASS TO FUNCITON THROUGHOUT??
     dt = 0.1
@@ -223,17 +222,17 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
 
 def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
     '''
-    generateMeans
-        generate mean after passing sigma point distribution through a transformation function using equation 3b) and 4b)
+    generateMesMeans
+        generate mean after passing sigma point distribution through a transformation function using equation 4b)
         also stores and returns all transformed sigma points
             
     @params
-        func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
+        func: transformation function we are passing sigma points through (H_func)
         controlVector: additional input needed for func (gps_data or q_wmm)
         sigmaPoints: sigma point matrix (2xn+1 x n)
         w0, w1: weight for first and all other sigma points, respectively
         n: dimensionality of model 
-        dimensionality: dimensionality of what state we are generating for (n or m)
+        dimensionality: dimensionality of what state we are generating for (measurement space: m)
 
     @returns
         means: mean of distribution in state or measurement space (1 x n or 1 x m)
@@ -366,7 +365,8 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
         q: process noise covariance matrix (n x n)
         r: measurement noise covariance matrix (m x m)
         gps_data: control input vector for hfunc (gps data: longitude, latitude, height, time)
-        reaction_speeds: control input for reaction wheel speeds (1 x 3)
+        reaction_speeds: control input for EOMs (1 x 4)
+        old_reaction_speeds: speeds for past step, used to find angular acceleration (1 x 4)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x m)
 
     @returns
@@ -412,7 +412,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
     # 3a) and 3b): pass sigma points through EOMs (f) and generate mean in state space
-    predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n, n)
+    predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     

@@ -6,12 +6,16 @@ Last modified 10/7/23
 Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pygame
 
 TODO:
-    interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
-    add to latex documentation: testing cases/results, R and Q research/results, more explanation
-    Hall sensor reading function
-    update EOMs to 4 reaction wheels (and gps data...?)
-
+    Hall sensor reading function: COMPLETED? Clean up + document motor_interface
+    are motor scripts (simple something) and results of integration testing updated to github?
     find correct values of q and r noise (check out latex presentation/ask michael)
+    find freshman who wants to learn UKF
+    add ukf latex to github + clean up folder organization of repo
+    big latex adcs document???
+
+    add to latex documentation: testing cases/results, R and Q research/results, more explanation
+    update EOMs to 4 reaction wheels (and gps data...?)
+    interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
 '''
 
 import numpy as np
@@ -402,7 +406,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
         gps_data = B_true
         # run ukf and visualize output
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, splitData)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, reaction_speeds, splitData)
         game_visualize(np.array([start[:4]]), i)
 
         # continue to get data from file until empty

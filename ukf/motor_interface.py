@@ -1,5 +1,9 @@
 '''
 motor_interface.py
+Authors: Tim Roberts
+Last modified: 3/3/24
+
+Creates motor object that can read data from hall sensors and send signals to reaction wheels
 
 '''
 
@@ -50,11 +54,12 @@ class Motor():
         #GPIO.setup(self.hallList[1],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
         #GPIO.setup(self.hallList[2],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
 
-    def setTarget(self,newVal): #update target speed
+    def setTarget(self,newVal):
+        # update target speed
         self.target = newVal
 
     def setSpeed(self):
-        # set speed to self.target
+        # set reaction wheel speed speed to self.target
         if abs(self.current - self.target) >= 10000:
             for i in np.linspace(self.current,self.target,num=10):
                 pca.channels[self.pin].duty_cycle = abs(i)
@@ -66,7 +71,8 @@ class Motor():
     def process(self,channel):
         self.hData.append(time.perfCounter())
 
-    def setCurrent(self): #read hall data and find current speed
+    def setCurrent(self): 
+        #read hall sensor data, find current speed, and update self.current
         temp = []
         finAveSpeed = 0
         for i in self.hallList:
@@ -80,7 +86,8 @@ class Motor():
         self.current = finAveSpeed
         self.hData = []
 
-    def setDir(self, val): #sets direction
+    def setDir(self, val): 
+        # sets direction of wheel
         #GPIO.output(self.dir, val)
         pass
 
@@ -101,7 +108,8 @@ class Motor():
         else:
             self.setSpeed(self.target())
 
-    def convertToRPM(self): #converts duty cycle to RPM
+    def convertToRPM(self): 
+        #converts duty cycle to RPM
         return (self.current / k) * maxSpeed
 
 x = Motor(pinX,dirX,hallX,default,default)

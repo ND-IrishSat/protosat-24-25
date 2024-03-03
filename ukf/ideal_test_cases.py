@@ -3,7 +3,7 @@ ideal_test_cases.py
 Authors: Andrew Gaylord
 Last modified 2/4/24
 
-    tests two ideal test cases for UKF algorithm: nonmoving and constant angular velocity
+Tests two ideal test cases for UKF algorithm: nonmoving and constant angular velocity
 
 '''
 
@@ -128,6 +128,7 @@ def run_moving_test():
     B_true = np.array([0, 0, 1])
     # reaction wheel speeds (0 for this test)
     reaction_speeds = np.zeros(3)
+    old_reaction_speeds = np.zeros(3)
 
     # note: if model is less reliable/changes quickly, then q > r
     # r: measurement noise (m x m)
@@ -173,7 +174,7 @@ def run_moving_test():
 
         # run ukf algorithm for each iteration
         # note: for this test, b field is passed as gps_data instead of gps data
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, old_reaction_speeds, data)
 
         # uncomment to run fully and visualize after
         # results.append(list(start[:4]))
