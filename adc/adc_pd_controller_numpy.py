@@ -92,24 +92,26 @@ def pd_controller(state,target, omega, kp, kd):
     n = (1 + alpha**2 + beta**2 + gamma**2)
 
     # Calculates pseudoinverse needed for transformation (pg 157 of Fundamentals book)
-    W_inv = np.array([[(1 + beta**2 + gamma**2)/n, -alpha*beta/n, -alpha*gamma/n],
-             [-alpha*beta/n, (1 + alpha**2 + gamma**2)/n, -beta*gamma/n],
-             [alpha*gamma/n, -beta*gamma/n, (1 + beta**2 + beta**2)/n],
-             [alpha/n, beta/n, gamma/n]])
+    W_inv = np.array([[(1 + beta**2 + gamma**2), -alpha*beta, -alpha*gamma],
+             [-alpha*beta, (1 + alpha**2 + gamma**2), -beta*gamma],
+             [alpha*gamma, -beta*gamma, (1 + beta**2 + beta**2)],
+             [alpha, beta, gamma]])/n
     
     # convert output for 3 rx wheels to 4
     pwm = np.matmul(W_inv,pwm)
+    # Convert to integers
+    pwm = np.array([int(pwm[0]),int(pwm[1]),int(pwm[2]),int(pwm[3])])
     # Convert back to 1x4 list
     #pwm = [int(pwm[0][0]), int(pwm[1][0]), int(pwm[2][0]), int(pwm[3][0])]
     #print(pwm)
     # Ensure pwm is always within limits of RPMs
-    #np.putmask(pwm, pwm > 0.5*MAX_PWM, 0.5*MAX_PWM)
-    #np.putmask(pwm, pwm < 0.5*-MAX_PWM, 0.5*-MAX_PWM)
+    np.putmask(pwm, pwm > 0.5*MAX_PWM, 0.5*MAX_PWM)
+    np.putmask(pwm, pwm < 0.5*-MAX_PWM, 0.5*-MAX_PWM)
 
     return pwm
 
 # Test to make sure it works
-test_state = np.array([-1, 1, 0, 0]) # current quaternion
+test_state = np.array([0, 1, 0, 0]) # current quaternion
 test_target = np.array([1, 0, 0, 0]) # goal quaternion
 test_omega = np.array([3,3,3]) # rad/s
 
