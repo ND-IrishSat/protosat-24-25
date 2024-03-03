@@ -16,6 +16,12 @@ TODO:
     add to latex documentation: testing cases/results, R and Q research/results, more explanation
     update EOMs to 4 reaction wheels (and gps data...?)
     interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
+
+
+
+
+    run_UKF out of ukf folder?
+    create new file for simulator/visualizer?
 '''
 
 import numpy as np
