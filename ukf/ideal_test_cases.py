@@ -18,11 +18,11 @@ import datetime as dt
 from pyquaternion import Quaternion
 
 import UKF_algorithm
-from run_UKF import *
 import hfunc
+from simulator import *
 
-# from ukf.PySOL import spacecraft as sp
-# from ukf.PySol.spacecraft import *
+# from PySOL import spacecraft as sp
+# from PySol.spacecraft import *
 from PySOL.sol_sim import *
 import PySOL.spacecraft as sp
 import PySOL.orb_tools as ot

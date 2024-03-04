@@ -13,13 +13,14 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from run_UKF import *
-from PySOL.sol_sim import *
-# from adc_pd_controller import pd_controller
-import UKF_algorithm
+from ukf.PySOL.sol_sim import *
+from adc.adc_pd_controller_numpy import pd_controller
+import ukf.UKF_algorithm as UKF_algorithm
 import time
-from happy_sensors import get_imu_data, calibrate
-# from NewMotorTest import Motor
-from hfunc import *
+from interface.happy_sensors import get_imu_data, calibrate
+from ukf.hfunc import *
+from ukf.simulator import game_visualize
+from interface.motor_interface import *
 
 MAX_PWM = 65535 # pwm val that gives max speed according to Tim
 MAX_RPM = 8100 # according to Tim

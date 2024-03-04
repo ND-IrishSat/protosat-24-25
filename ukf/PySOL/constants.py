@@ -4,9 +4,6 @@
 """
 
 import numpy as np
-import PySOL.constants 
-
-
 
 def R_E(units = 'km'):
     R_E = 6371 # km
