@@ -1,15 +1,15 @@
 ProtoSat Computing Projects for IrishSat 2023-2024
 
-Collaborative base for developing Attitude Determination and Control System (ADCS), which include Proportional-Integral-Derivative (PID) Controller and Unscented Kalman Filter (UKF) for state estimation. 
+Collaborative base for developing Attitude Determination and Control System (ADCS), which include a Proportional-Integral-Derivative (PID) Controller and Unscented Kalman Filter (UKF) for state estimation.
 
-Iterative development model: members apply their unique technical background in tandem with their peers to fulfil requirements set out by the greater ProtoSat team. 
+This computing squad enganges in an iterative development model in order to fulfil the club's technical needs. Members apply their own unique technical background while engaging with research, professors, and industry contacts. 
 
-Members: make sure to clone the repository and work on a feature-branch, not on main!
+Members: instead of working on main, make sure to create a feature-branch and push to dev (our most updated but somewhat expiremental code)
 
-For PySOL repo: https://git-scm.com/book/en/v2/Git-Tools-Submodules
-- Files from external repository will not be included, need to manually download them to your local repository
-- If newly cloning this repository, and want to add all the files from the PySOL submodule (repository), run the following instead of normal git clone: "git clone --recurse-submodules https://github.com/ND-IrishSat/protosat-23-24.git"
+Organization:
+    ukf: contains scripts directly relating to state estimation, including the main unscented kalman filter algorithm, cubesat visualizer, and PySOL repository. 
+    adc: holds our pd controller to determine our reaction wheel inputs
+    interface: contains all scripts that interface with physical components of the cubesat, such as imu, hall sensors, and reaction wheel motors
 
-To update your code and get the new PySOL repo:
-1. git pull (this will not automatically include the submodule files)
-2. git submodule update --init
+    Those sub directories contain testing scripts that are confined to that section of the ADCS process. 
+    High-level scripts that implement more than one of these sub-sections are contained in main and simply import from the correct sub-directory. 
