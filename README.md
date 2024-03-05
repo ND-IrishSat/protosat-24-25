@@ -5,6 +5,7 @@ Collaborative base for developing Attitude Determination and Control System (ADC
 This computing squad enganges in an iterative development model in order to fulfil the club's technical needs. Members apply their own unique technical background while engaging with research, professors, and industry contacts. 
 
 Organization:
+
 -- ukf: contains scripts directly relating to state estimation, including the main unscented kalman filter algorithm, cubesat visualizer, and PySOL repository. 
 
 -- adc: holds our pd controller to determine our reaction wheel inputs
