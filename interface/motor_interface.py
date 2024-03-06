@@ -112,6 +112,19 @@ class Motor():
         #converts duty cycle to RPM
         return (self.current / k) * maxSpeed
 
+    def convertToDuty(RPM):
+        # Convert RPM to duty cycle
+        if RPM > maxSpeed:
+            RPM = maxSpeed
+        return (RPM / maxSpeed) * k
+
+
+# Test class and methods
+target = convert(int(input("ENTER RPM: ")))
+x = Motor(10,24,[1,2,3],0,target)                                                                 
+x.setSpeed()
+
+
 x = Motor(pinX,dirX,hallX,default,default)
 y = Motor(pinY,dirY,hallY,default,default)
 z = Motor(pinZ,dirZ,hallZ,default,default)

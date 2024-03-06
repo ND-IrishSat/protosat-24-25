@@ -8,7 +8,7 @@ Transformation function hfunc for IrishSat Unscented Kalman Filter. Requires wmm
 
 import numpy as np
 import matplotlib.pyplot as plt
-from wmm import WMM
+from PySOL.wmm import WMM
 from mpl_toolkits.mplot3d import Axes3D
 
 
