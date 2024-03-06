@@ -39,9 +39,6 @@ import ukf.PySOL.orb_tools as ot
 # from ukf.PySOL import sol_sim
 # from ukf.PySOL import orb_tools as ot
 
-# from interface.BNO055_magnetometer_basic import calibrate
-# from interface.BNO055_magnetometer_basic import get_data
-
 
 def check_zeros(data):
     '''
@@ -208,7 +205,7 @@ if __name__ == "__main__":
     
     # filename = "sensor_data_2.txt"
     # must be relative path to the text file
-    filename = "interface/test-still.txt"
+    filename = "interface/sample_data/test-still.txt"
 
 
     # tests ukf with pre-generated and cleaned data file
