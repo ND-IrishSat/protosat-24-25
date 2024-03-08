@@ -8,12 +8,12 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 TODO:
     Hall sensor reading function: COMPLETED? Clean up + document motor_interface
     are motor scripts (simple something) and results of integration testing updated to github?
-    find correct values of q and r noise (check out latex presentation/ask michael)
     find freshman who wants to learn UKF
     add ukf latex to github
     big latex adcs document???
 
-    add to latex documentation: testing cases/results, R and Q research/results, more explanation
+    find correct values of q and r noise for larger banquet test (check out latex presentation)
+    add to ukf latex documentation: testing cases/results, R and Q research/results, more explanation
     update EOMs to 4 reaction wheels (and gps data...?)
     interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
 '''

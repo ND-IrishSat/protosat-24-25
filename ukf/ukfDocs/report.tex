@@ -1,0 +1,228 @@
+\documentclass{article}
+
+%%
+%Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%555
+\usepackage[utf8]{inputenc}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{natbib}
+\usepackage{algpseudocode}
+\usepackage{algorithm}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage[margin=1in]{geometry}
+
+\usepackage{titlesec}
+
+\titleformat*{\section}{\large\bfseries}
+\titleformat*{\subsection}{\normalsize\bfseries}
+\titleformat*{\subsubsection}{\normalsize\bfseries}
+\titleformat*{\paragraph}{\normalsize\bfseries}
+\titleformat*{\subparagraph}{\normalsize\bfseries}
+%%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{unsrt}
+\doublespacing
+%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%
+\newcommand{\x}{\mathbf{x}}
+\newcommand{\xd}{\dot{\x}}
+\newcommand{\X}{\mathbf{X}}
+\newcommand{\f}{\mathbf{f}}
+\newcommand{\ug}{\mathbf{u}}
+
+\newcommand{\z}{\mathbf{z}}
+\newcommand{\h}{\mathbf{h}}
+\newcommand{\Cov}{\mathbf{P}}
+\newcommand{\Px}{\mathbf{P_{\x}}}
+\newcommand{\chivec}{\mathbf{\chi}}
+
+\newcommand{\q}{\mathbf{q}}
+\newcommand{\qd}{\dot{\q}}
+\newcommand{\qdd}{\ddot{\q}}
+\renewcommand{\H}{\mathbf{H}}
+\newcommand{\C}{\mathbf{C}}
+\newcommand{\G}{\mathbf{G}}
+\newcommand{\Y}{\mathbf{Y}}
+\newcommand{\ppi}{\boldsymbol{\pi}}
+\newcommand{\Hb}{\bar{\H}}
+\newcommand{\Cb}{\bar{\C}}
+\newcommand{\Yb}{\bar{\Y}}
+\newcommand{\qb}{\bar{\q}}
+\newcommand{\gb}{\bar{\g}}
+
+\newcommand{\qdb}{\dot{\qb}}
+\newcommand{\qddb}{\ddot{\qb}}
+\newcommand{\Complex}{\mathbb{C}}
+\newcommand{\F}{\mathbf{F}}
+
+\newcommand{\cq}{\c_\q}
+\newcommand{\sq}{\s_\q}
+\renewcommand{\r}{\mathbf{r}}
+
+\renewcommand{\c}{\mathbf{c}}
+\newcommand{\s}{\mathbf{s}}
+
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\bzero}{\mathbf{0}}
+\newcommand{\dpi}{\delta \ppi}
+
+\newcommand{\ttau}{\boldsymbol{\tau}}
+\newcommand{\ttaub}{\bar{\ttau}}
+\DeclareMathOperator{\Null}{Nullspace}
+
+\newcommand{\y}{\mathbf{y}}
+\newcommand{\T}{^\top}
+\newcommand{\bone}{\mathbf{1}}
+\newcommand{\f}{\mathbf{f}}
+\newcommand{\z}{\mathbf{z}}
+\renewcommand{\r}{\mathbf{r}}
+\newcommand{\R}{\mathbf{R}}
+\newcommand{\m}{\mathbf{m}}
+\newcommand{\g}{\mathbf{g}}
+
+\DeclareMathOperator{\tril}{Tril}
+%%%%%%%%%%%%%%
+
+%%%%%%Header
+%\title{Mathematics and The Elements of Music}
+%\author{Juwan Jeremy Jacobe}
+%\date{January 2021}
+%\newpage
+\begin{document}
+%\maketitle
+
+%\newpage
+\singlespacing
+\begin{center}
+    \large \textbf{The Unscented Kalman Filter for Attitude Estimation} \\ \vskip 3pt
+
+    \large \textit{IrishSat, University of Notre Dame, Notre Dame, IN} \\ \vskip 6pt
+    
+    \normalsize \textbf{Author}: Andrew Gaylord (CSE `26), Alex Casillas (CSE/Math `26), Juwan Jacobe (Physics `24)
+\end{center}
+
+%\doublespacing
+\section{Introduction}
+\label{sec:intro}
+The non-linear problem of spacecraft attitude state estimation has traditionally been approached using the Extended Kalman Filter (EKF), which approximates the state transformation and state observation equations using a first-order Jacobian approximation
+\begin{align*} 
+\xd_t = \f(\x_t, \ug_t) &\rightarrow \xd \approx \left[ \frac{d\f}{d\x} \right]_{\x = \x_t, \ug = \ug_t} \x_t \\
+\z_t = \h(\x_t) &\rightarrow \z_t \approx \left[ \frac{d\h}{d\x} \right]_{\x = \x_t} \x_t 
+\end{align*}
+However, this first-order approximation, in exchange for computational efficiency, may lead to the EKF diverging from the true state for wrong initial state estimations and/or inaccurate system modelling. One variation of the Kalman Filter that rectifies the disadvantages of the EKF is the Unscented Kalman Filter (UKF) \cite{UKF}.
+
+\section{The Unscented Kalman Filter Equations}
+Consider an $L$-dimensional random variable $\x \in \mathbb{R}^{L}$ with mean $\hat{\x}$ and covariance $\Px$. In our case, this includes a quaternion for orientation and the angular velocity of the CloverSat. The following section lists all the steps and respective equations for one iteration of the UKF.
+
+\subsection{Weights Calculation}
+First, we must define a scaling factor, $\lambda$, which is dependant on the user-defined parameters $\alpha$ and $\kappa$. If $\alpha$ = 1, then research \cite{UKF_smoothing} suggests that $\kappa$ = $3 - L$ appropriately captures the kurtosis of a Gaussian prior. Alternatively, $\alpha$ is used to scale the sigma points closer to the mean so that they capture less unwanted non-local effects. A small value ($\alpha$ = $10^{-3}$) paired with $\kappa$ = 0 is proven to suitably decrease the spread. The second option is implemented in our code, but it can be tweaked if more research into our specific distribution is done. 
+\begin{align}
+    \lambda &= \alpha^2(L + \kappa) - L \label{eq:lambda}
+\end{align}
+Next, the weights calculation step creates three weight parameters: one for the first sigma point vector of means, one the for first sigma point vector of the covariance, and another for the rest. \\
+The parameter $\beta$ is introduced to partially minimize the higher order errors in the covariance estimate. Research \cite{UKF_smoothing} suggests that $\beta$ = 2 will cancel one of the second order error terms, under the assumption of a scalar, Gaussian prior distribution. Until further testing into our specific nonlinear function (the h function) can be done, our script agrees with $\beta$ = 2.
+\begin{align}
+    W_0^{(m)} &= \frac{\lambda}{L + \lambda} \label{eq:w0_m}\\
+    W_0^{(c)} &= \frac{\lambda}{L + \lambda} + (1 - \alpha^2 + \beta) \label{eq:w0_c}\\
+    W_i^{(m)} &= W_i^{(c)} = \frac{1}{2(L + \lambda)},~~~ i = 1,~...,~2L \label{eq:w1}
+\end{align}
+Within the Python script, the weight parameter given by Equation \ref{eq:w0_m} is called $w0\_m$, the one given by Equation \ref{eq:w0_c} is called $w0\_c$, and the one given by Equation \ref{eq:w1} is called $w1$.
+
+\subsection{Sigma Points Calculation}
+\subsubsection{Understanding Gaussians and Sigma Points}
+Firstly, we introduce the concept of sigma points in Gaussian functions. Gaussian functions represent the probability density of a normally distributed random variable. In our system, our potential state space values, which will be off from our measurements by some random noise, are what we want to estimate probabilistically. The sigma points are a representative sampling of the mean and covariance of the system, being calculated using the reverse process in which the covariance itself is calculated. This allows for efficient transferal of information through our nonlinear function into the measurement space.
+\subsubsection{Weighting and Computation}
+The following forms a matrix $\X$ of $2L + 1$ sigma vectors $\X_i$ scattered around the mean. These guesses are dependant upon our scaling factor and help to estimate the actual mean of the system. More sigma points can be generated if desired at the cost of computational power; $2L + 1$ points walks the line between accuracy and efficiency. 
+\begin{align}
+    \chi_0 &= \hat{\x} \label{eq:chi_0}\\
+    \chi_i &= \hat{\x} + \left( \sqrt{(L + \lambda) \Px}\right)_i ~~~~~~ i = 1,~...,~L \\
+    \chi_i &= \hat{\x} - \left( \sqrt{(L + \lambda) \Px}\right)_{i-L} ~~~ i = L+1,~...,~2L
+\end{align}
+As seen in Equation \ref{eq:chi_0}, the first column of the matrix $\X$ is the unchanged means. The matrix $\X$ is called ``sigmaPoints'' within the Python UKF script. 
+
+\subsection{Prediction Step}
+\subsubsection{EOMs}
+First, pass the sigma points through the F function (which are the EOMs--the equations of motion. These equations use the quaternion, inertia constants, and the angular velocity/acceleration of the satellite and reaction wheels to describe our system dynamics). This propagation gives us a physics-based estimate of how our systems changes from the last step (k - 1) to the current one (k) over a certain time step. 
+\begin{align}
+    \chivec_{k|k-1}^{x} = \F(\chivec_{k-1}^{x}, \chivec_{k-1}^{v}) \label{eq:eoms}
+\end{align}
+The transformed sigma points are referred to as ``f'' in the Python script. Further, the EOMs implementation also take the reaction wheel speeds of our current and last step and different inertia measurements as control vector parameters.
+
+\subsubsection{Predicted Means}
+This step calculates an approximate mean of predicted sigma points in the state space by taking a weighted sum. Combining the sigma points in this manner gives us a best (physics-based) guess for the overall mean of the system, but it is in the wrong frame of reference compared to our sensors. 
+\begin{align}
+    \hat{\x}_k^{-} = \sum_{i = 0}^{2L} W_i^{(m)} \chi^{x}_{i, k|k-1} \label{eq:predMeans}
+\end{align}
+This is referred to as ``predMeans'' within the Python script.
+
+\subsubsection{Predicted Covariance}
+This step calculates the covariance of the predicted sigma points in state space by a weighted summation and then by adding in the process noise matrix $Q$. $Q$ is a constant covariance noise that represents how reliable our physics model is. For example, if our model is unpredictable and not changing smoothly, then $Q$ will have a larger value. 
+\begin{align}
+    \Cov_k^{-} = \sum_{i = 0}^{2L} W_{i}^{(c)} \left[ \chi^{x}_{i, k|k-1} - \hat{\x}_k^{-} \right] \left[ \chi^{x}_{i, k|k-1} - \hat{\x}_k^{-} \right]^{T} + Q \label{eq:predCov}
+\end{align}
+This is referred to as ``predCov'' within the Python script.
+
+\subsection{Nonlinear Transformation}
+\subsubsection{H Function}
+First, pass predicted sigma points (f) through the h function, which is a non linear transformation function. It uses the magnetic field with respect to the earth and rotation matrices to transform them into measurement space (the frame of reference of our satellite). This orientation with respect to the CloverSat has dimensionality of L - 1, because the first element of the quaternion is removed. This step is vital so that our prediction is in the same frame of reference as our sensors and can be compared as such. 
+\begin{align}
+    \Y_{k|k-1} = \H(\chivec_{k-1}^{x}, \chivec_{k-1}^{n}) \label{eq:hfunc}
+\end{align}
+The transformed sigma points are referred to as ``h'' in the Python script. Further, the h func implementation takes the true B field of the satellite with respect to the earth as a control vector parameter.
+
+\subsubsection{Means in Measurement}
+This step calculates an approximate mean of transformed sigma points in the measurement space by taking a weighted sum of the points. This combination of the sigma points is the best estimate of our system and is ready to be compared to the actual sensor values. 
+\begin{align}
+    \hat{\y}_k^{-} = \sum_{i = 0}^{2L} W_i^{(m)} \Y_{i, k|k-1} \label{eq:mesMeans}
+\end{align}
+This is referred to as ``mesMeans'' within the Python script.
+
+\subsubsection{Covariance in Measurement}
+This step calculates the covariance of the transformed sigma points in measurement space by a weighted summation and then by adding in the measurement noise matrix $R$. $R$ represents how reliable our sensor input is; it can be found from the manufacturer. 
+\begin{align}
+    \Cov_{\tilde{\y}_k\tilde{\y}_k} = \sum_{i = 0}^{2L} W_{i}^{(c)} \left[ \Y_{i, k|k-1} - \hat{\y}_k^{-} \right] \left[ \Y_{i, k|k-1} - \hat{\y}_k^{-} \right]^{T} + R \label{eq:mesCov}
+\end{align}
+This is referred to as ``mesCov'' within the Python script.
+
+\subsection{Measurement Update}
+\subsection{Cross Covariance}
+The following finds the correlation between predicted and measurement values, or the cross covariance matrix. It finds a weighted sum that compares the different sets of sigma points and our predicted/measurement means. 
+\begin{align}
+    \Cov_{\x_k\y_k} = \sum_{i = 0}^{2L} W_{i}^{(c)} \left[ \chi^{x}_{i, k|k-1} - \hat{\x}_k^{-} \right] \left[ \Y_{i, k|k-1} - \hat{\y}_k^{-}  \right]^{T} \label{eq:crossCov}
+\end{align}
+This is referred to as ``crossCov'' within the Python script.
+
+\subsection{Kalman Gain}
+ This step calculates the kalman gain by comparing the cross covariance and inverted covariance in measurement. It represents how much we trust our sensors versus our physics prediction. It is used as a weighting factor: if $\mathcal{K}$ is large, then more emphasis is placed on our sensor data. If $\mathcal{K}$ is small, then our final estimates will be impaced by our our physics model more.  
+ \begin{align}
+    \mathcal{K} = \Cov_{\x_k\y_k} \Cov_{\tilde{\y}_k\tilde{\y}_k}^{-1} \label{eq:kalman}
+\end{align}
+This is referred to ``kalman'' within the Python script. 
+
+\subsection{Means Update}
+Finally, we can update our state estimate using a combination of our predicted means in state and measurement space and our sensor data. $\y_k$ represents the data input from our sensors.
+Note that this equation explains why our predicted means were converted into measurement space: so that they can be compared to our sensor data. If they are very similar (meaning our sensors and physics model agree), then nothing is subtracted. If they are different, than the Kalman gain determines which one to trust more. 
+ \begin{align}
+    \hat{\x}_k = \hat{\x}_k^{-} - \mathcal{K} (\y_k - \hat{\y}_k^{-} ) \label{eq:finalMeans}
+\end{align}
+This is referred to ``means'' within the Python script. We also normalize our quaternion (the first four elements of the state) in our code after this calculation to reduce small calculation errors from accumulating over time. 
+
+\subsubsection{Covariance Update}
+The final covariance estimate of our state is determined by subtracting the measurement covariance (weighted by the kalman gain) from the predicted covariance. This serves as our best guess of the uncertainty of our system at the end of our time step.
+\begin{align}
+    \Cov_k = \Cov_k^{-} - \mathcal{K} \Cov_{\tilde{\y}_k\tilde{\y}_k} \mathcal{K}^{T} \label{eq:finalCov}
+\end{align}
+This is referred to as ``cov'' within the Python script.
+
+\section{Conclusion}
+The preceding equations yield an estimate of $\hat{\x}$ and $\Cov_x$ that can be acted upon and passed through the UKF upon the next time step. The Unscented Kalman Filter provides a state estimation method that is more suitable for the non-linear system of our satellite, less sensitive to varied initial conditions (like the detumbling phase), and more efficient computationally. It forms a robust, accurate, and fast backbone for the rest of IrishSat's Attitude Determination and Control System. 
+
+\nocite{*}
+\setcitestyle{numbers}
+\bibliography{References.bib} 
+
+
+\end{document}
