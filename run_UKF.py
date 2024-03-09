@@ -7,12 +7,12 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 
 TODO:
     Hall sensor reading function: COMPLETED? Clean up + document motor_interface
-    are motor scripts (simple something) and results of integration testing updated to github?
+    add simple motor scripts to github (henry)
+    FINE TUNE R AND Q FOR 1D TEST
+    
     find freshman who wants to learn UKF
-    add ukf latex to github
     big latex adcs document???
 
-    find correct values of q and r noise for larger banquet test (check out latex presentation)
     add to ukf latex documentation: testing cases/results, R and Q research/results, more explanation
     update EOMs to 4 reaction wheels (and gps data...?)
     interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
@@ -98,7 +98,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     # find absolute path to text file
     script_path = os.path.abspath(__file__)
     script_dir = os.path.split(script_path)[0]
-    abs_file_path = os.path.join(script_dir, filename)    
+    abs_file_path = os.path.join(script_dir, filename)
     f = open(abs_file_path, "r")
     
     data = f.readline()
@@ -201,6 +201,27 @@ if __name__ == "__main__":
     # q: process noise (n x n)
     noiseMagnitude = 0.005
     q = np.diag([noiseMagnitude] * n)
+
+
+    noise_mag = 0.85
+    #r = np.diag([noise_mag] * dim_mes)
+    mag = 0.1 
+    omg = [1,3,1]
+    
+    r = [[mag,0,0,0,0,0],
+	 [0,mag,0,0,0,0],
+	 [0,0,mag,0,0,0],
+	 [0,0,0,omg[0],0,0],
+	 [0,0,0,0,omg[1],0],
+	 [0,0,0,0,0,omg[2]]]
+    
+    q = [[1e-1,0,0,0,0,0,0],
+	 [0,1e-1,0,0,0,0,0],
+	 [0,0,1e-1,0,0,0,0],
+	 [0,0,0,1e-1,0,0,0],
+	 [0,0,0,0,5e4,0,0],
+	 [0,0,0,0,0,5e4,0],
+	 [0,0,0,0,0,0,5e4]]
 
     
     # filename = "sensor_data_2.txt"

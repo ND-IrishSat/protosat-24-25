@@ -12,14 +12,14 @@ import numpy as np
 from pygame.locals import * 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from run_UKF import *
-from PySOL.wmm import *
-# from adc_pd_controller import pd_controller
-import UKF_algorithm
+from ukf.PySOL.wmm import *
+from ukf.simulator import *
+# from adc.adc_pd_controller import pd_controller_numpy
+from ukf.UKF_algorithm import *
 import time
-from happy_sensors import get_imu_data, calibrate
-# from NewMotorTest import Motor
-from hfunc import *
+from interface.happy_sensors import get_imu_data, calibrate
+# from interface.motor_interface import Motor
+from ukf.hfunc import *
 
 MAX_PWM = 65535 # pwm val that gives max speed according to Tim
 MAX_RPM = 8100 # according to Tim
@@ -133,7 +133,7 @@ def main(target=[1,0,0,0]):
         data[5] = angular_vel[2]
 
         # Run UKF
-        state, cov = UKF_algorithm.UKF(state, cov, q, r, B_true, reaction_speeds, old_reaction_speeds, data)
+        state, cov = UKF(state, cov, q, r, B_true, reaction_speeds, old_reaction_speeds, data)
         print('state: ',state)
         print('')
         

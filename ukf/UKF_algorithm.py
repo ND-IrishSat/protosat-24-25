@@ -38,10 +38,11 @@ from typing import Optional
 def sigma(means, cov, n, scaling):
     '''
     sigma
-        creates sigma point matrix based on formula that represents distribution of means and cov
+        creates sigma point matrix that is a representative sampling of the mean and covariance of the system (eq 5-7)
+        this allows for efficient transferal of information through our nonlinear function as we estimate our measurement space
 
     @params
-        means: mean of gaussian of estimated states so far (maybe???). Also first column of sigma matrix (1 x n)
+        means: mean of estimated states so far. Also first column of sigma matrix (eq 5) (1 x n)
         cov: covariance matrix of state (n x n)
         n: dimensionality of model
         scaling: how far from mean we distribute our points, used in sigma point formula
@@ -175,7 +176,7 @@ def quaternionMultiply(a, b):
 def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n):
     '''
     generatePredMeans
-        generate mean after passing sigma point distribution through a transformation function using equation 3b)
+        generate mean (eq 9) after passing sigma point distribution through a transformation function (eq 8)
         also stores and returns all transformed sigma points
             
     @params
@@ -226,12 +227,12 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
 def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
     '''
     generateMesMeans
-        generate mean after passing sigma point distribution through a transformation function using equation 4b)
+        generate mean (eq 12) after passing sigma point distribution through non-linear transformation function (eq 11)
         also stores and returns all transformed sigma points
             
     @params
         func: transformation function we are passing sigma points through (H_func)
-        controlVector: additional input needed for func (gps_data or q_wmm)
+        controlVector: additional input needed for func: true magnetic field (1 x 3)
         sigmaPoints: sigma point matrix (2xn+1 x n)
         w0, w1: weight for first and all other sigma points, respectively
         n: dimensionality of model 
@@ -272,8 +273,7 @@ def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality
 def generateCov(means, transformedSigma, w0, w1, n, noise):
     '''
     generateCov
-        generates covariance matrix from equation 3c) and 4c) based on means and sigma points
-        uncoment noise addition once r and q are figured out
+        generates covariance matrix from eq 10 and 13 based on means and sigma points
         
     @params
         means: means in state or measurement space (1 x n or 1 x m)
@@ -318,7 +318,7 @@ def generateCov(means, transformedSigma, w0, w1, n, noise):
 def generateCrossCov(predMeans, mesMeans, f, h, w0, w1, n):
     '''
     generateCrossCov
-        use equation 5a) to generate cross covariance between our means and sigma points in our state and measurement space
+        use equation 14 to generate cross covariance between our means and sigma points in our state and measurement space
 
     @params
         predMeans: predicted means based on EOMs (1 x n)
@@ -390,20 +390,20 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     k = 0
     # beta minimizes higher order errors in covariance estimation
     beta = 2
-    # equation ??
+    # eq 1: scaling factor lambda
     scaling = alpha * alpha * (n + k) - n
 
-    # 1) sigma point generation
-    sigmaPoints = sigma(means, cov, n, scaling)
-    
-
-    # 2) weights calculation
+    # eq 2-4: weights calculation
     w0_m = scaling / (n + scaling) # weight for first value for means
     w0_c = scaling / (n + scaling) + (1 - alpha * alpha + beta) # weight for first value for covariance
     w1 = 1 / (2 * (n + scaling)) # weight for all other values
 
 
-    # 3) predictive step
+    # eq 5-7: sigma point generation
+    sigmaPoints = sigma(means, cov, n, scaling)
+
+
+    # prediction step
     # intertia constants from juwan
     I_body = np.array([[46535.388, 257.834, 536.12],
               [257.834, 47934.771, -710.058],
@@ -414,19 +414,19 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     # intialize 1D EOMs using intertia measurements of cubeSat
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
-    # 3a) and 3b): pass sigma points through EOMs (f) and generate mean in state space
+    # eq 8-9: pass sigma points through EOMs (f) and generate mean in state space
     predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     
-    # 3c) generate predicted covariance + process noise q
+    # eq 10: generate predicted covariance + process noise q
     predCov = generateCov(predMeans, f, w0_c, w1, n, q)
 
     # print("PRED COVID: ", predCov)
 
 
-    # finds true B field based on gps data
     if len(gps_data) == 4:
+        # finds true B field based on gps data
         Bfield = bfield_calc(gps_data)
     else: 
         # for ideal tests only, use gps_data as b field vector and skip calculating it from the gps data
@@ -435,39 +435,35 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
 
     # print("BFIELD: ", Bfield)
 
-    # 4) non linear transformation
-    # 4a) and 4b): non linear transformation of predicted sigma points f into measurement space (h), and mean generation
+    # non linear transformation
+    # eq 11-12: non linear transformation of predicted sigma points f into measurement space (h), and mean generation
     mesMeans, h = generateMesMeans(hfunc, Bfield, f, w0_m, w1, n, m)
 
     # print("MEAN IN MEASUREMENT: ", mesMeans)
 
-    # 4c) measurement covariance + measurement noise r
+    # eq 13: measurement covariance + measurement noise r
     mesCov = generateCov(mesMeans, h, w0_c, w1, n, r)
 
 
-    # 5) measurement updates
-    # 5a) cross covariance: compare our different sets of sigma points and our predicted/measurement means
+    # measurement updates
+    # eq 14: cross covariance. compare our different sets of sigma points and our predicted/measurement means
     crossCov = generateCrossCov(predMeans, mesMeans, f, h, w0_c, w1, n)
 
     # print("covariance in measurement: ", mesCov)
     # print("cross covariance: ", crossCov)
 
-    # 5b) calculate kalman gain (n x m) by multiplying cross covariance matrix and transposed predicted covariance
+    # eq 15: calculate kalman gain (n x m) by multiplying cross covariance matrix and transposed predicted covariance
     kalman = np.matmul(crossCov, np.linalg.inv(mesCov))
 
     # print("KALMAN: ", kalman)
 
-    # 5c) updated final mean = predicted + kalman(measurement data - predicted means in measurement space)
+    # eq 16: updated final mean = predicted + kalman(measurement data - predicted means in measurement space)
     means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
 
     # normalize the quaternion to reduce small calculation errors over time
     means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
 
-    # other cov update equation that i'm pretty sure is wrong
-    # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-    # cov = np.matmul(np.subtract(np.identity(n), np.matmul(kalman, np.transpose(crossCov))), predCov)
-
-    # 5d) updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
+    # eq 17: updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
     cov = np.subtract(predCov, np.matmul(np.matmul(kalman, mesCov), kalman.transpose()))
 
 
