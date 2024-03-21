@@ -52,23 +52,28 @@ def main(target=[1,0,0,0]):
 
     dt = .1
     # r: measurement noise (m x m)
-    noise_mag = 0
-    r = np.diag([noise_mag] * dim_mes)
+    noise_mag = .1
+    # r = np.diag([noise_mag] * dim_mes)
+    r = np.array([noise_mag, 0, 0, 0, 0, 0],
+                 [0, noise_mag, 0, 0, 0, 0],
+                 [0, 0, noise_mag, 0, 0, 0],
+                 [0, 0, 0, noise_mag, 0, 0],
+                 [0, 0, 0, 0, noise_mag, 0],
+                 [0, 0, 0, 0, 0, noise_mag])
+
     # q: process noise (n x n)
     # should depend on dt
-    noise_mag = 0
-    q = np.diag([noise_mag] * dim)
-    q = np.array([[dt, dt/4, dt/4, 3*dt/4, 0, 0, 0],
-                [dt/4, dt, dt/4, 3*dt/4, 0, 0, 0],
-                [dt/4, dt/4, dt, 3*dt/4, 0, 0, 0],
-                [3*dt/4, 3*dt/4, 3*dt/4, dt, 0, 0, 0],
-                [0, 0, 0, 0, dt, dt/3, dt/3],
-                [0, 0, 0, 0, dt/3, dt, dt/3],
-                [0, 0, 0, 0, dt/3, dt/3, dt]
+    noise_mag = .5
+    # q = np.diag([noise_mag] * dim)
+    q = np.array([[dt, 3*dt/4, dt/2, dt/4, 0, 0, 0],
+                [3*dt/4, dt, 3*dt/4, dt/2, 0, 0, 0],
+                [dt/2, 3*dt/4, dt, 3*dt/4, 0, 0, 0],
+                [dt/4, dt/2, 3*dt/4, dt, 0, 0, 0],
+                [0, 0, 0, 0, dt, 2*dt/3, dt/3],
+                [0, 0, 0, 0, 2*dt/3, dt, 2*dt/3],
+                [0, 0, 0, 0, dt/3, 2*dt/3, dt]
     ])
-
-
-         
+    q = q * noise_mag
 
 
     # current lat/long/altitude, which doesn't change for this test
