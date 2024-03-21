@@ -20,13 +20,14 @@ import time
 from interface.happy_sensors import get_imu_data, calibrate
 # from interface.motor_interface import Motor
 from ukf.hfunc import *
+from interface.motors import *
+from interface.hall import checkHall
 
-MAX_PWM = 65535 # pwm val that gives max speed according to Tim
+MAX_PWM = 65535 # maximum PWM value in duty cycles
 MAX_RPM = 8100 # according to Tim
 
 
 def main(target=[1,0,0,0]):
-
     '''NOTE
         - HALL SENSORS: need method to convert Hall sensor outputs (number & time) to 4 reaction_speeds
         - things to take out for UKF only test: motor initialization, reaction wheel update, pd section (127-146)
@@ -36,6 +37,22 @@ def main(target=[1,0,0,0]):
         - What is max RPM (8100 or 8800?)
     '''
 
+    # Initialize motor classes (for each of 3 reactions wheels)
+    x = Motor(pinX,dirX,hallX,default,default)
+    y = Motor(pinY,dirY,hallY,default,default)
+    z = Motor(pinZ,dirZ,hallZ,default,default)
+
+    # More i2c initialization
+    i2c_bus = busio.I2C(SCL, SDA)
+    pca = PCA9685(i2c_bus)
+    pca.frequency = 1500
+
+    # GPIO setup
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(enable,GPIO.OUT)
+    GPIO.output(enable,True)
+
+    # Dimension math
     dim = 7
     dim_mes = dim - 1
 
@@ -109,8 +126,11 @@ def main(target=[1,0,0,0]):
         #old_reaction_speeds = reaction_speeds
         old_reaction_speeds = np.array([0, 0, 0])
         # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
-        # TODO: data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
-        #reaction_speeds = get_hall_data() 
+        # data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
+        x_speed = checkHall(hallList[0]) 
+        y_speed = checkHall(hallList[0])
+        z_speed = checkHall(hallList[0])
+        reaction_speeds = 
 
         # Temporary solution instead of function: get reaction wheel speeds from pwm input
         # we basically know how fast they'll be spinning based on what we told it last cycle
@@ -175,6 +195,8 @@ def main(target=[1,0,0,0]):
 
         # Increment iteration count
         i += 1
+
+    GPIO.cleanup()
 
 
 if __name__ == "__main__":
