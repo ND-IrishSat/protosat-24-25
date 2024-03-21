@@ -138,7 +138,7 @@ def main(target=[1,0,0,0]):
         print('')
         
         # Visualize if you want
-        game_visualize(np.array([state[:4]]), i)
+        game_visualize(np.array([state[:4]]), i) # not working on Pi 0, but working on  Pi 4
         # print current quaternion estimate
         # print("Current state: ", state[:4])
 
