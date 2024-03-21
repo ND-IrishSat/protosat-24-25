@@ -1,6 +1,7 @@
 import time
 from mpu9250_jmdev.registers import *
 from mpu9250_jmdev.mpu_9250 import MPU9250
+import math
 
 mpu = MPU9250(
         address_ak = AK8963_ADDRESS,
@@ -30,7 +31,10 @@ def calibrate():
 
 def get_imu_data():
     data = [*mpu.readMagnetometerMaster(),
-            *mpu.readGyroscopeMaster()]
+            *convertToRad(mpu.readGyroscopeMaster())]
     print(data)
     
     return data
+
+def convertToRad(degrees):
+    return [x * math.pi / 180 for x in degrees]

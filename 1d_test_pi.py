@@ -66,26 +66,30 @@ def main(target=[1,0,0,0]):
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
     cov = np.identity(dim) * 5e-10
 
-    # Noises = 0 for 1D test. when we test with hall sensors, ask micheal about which values to test
-    noise_mag = 0.85
-    #r = np.diag([noise_mag] * dim_mes)
-    mag = 0.1 
-    omg = [1,3,1]
-    
-    r = [[mag,0,0,0,0,0],
-	 [0,mag,0,0,0,0],
-	 [0,0,mag,0,0,0],
-	 [0,0,0,omg[0],0,0],
-	 [0,0,0,0,omg[1],0],
-	 [0,0,0,0,0,omg[2]]]
-    
-    q = [[1e-1,0,0,0,0,0,0],
-	 [0,1e-1,0,0,0,0,0],
-	 [0,0,1e-1,0,0,0,0],
-	 [0,0,0,1e-1,0,0,0],
-	 [0,0,0,0,5e4,0,0],
-	 [0,0,0,0,0,5e4,0],
-	 [0,0,0,0,0,0,5e4]]
+    dt = .1
+    # r: measurement noise (m x m)
+    noise_mag = .1
+    # r = np.diag([noise_mag] * dim_mes)
+    r = np.array([noise_mag, 0, 0, 0, 0, 0],
+                 [0, noise_mag, 0, 0, 0, 0],
+                 [0, 0, noise_mag, 0, 0, 0],
+                 [0, 0, 0, noise_mag, 0, 0],
+                 [0, 0, 0, 0, noise_mag, 0],
+                 [0, 0, 0, 0, 0, noise_mag])
+
+    # q: process noise (n x n)
+    # should depend on dt
+    noise_mag = .5
+    # q = np.diag([noise_mag] * dim)
+    q = np.array([[dt, 3*dt/4, dt/2, dt/4, 0, 0, 0],
+                [3*dt/4, dt, 3*dt/4, dt/2, 0, 0, 0],
+                [dt/2, 3*dt/4, dt, 3*dt/4, 0, 0, 0],
+                [dt/4, dt/2, 3*dt/4, dt, 0, 0, 0],
+                [0, 0, 0, 0, dt, 2*dt/3, dt/3],
+                [0, 0, 0, 0, 2*dt/3, dt, 2*dt/3],
+                [0, 0, 0, 0, dt/3, 2*dt/3, dt]
+    ])
+    q = q * noise_mag
     
     # current lat/long/altitude, which doesn't change for this test
     curr_date_time= np.array([2024.1266])
