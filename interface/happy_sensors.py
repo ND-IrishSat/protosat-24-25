@@ -29,8 +29,7 @@ def calibrate():
 
 
 def get_imu_data():
-    data = [*mpu.readAccelerometerMaster(),  
-            *mpu.readGyroscopeMaster(), 
+    data = [*mpu.readGyroscopeMaster(), 
             *mpu.readMagnetometerMaster()]
     print(data)
     
