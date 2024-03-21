@@ -1,13 +1,14 @@
 import RPi.GPIO as GPIO
 import numpy as np
 from sklearn.linear_model import LinearRegression
+import time
 
 # constants
 k = 65535
 c = 9100
 hallList = [13,8,16] # pin numbers for hall sensors [x,y,z]
 
-# io setup
+# io setup (pins)
 GPIO.setmode(GPIO.BCM)
 GPIO.setup(hallList[0],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(hallList[1],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
@@ -18,8 +19,8 @@ GPIO.add_event_detect(hallList[2], GPIO.FALLING)
 
 # check motor speed (in duty cycles)
 def checkHall(sensor): 
-    count = 0
-    data = []
+	count = 0
+	data = []
 	while count < 10:
 		if GPIO.event_detected(sensor):
 			data.append(time.perf_counter())
@@ -28,9 +29,10 @@ def checkHall(sensor):
 	c = np.arange(10).reshape(-1,1)
 	model = LinearRegression().fit(c,t)
 	frequency = 1/model.coef_
-    speed += ((frequency * 15) / c) * k 
+	speed += ((frequency * 15) / c) * k 
+
     # return speed (unit = duty cycles)
-    return speed
+	return speed
 
 # example call
 # res = checkHall(hallList[0])

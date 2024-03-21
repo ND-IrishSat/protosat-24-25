@@ -24,6 +24,7 @@ dirZ = 6
 hallX = [13,19,26]
 hallY = [8,7,1]
 hallZ = [16,20,21]
+maxSpeed = 65535
 
 #GPIO setup
 GPIO.setmode(GPIO.BCM)
@@ -54,14 +55,14 @@ class Motor():
     def checkHall(self): #check motor speed
         count = 0
         data = []
-    	while count < 10:
-    		if GPIO.event_detected(self.hallList[0]):
-    			data.append(time.perf_counter())
-    			count += 1
-    	t = np.array(data)
-    	c = np.arange(10).reshape(-1,1)
-    	model = LinearRegression().fit(c,t)
-    	frequency = 1/model.coef_
+        while count < 10:
+            if GPIO.event_detected(self.hallList[0]):
+                data.append(time.perf_counter())
+                count += 1
+        t = np.array(data)
+        c = np.arange(10).reshape(-1,1)
+        model = LinearRegression().fit(c,t)
+        frequency = 1/model.coef_
         finAveSpeed += ((frequency * 15) / c) * k
         return finAveSpeed
 
@@ -81,8 +82,8 @@ class Motor():
         else:
             self.setSpeed(self.target())
 
-    def convertToRPM(self): #converts duty cycle to RPM
-        return (self.current / k) * maxSpeed
+    # def convertToRPM(self): #converts duty cycle to RPM
+    #     return (self.current / k) * maxSpeed
 
 x = Motor(pinX,dirX,hallX,default,default)
 y = Motor(pinY,dirY,hallY,default,default)
