@@ -119,15 +119,17 @@ def main(target=[1,0,0,0]):
         # TODO: is this pwm[3] or pwm[2]???
         # reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(3)])
 
-        # Get current imu data (accel*3, gyro*3, mag*3)
+        # Get current imu data (mag*3, gyro*3)
         imu_data = get_imu_data()
-        angular_vel = imu_data[:3]
+
+        # angular velocity comes from gyro
+        angular_vel = imu_data[3:]
 
         # Data array to pass into
         data = [0] * dim_mes
-        data[0] = imu_data[6]
-        data[1] = imu_data[7]
-        data[2] = imu_data[8]
+        data[0] = imu_data[0]
+        data[1] = imu_data[1]
+        data[2] = imu_data[2]
         data[3] = angular_vel[0]
         data[4] = angular_vel[1]
         data[5] = angular_vel[2]

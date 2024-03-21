@@ -50,11 +50,26 @@ def main(target=[1,0,0,0]):
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
     cov = np.identity(dim) * 5e-10
 
-    # Noises = 0 for 1D test. when we test with hall sensors, ask micheal about which values to test
+    dt = .1
+    # r: measurement noise (m x m)
     noise_mag = 0
     r = np.diag([noise_mag] * dim_mes)
+    # q: process noise (n x n)
+    # should depend on dt
     noise_mag = 0
     q = np.diag([noise_mag] * dim)
+    q = np.array([[dt, dt/4, dt/4, 3*dt/4, 0, 0, 0],
+                [dt/4, dt, dt/4, 3*dt/4, 0, 0, 0],
+                [dt/4, dt/4, dt, 3*dt/4, 0, 0, 0],
+                [3*dt/4, 3*dt/4, 3*dt/4, dt, 0, 0, 0],
+                [0, 0, 0, 0, dt, dt/3, dt/3],
+                [0, 0, 0, 0, dt/3, dt, dt/3],
+                [0, 0, 0, 0, dt/3, dt/3, dt]
+    ])
+
+
+         
+
 
     # current lat/long/altitude, which doesn't change for this test
     curr_date_time= np.array([2024.1266])
@@ -104,15 +119,16 @@ def main(target=[1,0,0,0]):
         # TODO: is this pwm[3] or pwm[2]???
         # reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(3)])
 
-        # Get current imu data (accel*3, gyro*3, mag*3)
+        # Get current imu data (mag*3, gyro*3)
         imu_data = get_imu_data()
-        angular_vel = imu_data[:3]
+        # angular velocity comes from gyro
+        angular_vel = imu_data[3:]
 
         # Data array to pass into
         data = [0] * dim_mes
-        data[0] = imu_data[6]
-        data[1] = imu_data[7]
-        data[2] = imu_data[8]
+        data[0] = imu_data[0]
+        data[1] = imu_data[1]
+        data[2] = imu_data[2]
         data[3] = angular_vel[0]
         data[4] = angular_vel[1]
         data[5] = angular_vel[2]

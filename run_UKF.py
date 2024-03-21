@@ -7,14 +7,15 @@ Runs IrishSat UKF on generated or real-time data and simulates CubeSat using pyg
 
 TODO:
     Hall sensor reading function: COMPLETED? Clean up + document motor_interface
-    add simple motor scripts to github (henry)
+    add simple motor scripts to github (henry/Tim)
     FINE TUNE R AND Q FOR 1D TEST
     
     find freshman who wants to learn UKF
     big latex adcs document???
 
+    for final banquet: don't use gps. instead, pre-generate magnetic fields for known simulated flight path for correct time step
     add to ukf latex documentation: testing cases/results, R and Q research/results, more explanation
-    update EOMs to 4 reaction wheels (and gps data...?)
+    update EOMs to 4 reaction wheels
     interface with gps sensor, find what frame it gives us (ECEF or ECI?) and units?
 '''
 
