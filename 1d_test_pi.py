@@ -14,17 +14,17 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from ukf.PySOL.wmm import *
 from ukf.simulator import *
-# from adc.adc_pd_controller import pd_controller_numpy
+from adc.adc_pd_controller import pd_controller_numpy
 from ukf.UKF_algorithm import *
 import time
 from interface.happy_sensors import get_imu_data, calibrate
-# from interface.motor_interface import Motor
 from ukf.hfunc import *
 from interface.motors import *
 from interface.hall import checkHall
 
+
 MAX_PWM = 65535 # maximum PWM value in duty cycles
-MAX_RPM = 8100 # according to Tim
+# MAX_RPM = 8100 # according to Tim
 
 
 def main(target=[1,0,0,0]):
@@ -78,7 +78,7 @@ def main(target=[1,0,0,0]):
                  [0, 0, 0, 0, 0, noise_mag])
 
     # q: process noise (n x n)
-    # should depend on dt
+    # Should depend on dt
     noise_mag = .5
     # q = np.diag([noise_mag] * dim)
     q = np.array([[dt, 3*dt/4, dt/2, dt/4, 0, 0, 0],
@@ -91,24 +91,25 @@ def main(target=[1,0,0,0]):
     ])
     q = q * noise_mag
     
-    # current lat/long/altitude, which doesn't change for this test
+    # Current lat/long/altitude, which doesn't change for this test
     curr_date_time= np.array([2024.1266])
     lat = np.array([41.675])
     long = np.array([-86.252])
-    alt = np.array([.225552]) # 740 feet (this is in km!!)
+    alt = np.array([.225552]) # 740 feet (km)
+
     # calculate true B field at stenson-remick
     B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
-    # set negative of last element to match magnetometer
+    # Set negative of last element to match magnetometer
     # Convert to North East Down to North East Up, matching X, Y, Z reference frame of magnetometer
     B_true[2] *= -1
 
-    # inialize current step and last step reaction wheel speeds
-    # for this test they're 1x3: x, y, skew wheels
+    # Initialize current step and last step reaction wheel speeds
+    # For this test they're 1x3: x, y, skew (z) wheels
     old_reaction_speeds = np.array([0,0,0])
     reaction_speeds = np.array([0,0,0])
 
-    # initialize pwm speeds
+    # Initialize pwm speeds
     pwm = np.array([0,0,0,0])
 
     # Infinite loop to run until you kill it
@@ -117,27 +118,17 @@ def main(target=[1,0,0,0]):
         # Starting time for loop 
         start_time = time.time()
 
-        # set pins to control reaction wheel motors
-        # xMotorPin = 10
-        # yMotorPin = 11
-        # skewMotorPin = 12
-
-        # # Initialize Motor class from Tim's script to read and write to motors
-        # x = Motor(xMotorPin,24,[1,2,3],0,0)
-        # y = Motor(yMotorPin,24,[1,2,3],0,0)
-        # skew = Motor(skewMotorPin,24,[1,2,3],0,0) # pwm(2) is for z
-        
         #old_reaction_speeds = reaction_speeds
         old_reaction_speeds = np.array([0, 0, 0])
-        # Get reaction speeds from Hall sensors? write function to convert frequency/time of Hall sensor script into RPM!
-        # data will be in duty cycles (write function to convert from time & frequency to duty cycles/RPM?)
-        x_speed = checkHall(hallList[0]) 
-        y_speed = checkHall(hallList[0])
-        z_speed = checkHall(hallList[0])
-        reaction_speeds = 
+
+        # Get reaction speeds (in duty cycles) from Hall sensors
+        x_speed = checkHall(Motor.hallList[0]) 
+        y_speed = checkHall(Motor.hallList[1])
+        z_speed = checkHall(Motor.hallList[2])
+        reaction_speeds = [*x_speed, *y_speed, *z_speed]
 
         # Temporary solution instead of function: get reaction wheel speeds from pwm input
-        # we basically know how fast they'll be spinning based on what we told it last cycle
+        # We basically know how fast they'll be spinning based on what we told it last cycle
         # Scale from pwm to rad/s
         # scale = MAX_RPM/MAX_PWM*2*np.pi/60
         # TODO: is this pwm[3] or pwm[2]???
@@ -146,7 +137,7 @@ def main(target=[1,0,0,0]):
         # Get current imu data (mag*3, gyro*3)
         imu_data = get_imu_data()
 
-        # angular velocity comes from gyro
+        # Angular velocity comes from gyro
         angular_vel = imu_data[3:]
 
         # Data array to pass into
@@ -169,25 +160,27 @@ def main(target=[1,0,0,0]):
         # print("Current state: ", state[:4])
 
         # Run PD controller
-        # curr_state = state
-        # target = [1,0,0,0]
+        curr_state = state
+        target = [1,0,0,0]
 
-        # # Sensor func to get currentangular velocity of cubesat
-        # omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
-        # # PD gains parameters
-        # kp = .05*MAX_PWM
-        # kd = .01*MAX_PWM
+        # Sensor func to get current angular velocity of cubesat
+        omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
+        # PD gains parameters
+        kp = .05*MAX_PWM
+        kd = .01*MAX_PWM
         
-        # # Run PD controller to generate output for reaction wheels
-        # pwm = pd_controller(curr_state, target, omega, kp, kd)
+        # Run PD controller to generate output for reaction wheels
+        pwm = pd_controller_numpy(curr_state, target, omega, kp, kd)
 
-        # # Set speed of each of the reaction wheels
-        # x.target = pwm(0)
-        # y.target = pwm(1)
-        # skew.target = pwm(3)
-        # x.setSpeed(x.target)
-        # y.setSpeed(y.target)
-        # skew.setSpeed(skew.target)
+        # Get the pwm signals
+        x.target = pwm(0)
+        y.target = pwm(1)
+        z.target = pwm(3)
+
+        # Check directions & alter speeds
+        x.changeSpeed()
+        y.changeSpeed()
+        z.changeSpeed()
 
         # Ending time for loop
         end_time = time.time()

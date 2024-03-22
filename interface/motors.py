@@ -7,10 +7,13 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 import random
 
+
+# Initialize
 i2c_bus = busio.I2C(SCL, SDA)
 pca = PCA9685(i2c_bus)
 pca.frequency = 1500
 
+# Constants
 k = 65535
 c = 9100
 default = 0
@@ -26,13 +29,10 @@ hallY = [8,7,1]
 hallZ = [16,20,21]
 maxSpeed = 65535
 
-#GPIO setup
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(enable,GPIO.OUT)
-GPIO.output(enable,True)
 
-
+# Motors!
 class Motor():
+    # IO setup
     def __init__(self, pin, dir, hallList, current, target):
         self.pin = pin
         self.dirPin = dir
@@ -48,11 +48,9 @@ class Motor():
         GPIO.add_event_detect(self.hallList[1], GPIO.FALLING)
         GPIO.add_event_detect(self.hallList[2], GPIO.FALLING)
 
-    def setSpeed(self,newVal): #sets speed
-        self.target = newVal
-        pca.channels[self.pin].duty_cycle = abs(self.target)
 
-    def checkHall(self): #check motor speed
+    # Check Hall sensor (motor) speed
+    def checkHall(self): 
         count = 0
         data = []
         while count < 10:
@@ -63,13 +61,24 @@ class Motor():
         c = np.arange(10).reshape(-1,1)
         model = LinearRegression().fit(c,t)
         frequency = 1/model.coef_
-        finAveSpeed += ((frequency * 15) / c) * k
-        return finAveSpeed
+        speed += ((frequency * 15) / c) * k
+        # Return the speed according to Hall sensor (duty cycles)
+        return speed
+    
 
-    def setDir(self, val): #sets direction
+    # Set the speed
+    def setSpeed(self, newVal): # sets speed
+        self.target = newVal
+        pca.channels[self.pin].duty_cycle = abs(self.target)
+
+
+    # Set the direction
+    def setDir(self, val): # sets direction
         GPIO.output(self.dir, val)
 
-    def checkDir(self): #checks direction
+
+    # Send output signal to actuators (& checks direction)
+    def changeSpeed(self):
         if self.current != self.target:
             if self.target < 0 and self.current > 0:
                 self.setSpeed(0)
@@ -81,12 +90,3 @@ class Motor():
                 self.setSpeed(self.target())
         else:
             self.setSpeed(self.target())
-
-    # def convertToRPM(self): #converts duty cycle to RPM
-    #     return (self.current / k) * maxSpeed
-
-x = Motor(pinX,dirX,hallX,default,default)
-y = Motor(pinY,dirY,hallY,default,default)
-z = Motor(pinZ,dirZ,hallZ,default,default)
-
-GPIO.cleanup()
