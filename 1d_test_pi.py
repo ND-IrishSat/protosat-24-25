@@ -29,20 +29,18 @@ MAX_PWM = 65535 # maximum PWM value in duty cycles
 
 def main(target=[1,0,0,0]):
     '''NOTE
-        - HALL SENSORS: need method to convert Hall sensor outputs (number & time) to 4 reaction_speeds
         - things to take out for UKF only test: motor initialization, reaction wheel update, pd section (127-146)
-        - What is starting state guess?
+        - What is starting state guess? read from sensors?
         - Set proper target quaternion?
         - check with patrick that we want pwm[3] instead of pwm[2]
-        - What is max RPM (8100 or 8800?)
     '''
 
-    # Initialize motor classes (for each of 3 reactions wheels)
+    # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
     x = Motor(pinX,dirX,hallX,default,default)
     y = Motor(pinY,dirY,hallY,default,default)
     z = Motor(pinZ,dirZ,hallZ,default,default)
 
-    # More i2c initialization
+    # i2c initialization
     i2c_bus = busio.I2C(SCL, SDA)
     pca = PCA9685(i2c_bus)
     pca.frequency = 1500
@@ -52,21 +50,24 @@ def main(target=[1,0,0,0]):
     GPIO.setup(enable,GPIO.OUT)
     GPIO.output(enable,True)
 
-    # Dimension math
+    # Dimension of state and measurement space
     dim = 7
     dim_mes = dim - 1
+
+    dt = 0.1
 
     # Calibrate the IMU
     success = calibrate()
     if not success:
         print("Something went wrong when calibrating & configuring!!!\n")
 
-    # Read starting state from sensors
+    # Read starting state from sensors?
     # start_data = get_imu_data()
+    
+    # initialize starting state and covariance
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
     cov = np.identity(dim) * 5e-10
 
-    dt = .1
     # r: measurement noise (m x m)
     noise_mag = .1
     # r = np.diag([noise_mag] * dim_mes)
@@ -118,21 +119,14 @@ def main(target=[1,0,0,0]):
         # Starting time for loop 
         start_time = time.time()
 
-        #old_reaction_speeds = reaction_speeds
-        old_reaction_speeds = np.array([0, 0, 0])
+        # store reaction wheel speeds of last iteration
+        old_reaction_speeds = reaction_speeds
 
         # Get reaction speeds (in duty cycles) from Hall sensors
         x_speed = checkHall(Motor.hallList[0]) 
         y_speed = checkHall(Motor.hallList[1])
         z_speed = checkHall(Motor.hallList[2])
         reaction_speeds = [*x_speed, *y_speed, *z_speed]
-
-        # Temporary solution instead of function: get reaction wheel speeds from pwm input
-        # We basically know how fast they'll be spinning based on what we told it last cycle
-        # Scale from pwm to rad/s
-        # scale = MAX_RPM/MAX_PWM*2*np.pi/60
-        # TODO: is this pwm[3] or pwm[2]???
-        # reaction_speeds = scale*np.array([pwm(0),pwm(1),pwm(3)])
 
         # Get current imu data (mag*3, gyro*3)
         imu_data = get_imu_data()
@@ -163,7 +157,7 @@ def main(target=[1,0,0,0]):
         curr_state = state
         target = [1,0,0,0]
 
-        # Sensor func to get current angular velocity of cubesat
+        # get current angular velocity of cubesat
         omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
         # PD gains parameters
         kp = .05*MAX_PWM
