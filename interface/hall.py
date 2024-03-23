@@ -1,13 +1,22 @@
+'''
+hall.py
+Authors: Tim Roberts
+
+interfaces with hall sensors, allowing us to read motor speed of reaction wheels
+
+'''
+
 import RPi.GPIO as GPIO
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import time
 
-
 # Constants
-k = 65535
 c = 9100
-hallList = [13,8,16] # pin numbers for hall sensors [x,y,z]
+# max duty cycles
+k = 65535
+# pin numbers for hall sensors [x,y,z]
+hallList = [13,8,16]
 
 
 # Check motor speed (in duty cycles)
@@ -23,6 +32,7 @@ def checkHall(sensor):
 	model = LinearRegression().fit(c,t)
 	frequency = 1/model.coef_
 	speed += ((frequency * 15) / c) * k 
+	# Return the speed according to Hall sensor (duty cycles)
 	return speed
 
 # example call
