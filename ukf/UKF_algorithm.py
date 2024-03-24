@@ -1,27 +1,29 @@
 '''
 UKF_algorithm.py
-Authors: Andrew Gaylord, Claudia Kuczun, Micheal Paulucci, Alex Casillas, Anna Arnett
-Last modified 10/7/23
+Authors: Andrew Gaylord, Claudia Kuczun, Michael Paulucci, Alex Casillas, Anna Arnett
+Last modified 3/3/24
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
-https://towardsdatascience.com/the-unscented-kalman-filter-anything-ekf-can-do-i-can-do-it-better-ce7c773cf88d
+The Unscented Kalman Filter for Nonlinear Estimation 
+Eric A. Wan and Rudolph van der Merwe 
+Oregon Graduate Institute of Science & Technology 
 
 Variables needed throughout UKF process:
-  n = dimensionality of model (10)
-  m = dimension of measurement space that excludes first 0 of quaternion (9)
-  r = noise vector for predictions (we choose this & make it) (1 x n)
-  q = noise vector for sensors (provided on data sheet for sensors) (1 x m)
-  scaling = parameter for sigma point generation (3 - n)
-  means = mean of gaussian of estimated states so far (maybe???) (1 x n)
-  cov = covariance matrix (n x n)
-  predMeans = matrix of predicted means (1 x n)
-  predCovid = matrix of predicted covariance (n x n)
-  g = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
-  h = matrix of transformed sigma points (in the measurement space) (2*n+1 x m)
-  meanInMes = means in the measurement space (1 x m)
-  covidInMes = covariance matrix of points in measurement space (m x m)
-  z = sensor data (1 x n except switched to 1 x m for some calculations)
-  kalman = kalman gain for each step (n x m)
+  n = dimensionality of model (7)
+  m = dimension of measurement space. Frame of reference of the satellite/sensors (6)
+  q: process noise covariance matrix (n x n)
+  r: measurement noise covariance matrix (m x m)
+  scaling = parameter for sigma point generation (equal to alpha^2 * (n + k) - n)
+  means = estimated current state (1 x n)
+  cov = covariance matrix of current state (n x n)
+  predMeans = matrix of predicted means based on physics EOMs (1 x n)
+  predCov = matrix of predicted covariance (n x n)
+  f = matrix of predicted sigma points (state space using EOMs) (2*n+1 x n)
+  h = matrix of transformed sigma points (in the measurement space using hfunc) (2*n+1 x m)
+  mesMeans = means in the measurement space after nonlinear transformation (hfunc) (1 x m)
+  mesCov = covariance matrix of points in measurement space (m x m)
+  data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor at each step (1 x m)
+  kalman = kalman gain for each step, measures how much we should change based on our trust of sensors vs our model (n x m)
 '''
 
 import numpy as np
@@ -36,13 +38,15 @@ from typing import Optional
 def sigma(means, cov, n, scaling):
     '''
     sigma
-        creates sigma point matrix based on formula that represents distribution of means and cov
+        creates sigma point matrix that is a representative sampling of the mean and covariance of the system (eq 5-7)
+        this allows for efficient transferal of information through our nonlinear function as we estimate our measurement space
 
     @params
-        means: mean of gaussian of estimated states so far (maybe???). Also first column of sigma matrix (1 x n)
+        means: mean of estimated states so far. Also first column of sigma matrix (eq 5) (1 x n)
         cov: covariance matrix of state (n x n)
         n: dimensionality of model
         scaling: how far from mean we distribute our points, used in sigma point formula
+
     @returns
         sigmaMatrix: matrix of sigma points (2 * n + 1, n) 
     '''
@@ -50,134 +54,106 @@ def sigma(means, cov, n, scaling):
     sigmaMatrix = np.zeros((2*n+1,n))
     temp = np.zeros((n, n))
 
-    # for i in range(len(cov)):
-    #   for j in range(len(cov[i])):
-    #     temp[i][j] = cov[i][j]  * (n + scaling)
-
-    # sigma point formula from website
-    temp = np.multiply(cov, (n + scaling))
-
-    # take the square root of the matrix
-    temp = scipy.linalg.sqrtm(temp)
-
+    # 1) sigma point generation
     # first column of sigma matrix is means
     sigmaMatrix[0] = means
 
-    # traverse N (10) dimensions, calculating all sigma points
-    # for i in range(n):
-    #     sigmaMatrix[i + 1] = np.add(means, temp[i])  # mean + covariance
-    #     sigmaMatrix[i + 1 + n] = np.subtract(means, temp[i])  # mean - covariance
+    # take the square root of the inside
+    temp = scipy.linalg.sqrtm(np.multiply(cov, (n + scaling)))
+
+    # traverse n dimensions, calculating all other sigma points
+    # means + sqrt for 1 to n
     sigmaMatrix[1:(n+1)] = np.add(means, temp)
+    # means - sqrt for n + 1 to 2*n
     sigmaMatrix[(n+1):(2*n+1)] = np.subtract(means, temp)
 
-    # return the sigma matrix (21 columns)
+    # return the sigma matrix (2 * n + 1 columns)
     return sigmaMatrix
 
 
-def EOMs(state, u_k):
+class TEST1EOMS():
     '''
-    EOMs
-        uses the current state of the system to output the new predicted state of the system based on physics Equations of Motions
-        change dt within to control time step
-        u_k: control input vector for magnetorquers?
-
-    @params
-        state: column of sigma point matrix to propogate (1 x n)
-            [a b c d w_x w_y w_z theta_dot_RW1 theta_dot_RW2 theta_dot_RW3]
-    @returns
-        x_predicted: next step based on Euler's method (1 x n)
+    Equations of motion class for 1D test specifically--does not implement 3rd reaction wheel
     '''
+    def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
+        
+        # Initially store moment of inertia tensor w/o reaction wheel inertias!
+        self.I_body = I_body
 
-    # func: instance of EoMs object, defined in eoms.py
-    func = bigEOMS.bigEOMS()
+        # Store principal moment of inertia for reaction wheels about spin axis and about axis transverse to spin axis respectively
+        self.I_w_spin = I_w_spin
+        self.I_w_trans = I_w_trans
 
-    # u_k: Control input vector (Currently, magnetorquers are not being used, all set to 0)
-                # [t_motor1, t_motor2, t_motor3, M_mt1, M_mt2, M_mt3]
-    u_k = np.zeros(6)
+        # changes for test
+        #alpha = 1/np.sqrt(3)
+        #beta = 1/np.sqrt(3)
+        #gamma = 1/np.sqrt(3) 
 
-    # I_body_tensor: Moment of inertia tensor of the cubesat
-                # [[I_XX  I_XY  I_XZ]
-                #  [I_YX  I_YY  I_YZ]
-                #  [I_ZX  I_ZY  I_ZZ]]
-    I_body_tensor = [[1728.7579, -60.6901, -8.7583],
-                     [-60.6901, 1745.997, 53.4338],
-                     [-8.7583, 53.4338, 1858.2584]]
-    
-    # I_RW: Moment of inertias of the three reaction wheels
-                # [I_RW1 I_RW2 I_RW3]
-    I_RW = [578.5944, 578.5944, 578.5944]
+        #self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
+        theta_1D = 135*np.pi/180.0
+        self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [np.cos(theta_1D), -np.sin(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
+        
+        # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
+        for i in np.arange(self.rw_config.shape[1]):
+            self.I_body = self.I_body + I_w_trans*(np.identity(3) - np.matmul(self.rw_config[:, i], np.transpose(self.rw_config[:, i]))) 
 
-    # dt: The timestep between the current state and predicted state
-    dt = 0.1
+    def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray, dt: float):
+        ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
+        body + wheels w_sat, given current state + external torques
+        
+        Args:
+            quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
+            w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
+            w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
+            tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
+            alpha_rw (nd.ndarray, (1x4)): angular acceleration of the reaction wheels in their respective wheel frames
+            dt (float)
+        Out:
+            quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
+            w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite
+        '''
 
-    # Initialize prediction
-    x_predicted = np.zeros(len(state))
+        # Store norm of w_vect as separate variable, as w_magnitude. Also separate out components of w
+        w_x = w_sat[0]
+        w_y = w_sat[1]
+        w_z = w_sat[2]
 
-    # Grab components of state vector
-    a = state[0]
-    b = state[1]
-    c = state[2]
-    d = state[3]
-    w_x = state[4]
-    w_y = state[5]
-    w_z = state[6]
-    theta_dot_RW1 = state[7]
-    theta_dot_RW2 = state[8]
-    theta_dot_RW3 = state[9]
+        ### THIS IS THE BIG OMEGA THAT MARKLEY AND CRASSIDIS USES, IT USES THE q1, q2, q3, q4 notation where first three make the axis while we use
+        # the q0, q1, q2, q3 notation where the latter three are the rotation axis
+        #w_sat_skew_mat = np.array([[0, -w_z, w_y, w_x],
+        #    [w_z, 0, -w_x, w_y],
+        #    [-w_y, w_x, 0, w_z],
+        #    [-w_x, -w_y, -w_z, 0]])
+        
+        ### THIS IS THE BIG OMEGA that should work for our scalar-component first notation (based on https://ahrs.readthedocs.io/en/latest/filters/angular.html)
+        w_sat_skew_mat = np.array([[0, -w_x, -w_y, -w_z],
+            [w_x, 0, w_z, -w_y],
+            [w_y, -w_z, 0, w_x],
+            [w_z, w_y, -w_x, 0]])
+        
+        # Construct vector describing reaction wheel angular momentum in the body frame. The product of rw_config and w_rw is the angular velocity of the wheels
+        # in the body frame
+        H_B_w = self.I_w_spin * np.matmul(self.rw_config, w_rw)
 
-    # Grab moment of inertias
-    I_xx = I_body_tensor[0][0]
-    I_xy = I_body_tensor[0][1]
-    I_xz = I_body_tensor[0][2]
-    I_yx = I_body_tensor[1][0]
-    I_yy = I_body_tensor[1][1]
-    I_yz = I_body_tensor[1][2]
-    I_zx = I_body_tensor[2][0]
-    I_zy = I_body_tensor[2][1]
-    I_zz = I_body_tensor[2][2]
-    I_RW1_XX = I_RW[0]
-    I_RW2_YY = I_RW[1]
-    I_RW3_ZZ = I_RW[2]
+        # Similarly construct vector describing torque caused by reaction wheel angular momentum in the body frame
+        H_B_w_dot = self.I_w_spin * np.matmul(self.rw_config, alpha_rw)
 
-    # Grab components of control input
-    t_motor1 = u_k[0]
-    t_motor2 = u_k[1]
-    t_motor3 = u_k[2]
-    M_mt1 = u_k[3]
-    M_mt2 = u_k[4]
-    M_mt3 = u_k[5]
+        # First derivative of quaternion
+        quaternion_dot = (1/2) * np.matmul(w_sat_skew_mat, quaternion)        
 
-    # Do Euler's method to get next state
-    x_predicted[0] = state[0] + dt * func.adot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[1] = state[1] + dt * func.bdot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[2] = state[2] + dt * func.cdot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[3] = state[3] + dt * func.ddot(a, b, c, d, w_x, w_y, w_z)
-    x_predicted[4] = state[4] + dt * func.w_dot_x(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[5] = state[5] + dt * func.w_dot_y(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[6] = state[6] + dt * func.w_dot_z(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[7] = state[7] + dt * func.theta_ddot_RW1(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[8] = state[8] + dt * func.theta_ddot_RW2(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
-    x_predicted[9] = state[9] + dt * func.theta_ddot_RW3(
-        M_mt1, M_mt2, M_mt3, t_motor1, t_motor2, t_motor3, w_x, w_y, w_z, I_xx,
-        I_xy, I_xz, I_yx, I_yy, I_yz, I_zx, I_zy, I_zz, I_RW1_XX, I_RW2_YY,
-        I_RW3_ZZ, theta_dot_RW1, theta_dot_RW2, theta_dot_RW3)
+        # First derivative of angular velocity
+        w_sat_dot = np.matmul(np.linalg.inv(self.I_body), (tau_sat - H_B_w_dot - np.cross(w_sat, np.matmul(self.I_body, w_sat) + H_B_w)))
 
-    return x_predicted
+        # First derivative of rw speeds = angular acceleration of wheels
+        w_rw_dot = alpha_rw
+        
+        # Add propagation here
+        quaternion_new = quaternion + quaternion_dot*dt
+        w_sat_new = w_sat + w_sat_dot*dt
+
+        new_state = np.append(quaternion_new, w_sat_new)
+
+        return new_state
 
 
 def quaternionMultiply(a, b):
@@ -187,6 +163,7 @@ def quaternionMultiply(a, b):
 
     @params
         a, b: quaternion matrices (1 x 4)
+
     @returns
         multiplied quaternion matrix
     '''
@@ -196,20 +173,71 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
-def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
-    # Bfield: Optional[np.array]
+def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n):
     '''
-    generateMeans
-        generate mean after passing sigma point distribution through a transformation function
+    generatePredMeans
+        generate mean (eq 9) after passing sigma point distribution through a transformation function (eq 8)
         also stores and returns all transformed sigma points
             
     @params
-        func: transformation/predictive function we are passing sigma points through (H_func or EOMs)
-        controlVector: additional input needed for func (u_k or q_wmm)
+        eomsClass: EOMs class to pass our sigma points through
         sigmaPoints: sigma point matrix (2xn+1 x n)
-        w1, w2: weight for first and all other sigma points, respectively
+        w0, w1: weight for first and all other sigma points, respectively
+        reaction_speeds/old_reaction_speeds: reaction wheel speeds for current and last time step (1 x 3 for 1d test)
+        n: dimensionality of state space
+
+    @returns
+        means: mean of distribution in state or measurement space (1 x n or 1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+    '''
+    # initialize means and new sigma matrix with correct dimensionality
+    means = np.zeros(n)
+    transformedSigma = np.zeros((2 * n + 1, n))
+
+    # CHANGE TO PASS TO FUNCITON THROUGHOUT??
+    dt = 0.1
+    # calculate angular acceleration using old and current reaction wheel speeds
+    alpha = (reaction_speeds - old_reaction_speeds) / dt
+
+    # pass all sigma points to the transformation function
+    for i in range(1, n * 2 + 1):
+        # 3a) and 4a)
+        x = eomsClass.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
+
+        # store calculated sigma point in transformed sigma matrix
+        transformedSigma[i] = x
+        # update mean with point
+        means = np.add(means, x)
+
+    # apply weight to mean without first point
+    means *= w1
+
+    # pass first sigma point through transformation function
+    x = eomsClass.eoms(sigmaPoints[0][:4], sigmaPoints[0][4:], reaction_speeds, 0, alpha, dt)
+    
+    # store new point as first element in transformed sigma matrix
+    transformedSigma[0] = x
+
+    # adjust the means for first value and multiply by correct weight
+    means = np.add(means, x*w0)
+
+    return means, transformedSigma
+
+
+def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality):
+    '''
+    generateMesMeans
+        generate mean (eq 12) after passing sigma point distribution through non-linear transformation function (eq 11)
+        also stores and returns all transformed sigma points
+            
+    @params
+        func: transformation function we are passing sigma points through (H_func)
+        controlVector: additional input needed for func: true magnetic field (1 x 3)
+        sigmaPoints: sigma point matrix (2xn+1 x n)
+        w0, w1: weight for first and all other sigma points, respectively
         n: dimensionality of model 
-        dimensionality: dimensionality of what state we are generating for (n or m)
+        dimensionality: dimensionality of what state we are generating for (measurement space: m)
+
     @returns
         means: mean of distribution in state or measurement space (1 x n or 1 x m)
         transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
@@ -220,6 +248,7 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
 
     # pass all sigma points to the transformation function
     for i in range(1, n * 2 + 1):
+        # 3a) and 4a)
         x = func(sigmaPoints[i], controlVector)
         # store calculated sigma point in transformed sigma matrix
         transformedSigma[i] = x
@@ -227,31 +256,32 @@ def generateMeans(func, controlVector, sigmaPoints, w1, w2, n, dimensionality):
         means = np.add(means, x)
 
     # apply weight to mean without first point
-    means *= w2
+    means *= w1
 
     # pass first sigma point through transformation function
     x = func(sigmaPoints[0], controlVector) 
+    
     # store new point as first element in transformed sigma matrix
     transformedSigma[0] = x
 
     # adjust the means for first value and multiply by correct weight
-    means = np.add(means, x*w1)
+    means = np.add(means, x*w0)
 
     return means, transformedSigma
 
 
-def generateCov(means, transformedSigma, w1, w2, n, noise):
+def generateCov(means, transformedSigma, w0, w1, n, noise):
     '''
     generateCov
-        generates covariance matrix from website equation based on means and sigma points
-        uncoment noise addition once r and q are figured out
+        generates covariance matrix from eq 10 and 13 based on means and sigma points
         
     @params
         means: means in state or measurement space (1 x n or 1 x m)
         transformedSigma: stored result of passing sigma points through the EOMs or H_func (n*2+1 x m or n*2+1 x n)
-        w1, w2: weight for first and all other sigma points, respectively
+        w0, w1: weight for first and all other sigma points, respectively
         n: dimensionality of model 
         noise: noise value array to apply to our cov matrix (r or q)
+        
     @returns
         cov: covariance matrix in state or measurement space (n x n or m x m)
     '''
@@ -271,183 +301,172 @@ def generateCov(means, transformedSigma, w1, w2, n, noise):
     
     # separate out first value and update with correct weight
     arr = np.subtract(transformedSigma[0], means)[np.newaxis]
-    d = np.matmul(arr.transpose(), arr) * w1
+    d = np.matmul(arr.transpose(), arr) * w0
 
     # use other weight for remaining values
-    cov *= w2
+    cov *= w1
 
     # add back first element
     cov = np.add(cov, d)
 
     # add noise to covariance matrix
-    # cov = np.add(cov, noise)
+    cov = np.add(cov, noise)
 
     return cov
 
 
-
-def UKF(passedMeans, passedCov, r, q, u_k, data):
+def generateCrossCov(predMeans, mesMeans, f, h, w0, w1, n):
     '''
-    UKF
-        estimates state at time step based on sensor data, noise, and equations of motion
+    generateCrossCov
+        use equation 14 to generate cross covariance between our means and sigma points in our state and measurement space
 
     @params
-        passedMeans: means of previous states (1 x n)
-        passedCov: covariance matrix of state (n x n)
-        r: noise vector of predictions (1 x n)
-        q: noise vector of sensors (1 x m)
-        u_k: control input vector for hfunc (gps data: longitude, latitude, height, time)
-        data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x 6)
+        predMeans: predicted means based on EOMs (1 x n)
+        mesMeans: predicted means in measurement space (1 x m)
+        f: sigma point matrix that has passed through the EOMs (n*2+1 x n)
+        h: sigma point matrix propogated through non-linear transformation h func (n*2+1 x m)
+        w0: weight for first value
+        w1: weight for other values
+        n: dimensionality of model
+    
     @returns
-        means: calculated state estimate at current time (1 x n)
-        cov: covariance matrix (n x n)
+        crossCov: represents uncertainty between our state and measurement space estimates (n x m)
     '''
+    m = len(mesMeans)
+    crossCov = np.zeros((n,m))
 
-    # initialize vars (top of file for descriptions)
-    n = 10
-    m = 9
-    cov = passedCov
-    predMeans = np.zeros(n)
-    predCovid = np.zeros((n,n))
-    meanInMes = np.zeros(m)
-    covidInMes = np.zeros((m, m))
-    crossCo = np.zeros((n,m))
-    g = np.zeros((n * 2 + 1, n))
-    h = np.zeros((2 * n + 1,m))
-    
-    # z = passedMeans
-    z = []
-    z.append(0)
-    z.append(data[0])
-    z.append(data[1])
-    z.append(data[2])
-    z.append(data[3])
-    z.append(data[4])
-    z.append(data[5])
-    z.append(passedMeans[7])
-    z.append(passedMeans[8])
-    z.append(passedMeans[9])
-
-    scaling = 3-n
-    w1 = scaling / (n + scaling) # weight for first value
-    w2 = 1 / (2 * (n + scaling)) # weight for all other values
-    
-    # track the average of the estimated K states so far
-    means = passedMeans
-
-
-    """
-    Calculate mean of Gaussian (populates the global predicted means matrix)
-    1. Store temporary sigma points
-    2. Apply the EOMs to the temporary (stored) sigma points
-    2. Calculate the means of sigma points without weights
-    4. Calculate the new predicted means by applying predetermined weights
-    Initialize sigma matrix to the starting sigma point matrix
-    """
-
-    sigTemp = sigma(means, cov, n, scaling)  # temporary sigma points
-    # oldSig = sigTemp
-
-    predMeans, g = generateMeans(EOMs, u_k, sigTemp, w1, w2, n, n)
-    
-
-    """
-    Calculate predicted covariance of Gaussian
-    """
-    predCovid = generateCov(predMeans, g, w1, w2, n, r)
-
-
-    """ 
-    Mean to measurement
-    """
-    # create arbitrary covariance for sensors
-    zCov = [[.1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, .1, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, .1, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, .1, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, .1, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, .1, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, .1, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, .1, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, .1, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, .1]
-    ]
-    for i in range(n):
-        zCov[i][i] = .05
-    # zCov = cov
-  
-    # create temporary sigma points
-    sigTemp = sigma(z, zCov, n, scaling)
-
-    Bfield = bfield_calc(u_k)
-
-    # update with gps control vector instead of q_wmm
-    meanInMes, h = generateMeans(hfunc, Bfield, sigTemp, w1, w2, n, m)
-
-
-    """
-    Creates covariance matrix in measurement space
-    """
-    covidInMes = generateCov(meanInMes, h, w1, w2, n, q)
-
-
-    '''
-    Cross covariance matrix (t) between state space and predicted space
-
-    Remake sigma points here now that we have new data up to the group
-    '''
-    # sig = sigma(means, cov, n, scaling)
-    sig = sigTemp
-    # sig = sigma(z, zCov, n, scaling)
-
-    # use formula from website to compare our different sets of sigma points and our predicted/measurement means
     for i in range(1, n * 2 + 1):
-        arr1 = np.subtract(sig[i], predMeans)[np.newaxis]
-        arr2 = np.subtract(h[i], meanInMes)[np.newaxis]
+        arr1 = np.subtract(f[i], predMeans)[np.newaxis]
+        arr2 = np.subtract(h[i], mesMeans)[np.newaxis]
         arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        crossCo = np.add(crossCo, arr1)
-        # arr1 = np.subtract(h[i], meanInMes)[np.newaxis]
-        # arr2 = np.subtract(sig[i], predMeans)[np.newaxis]
-        # arr1 = np.matmul(arr1.transpose(), arr2)  # ordering?
-        # crossCo = np.add(crossCo, arr1)
-    '''switch ordering??'''
+        crossCov = np.add(crossCov, arr1)
 
-    # arr1 = np.subtract(h[-1], meanInMes)[np.newaxis]
-    arr1 = np.subtract(sig[0], predMeans)[np.newaxis]
-    arr2 = np.subtract(h[0], meanInMes)[np.newaxis]
+    arr1 = np.subtract(f[0], predMeans)[np.newaxis]
+    arr2 = np.subtract(h[0], mesMeans)[np.newaxis]
 
     # seperate out first element
     d = np.matmul(arr1.transpose(), arr2)
 
     # multiply by weights for first and other values
-    np.multiply(crossCo, w2)
-    np.multiply(d, w1)
+    crossCov = np.multiply(crossCov, w1)
+    d = np.multiply(d, w0)
 
     # add first value back into cross covariance
-    crossCo = np.add(crossCo, d)
+    crossCov = np.add(crossCov, d)
+
+    return crossCov
 
 
-    """
-    Kalman gain and final update
-    """
-    # calculate kalman gain by multiplying cross covariance matrix and transposed predicted covariance
-    # nxm
-    kalman = np.matmul(crossCo, np.linalg.inv(covidInMes))
+def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
+    '''
+    UKF
+        estimates state at time step based on sensor data, noise, and equations of motion
 
-    z = z[1:]
-  
-    # updated final mean = predicted + kalman(measurement - predicted in measurement space)
-    means = np.add(predMeans, np.matmul(kalman, np.subtract(z, meanInMes)))
+    @params
+        means: means of previous states (1 x n)
+        cov: covariance matrix of state (n x n)
+        q: process noise covariance matrix (n x n)
+        r: measurement noise covariance matrix (m x m)
+        gps_data: control input vector for hfunc (gps data: longitude, latitude, height, time)
+        reaction_speeds: control input for EOMs (1 x 4)
+        old_reaction_speeds: speeds for past step, used to find angular acceleration (1 x 4)
+        data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x m)
 
-    # 2 options for updated cov:
+    @returns
+        means: calculated state estimate at current time (1 x n)
+        cov: covariance matrix (n x n)
+    '''
+
+    # dimensionality of state space = dimension of means
+    n = len(means)
+    # dimensionality of measurement space = dimension of measurement noise
+    m = len(r)
     
-    # option 1:
-    # updated covariance = predicted covariance * (n identity matrix - kalman * cross covariance)
-    # cov = np.matmul(np.subtract(np.identity(m), np.matmul(kalman, crossCo)), predCovid)
-    # this one doesn't work with different n and m for some reason
+    # scaling parameters
+    # alpha and k scale points around the mean. To capture the kurtosis of a gaussian distribution, a=1 and k=3-n should be used
+    #   If a decrease in the spread of the SPs is desired, use κ = 0 and alpha < 1
+    #   If an increase in the spread of the SPs is desired, use κ > 0 and alpha = 1
+    alpha = 0.001
+    k = 0
+    # beta minimizes higher order errors in covariance estimation
+    beta = 2
+    # eq 1: scaling factor lambda
+    scaling = alpha * alpha * (n + k) - n
 
-    # option 2:
-    # updated covariance = predicted covariance - (kalman * covariance in measurement * transposed kalman)
-    cov = np.subtract(predCovid, np.matmul(np.matmul(kalman, covidInMes), kalman.transpose()))
+    # eq 2-4: weights calculation
+    w0_m = scaling / (n + scaling) # weight for first value for means
+    w0_c = scaling / (n + scaling) + (1 - alpha * alpha + beta) # weight for first value for covariance
+    w1 = 1 / (2 * (n + scaling)) # weight for all other values
 
+
+    # eq 5-7: sigma point generation
+    sigmaPoints = sigma(means, cov, n, scaling)
+
+
+    # prediction step
+    # intertia constants from juwan
+    I_body = np.array([[46535.388, 257.834, 536.12],
+              [257.834, 47934.771, -710.058],
+              [536.12, -710.058, 23138.181]])
+    I_body = I_body * 1e-7
+    I_spin = 5.1e-7
+    I_trans = 0
+    # intialize 1D EOMs using intertia measurements of cubeSat
+    EOMS = TEST1EOMS(I_body, I_spin, I_trans)
+    
+    # eq 8-9: pass sigma points through EOMs (f) and generate mean in state space
+    predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n)
+    
+    # print("PREDICTED MEANS: ", predMeans)
+    
+    # eq 10: generate predicted covariance + process noise q
+    predCov = generateCov(predMeans, f, w0_c, w1, n, q)
+
+    # print("PRED COVID: ", predCov)
+
+
+    if len(gps_data) == 4:
+        # finds true B field based on gps data
+        Bfield = bfield_calc(gps_data)
+    else: 
+        # for ideal tests only, use gps_data as b field vector and skip calculating it from the gps data
+        Bfield = gps_data
+
+
+    # print("BFIELD: ", Bfield)
+
+    # non linear transformation
+    # eq 11-12: non linear transformation of predicted sigma points f into measurement space (h), and mean generation
+    mesMeans, h = generateMesMeans(hfunc, Bfield, f, w0_m, w1, n, m)
+
+    # print("MEAN IN MEASUREMENT: ", mesMeans)
+
+    # eq 13: measurement covariance + measurement noise r
+    mesCov = generateCov(mesMeans, h, w0_c, w1, n, r)
+
+
+    # measurement updates
+    # eq 14: cross covariance. compare our different sets of sigma points and our predicted/measurement means
+    crossCov = generateCrossCov(predMeans, mesMeans, f, h, w0_c, w1, n)
+
+    # print("covariance in measurement: ", mesCov)
+    # print("cross covariance: ", crossCov)
+
+    # eq 15: calculate kalman gain (n x m) by multiplying cross covariance matrix and transposed predicted covariance
+    kalman = np.matmul(crossCov, np.linalg.inv(mesCov))
+
+    # print("KALMAN: ", kalman)
+
+    # eq 16: updated final mean = predicted + kalman(measurement data - predicted means in measurement space)
+    means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
+
+    # normalize the quaternion to reduce small calculation errors over time
+    means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
+
+    # eq 17: updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
+    cov = np.subtract(predCov, np.matmul(np.matmul(kalman, mesCov), kalman.transpose()))
+
+
+    # print("MEANS AT END: ", means)
+    # print("COV AT END: ", cov)
     return [means, cov]

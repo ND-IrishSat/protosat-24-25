@@ -8,7 +8,7 @@ Transformation function hfunc for IrishSat Unscented Kalman Filter. Requires wmm
 
 import numpy as np
 import matplotlib.pyplot as plt
-from wmm import WMM
+from PySOL.wmm import WMM
 from mpl_toolkits.mplot3d import Axes3D
 
 
@@ -20,9 +20,13 @@ def hfunc(state, Bfield):
 
     @params
         state: state estimate of system-quaternion, angular velocity, reaction wheel speed (1 x n)
-        controls: gps and time data needed to calculate magnetic field with respect to the earth (latitude, longitude, height, time arrays)
+        Bfield: B field of state (1 x 3) in milliteslas???
+            used to be controls: gps and time data needed to calculate magnetic field with respect to the earth 
+            (latitude, longitude, height, time arrays)
+            but now we calculate that separately
+
     @returns
-        state array in measurement space (1 x m, as first element of quaternion becomes 0)
+        state array in measurement space (1 x n, with first element of quaternion becoming 0)
     '''
 
     # find rotation matrix of state quaternion
@@ -33,10 +37,22 @@ def hfunc(state, Bfield):
 
     # combine rotation matrix and b field of earth
     # other elements of state have 1 to 1 conversion, so add back before returning
-    return np.concatenate((np.matmul(rotationMatrix,Bfield).ravel(), np.array(state[4:])))
+    return np.concatenate((np.matmul(rotationMatrix, Bfield).ravel(), np.array(state[4:])))
+
+
 
 
 def bfield_calc(controls):
+    '''
+    bfield_calc
+        calculates the current true magnetic field based on gps data input
+    
+    @params
+        controls: gps and time data for current time step (latitude, longitude, height, time arrays) (1 x 4)
+
+    @returns
+        converted: true, earth centered (eci frame) magnetic field in ???? units (1 x 3)
+    '''
     # get lat, long, and height from control input vector
     lat = controls[0] 
     long = controls[1]
@@ -49,8 +65,11 @@ def bfield_calc(controls):
     wmm_model = WMM(12, 'WMMcoef.csv')
     wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
     Bfield1 = wmm_model.get_Bfield()
+    
+    # Convert nanotesla to microtesla
+    converted = Bfield1 / 1000
 
-    return Bfield1
+    return converted
 
 
 def quaternion_rotation_matrix(Q):
