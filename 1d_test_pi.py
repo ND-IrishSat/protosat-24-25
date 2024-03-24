@@ -8,13 +8,17 @@ Collab test between GOAT lab and protoSat
 Implements UKF, PD, hall sensors, IMU, visualizer, and actuators to rotate cubeSat on frictionless table on 1 axis 
 
 '''
+
+import sys, os
+sys.path.extend([f'./{name}' for name in os.listdir(".") if os.path.isdir(name)])
+
 import numpy as np
 from pygame.locals import * 
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from ukf.PySOL.wmm import *
 from ukf.simulator import *
-from adc.adc_pd_controller import pd_controller_numpy
+from adc.adc_pd_controller_numpy import pd_controller
 from ukf.UKF_algorithm import *
 import time
 from interface.happy_sensors import get_imu_data, calibrate
@@ -164,7 +168,7 @@ def main(target=[1,0,0,0]):
         kd = .01*MAX_PWM
         
         # Run PD controller to generate output for reaction wheels
-        pwm = pd_controller_numpy(curr_state, target, omega, kp, kd)
+        pwm = pd_controller(curr_state, target, omega, kp, kd)
 
         # Get the pwm signals
         x.target = pwm(0)

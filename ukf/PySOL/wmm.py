@@ -23,10 +23,10 @@
 from xml.sax.handler import DTDHandler
 import numpy as np
 import time
-#import pyshtools.legendre as legendre
+# import pyshtools.legendre as legendre
 import matplotlib.pyplot as plt
 
-from legendre import ssn_lpmv
+from ukf.PySOL.legendre import ssn_lpmv
 class WMMCoefficientLoader():
     ''' Class to load and hold model coefficients from reference epoch the WMM geomagnetic model for nth degree  
     model
