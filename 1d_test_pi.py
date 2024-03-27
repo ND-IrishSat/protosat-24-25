@@ -62,7 +62,7 @@ def main(target=[1,0,0,0]):
         print("Something went wrong when calibrating & configuring!!!\n")
 
     # Read starting state from sensors?
-    # start_data = get_imu_data()
+    start_data = get_imu_data()
     
     # initialize starting state and covariance
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
@@ -119,7 +119,7 @@ def main(target=[1,0,0,0]):
         # Starting time for loop 
         start_time = time.time()
 
-        # store reaction wheel speeds of last iteration
+        # Store reaction wheel speeds of last iteration
         old_reaction_speeds = reaction_speeds
 
         # Get reaction speeds (in duty cycles) from Hall sensors
@@ -145,7 +145,7 @@ def main(target=[1,0,0,0]):
 
         # Run UKF
         state, cov = UKF(state, cov, q, r, B_true, reaction_speeds, old_reaction_speeds, data)
-        print('state: ',state)
+        print('state: ', state)
         print('')
         
         # Visualize if you want
@@ -186,6 +186,18 @@ def main(target=[1,0,0,0]):
 
         # Increment iteration count
         i += 1
+
+    # Bring the wheels to a stop
+    speed = 0
+    x.target = speed
+    x.setSpeed(x.target)
+    y.target = speed
+    y.setSpeed(y.target)
+    z.target = speed
+    z.setSpeed(z.target)
+
+    # Confirm it is done
+    print("done with script! ending...")
 
     GPIO.cleanup()
 
