@@ -12,7 +12,7 @@ from sklearn.linear_model import LinearRegression
 import time
 
 # Constants
-c = 9100
+cons = 9100
 # max duty cycles
 k = 65535
 # pin numbers for hall sensors [x,y,z]
@@ -31,7 +31,7 @@ def checkHall(sensor):
 	c = np.arange(10).reshape(-1,1)
 	model = LinearRegression().fit(c,t)
 	frequency = 1/model.coef_
-	speed += ((frequency * 15) / c) * k 
+	speed += ((frequency[0] * 15) / cons) * k 
 	# Return the speed according to Hall sensor (duty cycles)
 	return speed
 

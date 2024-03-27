@@ -23,7 +23,7 @@ pca = PCA9685(i2c_bus)
 pca.frequency = 1500
 
 # Constants
-c = 9100
+cons = 9100
 # max duty cycles
 k = 65535
 default = 0
@@ -104,10 +104,10 @@ class Motor():
 
     # convert duty cycle to RPM
     def convertToRPM(self): 
-        return (self.current / k) * c
+        return (self.current / k) * cons
 
     # convert RPM to duty cycle
     def convertToDuty(RPM):
-        if RPM > c:
-            RPM = c
-        return (RPM / c) * k
+        if RPM > cons:
+            RPM = cons
+        return (RPM / cons) * k
