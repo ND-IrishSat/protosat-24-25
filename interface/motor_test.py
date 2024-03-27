@@ -39,8 +39,8 @@ while (count < 100):
     x_speed = checkHall(x.hallList[0]) 
     # y_speed = checkHall(y.hallList[1])
     # z_speed = checkHall(z.hallList[2])
-
     print(f"hall sensor reading: {x_speed}")
+
     count += 1
 
 
@@ -48,6 +48,8 @@ while (count < 100):
 speed = 0
 x.target = speed
 x.setSpeed(x.target)
+
+# Confrim it is done
 print("done with script! ending...")
 
 GPIO.cleanup()
