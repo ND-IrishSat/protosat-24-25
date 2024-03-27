@@ -50,16 +50,6 @@ def main(target=[1,0,0,0]):
     z = Motor(pinZ,dirZ,hallZ,default,default)
     print("initialized motors\n")
 
-    # i2c initialization
-    i2c_bus = busio.I2C(SCL, SDA)
-    pca = PCA9685(i2c_bus)
-    pca.frequency = 1500
-
-    # GPIO setup
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(enable,GPIO.OUT)
-    GPIO.output(enable,True)
-
     # Dimension of state and measurement space
     dim = 7
     dim_mes = dim - 1
