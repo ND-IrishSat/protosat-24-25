@@ -25,6 +25,7 @@ from interface.happy_sensors import get_imu_data, calibrate
 from ukf.hfunc import *
 from interface.motors import *
 from interface.hall import checkHall
+from interface.init import initialize_setup
 
 
 MAX_PWM = 65535 # maximum PWM value in duty cycles
@@ -39,10 +40,15 @@ def main(target=[1,0,0,0]):
         - check with patrick that we want pwm[3] instead of pwm[2]
     '''
 
+    # Initialize setup for motors
+    initialize_setup()
+    print("initialized setup\n")
+
     # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
     x = Motor(pinX,dirX,hallX,default,default)
     y = Motor(pinY,dirY,hallY,default,default)
     z = Motor(pinZ,dirZ,hallZ,default,default)
+    print("initialized motors\n")
 
     # i2c initialization
     i2c_bus = busio.I2C(SCL, SDA)
@@ -127,9 +133,9 @@ def main(target=[1,0,0,0]):
         old_reaction_speeds = reaction_speeds
 
         # Get reaction speeds (in duty cycles) from Hall sensors
-        x_speed = checkHall(Motor.hallList[0]) 
-        y_speed = checkHall(Motor.hallList[1])
-        z_speed = checkHall(Motor.hallList[2])
+        x_speed = checkHall(x.hallList[0]) 
+        y_speed = checkHall(y.hallList[1])
+        z_speed = checkHall(z.hallList[2])
         reaction_speeds = [*x_speed, *y_speed, *z_speed]
 
         # Get current imu data (mag*3, gyro*3)
@@ -176,9 +182,9 @@ def main(target=[1,0,0,0]):
         z.target = pwm(3)
 
         # Check directions & alter speeds
-        x.changeSpeed()
-        y.changeSpeed()
-        z.changeSpeed()
+        x.setSpeed(x.target)
+        y.setSpeed(y.target)
+        z.setSpeed(z.target)
 
         # Ending time for loop
         end_time = time.time()
