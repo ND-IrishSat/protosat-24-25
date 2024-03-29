@@ -1,16 +1,18 @@
-ProtoSat Computing Projects for IrishSat 2023-2024
+<h2 align="left">CloverSat Computing Projects for IrishSat 2023-2024</h2>
 
 Collaborative base for developing Attitude Determination and Control System (ADCS), which include a Proportional-Integral-Derivative (PID) Controller and Unscented Kalman Filter (UKF) for state estimation.
 
 This computing squad enganges in an iterative development model in order to fulfil the club's technical needs. Members apply their own unique technical background while engaging with research, professors, and industry contacts. 
 
-Organization:
+## Organization
 
 -- ukf: contains scripts directly relating to state estimation, including the main unscented kalman filter algorithm, cubesat visualizer, and PySOL repository. 
 
 -- adc: holds our pd controller to determine our reaction wheel inputs
 
 -- interface: contains all scripts that interface with physical components of the cubesat, such as imu, hall sensors, and reaction wheel motors
+
+## Notes
 
 Those sub directories contain testing scripts that are confined to that section of the ADCS process. 
 
