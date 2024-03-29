@@ -27,9 +27,7 @@ from interface.motors import *
 from interface.hall import checkHall
 from interface.init import initialize_setup
 
-
-MAX_PWM = 65535 # maximum PWM value in duty cycles
-# MAX_RPM = 8100 # according to Tim
+# MAX_DUTY and MAX_RPM are declared in motors.py
 
 
 def main(target=[1,0,0,0]):
@@ -38,9 +36,11 @@ def main(target=[1,0,0,0]):
         - What is starting state guess? read from sensors?
         - Set proper target quaternion?
         - check with patrick that we want pwm[3] instead of pwm[2]
+        - check that current_quaternion is correct (not entire state)
+        - do we need to worry about hall sensors not reading if wheels not spinning?
     '''
 
-    # Initialize setup for motors
+    # Initialize setup for motors (I2C and GPIO)
     initialize_setup()
     print("initialized setup\n")
 
@@ -62,7 +62,7 @@ def main(target=[1,0,0,0]):
         print("Something went wrong when calibrating & configuring!!!\n")
 
     # Read starting state from sensors?
-    start_data = get_imu_data()
+    # start_data = get_imu_data()
     
     # initialize starting state and covariance
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
@@ -123,6 +123,7 @@ def main(target=[1,0,0,0]):
         old_reaction_speeds = reaction_speeds
 
         # Get reaction speeds (in duty cycles) from Hall sensors
+        #NOTE: wheel must be spinning to check Hall
         x_speed = checkHall(x.hallList[0]) 
         y_speed = checkHall(y.hallList[1])
         z_speed = checkHall(z.hallList[2])
@@ -145,26 +146,24 @@ def main(target=[1,0,0,0]):
 
         # Run UKF
         state, cov = UKF(state, cov, q, r, B_true, reaction_speeds, old_reaction_speeds, data)
-        print('state: ', state)
-        print('')
         
         # Visualize if you want
         game_visualize(np.array([state[:4]]), i) # not working on Pi 0, but working on  Pi 4
         # print current quaternion estimate
-        # print("Current state: ", state[:4])
+        print("Current state: ", state[:4])
 
         # Run PD controller
-        curr_state = state
+        curr_quaternion = state[:4]
         target = [1,0,0,0]
 
         # get current angular velocity of cubesat
         omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
-        # PD gains parameters
-        kp = .05*MAX_PWM
-        kd = .01*MAX_PWM
+        # PD gains parameters (dependant upon max pwm/duty cycles)
+        kp = .05*MAX_DUTY
+        kd = .01*MAX_DUTY
         
         # Run PD controller to generate output for reaction wheels
-        pwm = pd_controller(curr_state, target, omega, kp, kd)
+        pwm = pd_controller(curr_quaternion, target, omega, kp, kd)
 
         # Get the pwm signals
         x.target = pwm(0)
@@ -203,5 +202,5 @@ def main(target=[1,0,0,0]):
 
 
 if __name__ == "__main__":
-    target = [0]*4
+    target = [1, 0, 0, 0]
     main(target)

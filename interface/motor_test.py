@@ -36,6 +36,7 @@ while (count < 100):
     # z.setSpeed(z.target)
 
     # Check the current speed
+    #NOTE: wheel must be spinning to check Hall
     x_speed = checkHall(x.hallList[0]) 
     # y_speed = checkHall(y.hallList[1])
     # z_speed = checkHall(z.hallList[2])

@@ -4,6 +4,7 @@ Authors: Tim Roberts
 
 motor interface class 
 checks hall sensors readings and sets reaction wheel speeds
+initialization must be done through init.py
 
 '''
 from board import SCL, SDA
@@ -16,16 +17,10 @@ from sklearn.linear_model import LinearRegression
 from hall import checkHall
 import random
 
-
-# Initialize i2c
-i2c_bus = busio.I2C(SCL, SDA)
-pca = PCA9685(i2c_bus)
-pca.frequency = 1500
-
 # Constants
-cons = 9100
+MAX_RPM = 9100
 # max duty cycles
-k = 65535
+MAX_DUTY = 65535
 default = 0
 enable = 11
 pinX = 10
@@ -71,7 +66,7 @@ class Motor():
         # c = np.arange(10).reshape(-1,1)
         # model = LinearRegression().fit(c,t)
         # frequency = 1/model.coef_
-        # speed += ((frequency * 15) / c) * k
+        # speed += ((frequency * 15) / c) * MAX_DUTY
         # # Return the speed according to Hall sensor (duty cycles)
         # return speed
     
@@ -87,8 +82,9 @@ class Motor():
         GPIO.output(self.dir, val)
 
 
-    # Send output signal to actuators (& checks direction)
-    def changeSpeed(self):
+    def checkDir(self):
+        # check if our target is in a direction that's opposite of our current direction
+        # if so, bring it down to zero before switching directions
         if self.current != self.target:
             if self.target < 0 and self.current > 0:
                 self.setSpeed(0)
@@ -104,10 +100,10 @@ class Motor():
 
     # convert duty cycle to RPM
     def convertToRPM(self): 
-        return (self.current / k) * cons
+        return (self.current / MAX_DUTY) * MAX_RPM
 
     # convert RPM to duty cycle
     def convertToDuty(RPM):
-        if RPM > cons:
-            RPM = cons
-        return (RPM / cons) * k
+        if RPM > MAX_RPM:
+            RPM = MAX_RPM
+        return (RPM / MAX_RPM) * MAX_DUTY

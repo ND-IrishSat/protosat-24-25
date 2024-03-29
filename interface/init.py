@@ -3,6 +3,7 @@ init.py
 Author: Claudia Kuczun
 
 Initialize the GPIO setup and the I2C connections necessary to work with reaction wheels.
+
 '''
 
 from motors import *
@@ -13,6 +14,7 @@ def initialize_setup():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(enable,GPIO.OUT)
     GPIO.output(enable,True)
+    # note: must also run GPIO.cleanup() at end of script
 
     # I2C
     i2c_bus = busio.I2C(SCL, SDA)
