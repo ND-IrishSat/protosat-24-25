@@ -17,6 +17,19 @@ from sklearn.linear_model import LinearRegression
 from hall import checkHall
 import random
 
+
+# GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(enable,GPIO.OUT)
+GPIO.output(enable,True)
+# note: must also run GPIO.cleanup() at end of script
+
+# I2C
+i2c_bus = busio.I2C(SCL, SDA)
+pca = PCA9685(i2c_bus)
+pca.frequency = 1500
+
+
 # Constants
 MAX_RPM = 9100
 # max duty cycles
