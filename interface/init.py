@@ -20,3 +20,5 @@ def initialize_setup():
     i2c_bus = busio.I2C(SCL, SDA)
     pca = PCA9685(i2c_bus)
     pca.frequency = 1500
+
+    return pca, GPIO
