@@ -1,5 +1,5 @@
 '''
-1d_test.py
+1d_test_pi.py
 Authors: Claudia Kuczun, Andrew Gaylord, Patrick Schwartz, Juwan Jeremy Jacob, Alex Casillas
 Last updated: 2/25/24
 
@@ -27,34 +27,38 @@ from interface.motors import *
 from interface.hall import checkHall
 from interface.init import initialize_setup
 
-# MAX_DUTY and MAX_RPM are declared in motors.py
+# MAX_DUTY (65535, used for pwm) and MAX_RPM (9100) are declared in motors.py
 
 
-def main(target=[1,0,0,0]):
+def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     '''NOTE
         - things to take out for UKF only test: motor initialization, reaction wheel update, pd section (127-146)
         - What is starting state guess? read from sensors?
         - Set proper target quaternion?
-        - check with patrick that we want pwm[3] instead of pwm[2]
-        - check that current_quaternion is correct (not entire state)
         - do we need to worry about hall sensors not reading if wheels not spinning?
+        
+        - fix initialization
+        - rewrite/comment motors.py
     '''
 
     # Initialize setup for motors (I2C and GPIO)
+
+    # i2c needs to be in motors.py???
     initialize_setup()
     print("initialized setup\n")
 
     # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
     x = Motor(pinX,dirX,hallX,default,default)
-    y = Motor(pinY,dirY,hallY,default,default)
-    z = Motor(pinZ,dirZ,hallZ,default,default)
-    print("initialized motors\n")
+    # y = Motor(pinY,dirY,hallY,default,default)
+    # z = Motor(pinZ,dirZ,hallZ,default,default)
+    # print("initialized motors\n")
 
     # Dimension of state and measurement space
     dim = 7
     dim_mes = dim - 1
 
     dt = 0.1
+    curr_time_pwm = time.time()
 
     # Calibrate the IMU
     success = calibrate()
@@ -69,7 +73,7 @@ def main(target=[1,0,0,0]):
     cov = np.identity(dim) * 5e-10
 
     # r: measurement noise (m x m)
-    noise_mag = .1
+    noise_mag = .05
     # r = np.diag([noise_mag] * dim_mes)
     r = np.array([noise_mag, 0, 0, 0, 0, 0],
                  [0, noise_mag, 0, 0, 0, 0],
@@ -95,11 +99,11 @@ def main(target=[1,0,0,0]):
     # Current lat/long/altitude, which doesn't change for this test
     curr_date_time= np.array([2024.1266])
     lat = np.array([41.675])
-    long = np.array([-86.252])
+    longitude = np.array([-86.252])
     alt = np.array([.225552]) # 740 feet (km)
 
     # calculate true B field at stenson-remick
-    B_true = bfield_calc(np.array([lat, long, alt, curr_date_time]))
+    B_true = bfield_calc(np.array([lat, longitude, alt, curr_date_time]))
 
     # Set negative of last element to match magnetometer
     # Convert to North East Down to North East Up, matching X, Y, Z reference frame of magnetometer
@@ -112,22 +116,19 @@ def main(target=[1,0,0,0]):
 
     # Initialize pwm speeds
     pwm = np.array([0,0,0,0])
+    old_pwm = pwm
+
+    # inialize starting speed because hall sensor is read at end of loop
+    x_speed = 0
 
     # Infinite loop to run until you kill it
     i = 0
-    while (1):
+    while (i < 10000):
         # Starting time for loop 
         start_time = time.time()
 
         # Store reaction wheel speeds of last iteration
         old_reaction_speeds = reaction_speeds
-
-        # Get reaction speeds (in duty cycles) from Hall sensors
-        #NOTE: wheel must be spinning to check Hall
-        x_speed = checkHall(x.hallList[0]) 
-        y_speed = checkHall(y.hallList[1])
-        z_speed = checkHall(z.hallList[2])
-        reaction_speeds = [*x_speed, *y_speed, *z_speed]
 
         # Get current imu data (mag*3, gyro*3)
         imu_data = get_imu_data()
@@ -154,26 +155,40 @@ def main(target=[1,0,0,0]):
 
         # Run PD controller
         curr_quaternion = state[:4]
-        target = [1,0,0,0]
 
         # get current angular velocity of cubesat
         omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
         # PD gains parameters (dependant upon max pwm/duty cycles)
-        kp = .05*MAX_DUTY
-        kd = .01*MAX_DUTY
+        kp = .2*MAX_DUTY
+        kd = .1*MAX_DUTY
         
+        # find time since last pd call
+        cur_time = time.time()
+        end_time_pwm = time.time()
+        pwm_total_time = end_time_pwm - curr_time_pwm
+
         # Run PD controller to generate output for reaction wheels
-        pwm = pd_controller(curr_quaternion, target, omega, kp, kd)
+        pwm = pd_controller(curr_quaternion, target, omega, kp, kd, old_pwm, pwm_total_time)
+
+        curr_time_pwm = time.time()
+        old_pwm = pwm
+
+        # pwm[0] = abs(pwm[0])
 
         # Get the pwm signals
-        x.target = pwm(0)
-        y.target = pwm(1)
-        z.target = pwm(3)
+        x.target = pwm[0]
+        # y.target = pwm[1]
+        # z.target = pwm[3]
 
         # Check directions & alter speeds
-        x.setSpeed(x.target)
-        y.setSpeed(y.target)
-        z.setSpeed(z.target)
+        # TODO: rewrite motors.py for clarity
+
+        # so that our wheel continues to spin, enact a minimum speed that activates the wheels
+        if x.target < 1500:
+            x.target = 1500
+            x.checkDir()
+        else:
+            x.checkDir()
 
         # Ending time for loop
         end_time = time.time()
@@ -183,17 +198,20 @@ def main(target=[1,0,0,0]):
         # Clear screen
         #os.system('cls' if os.name == 'nt' else 'clear')
 
+        # Get reaction speeds (in duty cycles) from Hall sensors
+        #NOTE: wheel must be spinning to check Hall
+        x_speed = checkHall(x.hallList[0]) 
+        # y_speed = checkHall(y.hallList[1])
+        # z_speed = checkHall(z.hallList[2])
+        # reaction_speeds = [*x_speed, *y_speed, *z_speed]
+        reaction_speeds[0] = x_speed
+
         # Increment iteration count
         i += 1
 
     # Bring the wheels to a stop
-    speed = 0
-    x.target = speed
-    x.setSpeed(x.target)
-    y.target = speed
-    y.setSpeed(y.target)
-    z.target = speed
-    z.setSpeed(z.target)
+    x.target = 0
+    x.checkDir()
 
     # Confirm it is done
     print("done with script! ending...")
@@ -202,5 +220,5 @@ def main(target=[1,0,0,0]):
 
 
 if __name__ == "__main__":
-    target = [1, 0, 0, 0]
-    main(target)
+    # target = [1, 0, 0, 0]
+    main()
