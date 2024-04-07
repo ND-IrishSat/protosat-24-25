@@ -112,6 +112,9 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
 
     # Set negative of last element to match magnetometer
     # Convert to North East Down to North East Up, matching X, Y, Z reference frame of magnetometer
+    # currently: -y on imu is +x on simulator
+    # +x on imu is +y on simulator 
+    B_true[1] *= -1
     B_true[2] *= -1
 
     # Initialize current step and last step reaction wheel speeds
