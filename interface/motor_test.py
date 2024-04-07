@@ -9,46 +9,75 @@ and run our motors at desired rpm
 from motors import *
 from hall import checkHall
 from init import initialize_setup
+from time import sleep
 
 
-# Initialize for execution
-initialize_setup()
+# Initialize for execution\
+# need to fix scope for pca
+# initialize_setup()
 
 # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
 x = Motor(pinX,dirX,hallX,default,default)
 # y = Motor(pinY,dirY,hallY,default,default)
 # z = Motor(pinZ,dirZ,hallZ,default,default)
 
+# GPIO setup
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(enable,GPIO.OUT)
+GPIO.output(enable,True)
+
 count = 0
+x.target = 0
+x.setSpeed()
+time.sleep(3)
 
-while (count < 100):    
-    # Intialize the speed to 10000
-    speed = 10000
-    
-    # Get the pwm signals
+while (count < 20):
+
+    speed = 20000
+
+    # set speed
     x.target = speed
-    # y.target = pwm(1)
-    # z.target = pwm(3)
 
-    # Alter speed
-    x.setSpeed(x.target)
-    # y.setSpeed(y.target)
-    # z.setSpeed(z.target)
-
-    # Check the current speed
-    #NOTE: wheel must be spinning to check Hall
-    x_speed = checkHall(x.hallList[0]) 
-    # y_speed = checkHall(y.hallList[1])
-    # z_speed = checkHall(z.hallList[2])
-    print(f"hall sensor reading: {x_speed}")
-
+    # Check directions & alter speeds
+    x.checkDir()
+    x.current = x.checkSpeed()
+    print("hall sensor reading: ", x.current)
+    
     count += 1
 
+count = 0
+time.sleep(1)
+print("CHANGING DIR")
+while (count < 20):
+    speed = -20000
+
+    x.target = speed
+    
+    # Check directions & alter speeds
+    x.checkDir()
+    x.current = -(x.checkSpeed())
+    print(x.current)
+    count += 1
+    
+count = 0
+time.sleep(1)
+print("CHANGING DIR2")
+
+while (count < 20):
+    speed = 20000
+
+    # Get the pwm signals
+    x.target = speed
+    
+    x.checkDir()
+    x.current = x.checkSpeed()
+    print(x.current)
+    count += 1
 
 # Bring the wheels to a stop
 speed = 0
 x.target = speed
-x.setSpeed(x.target)
+x.checkDir()
 
 # Confrim it is done
 print("done with script! ending...")

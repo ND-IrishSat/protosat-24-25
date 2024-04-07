@@ -18,11 +18,11 @@ from hall import checkHall
 import random
 
 
-# GPIO
-GPIO.setmode(GPIO.BCM)
-GPIO.setup(enable,GPIO.OUT)
-GPIO.output(enable,True)
-# note: must also run GPIO.cleanup() at end of script
+# # GPIO
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(enable,GPIO.OUT)
+# GPIO.output(enable,True)
+# # note: must also run GPIO.cleanup() at end of script
 
 # I2C
 i2c_bus = busio.I2C(SCL, SDA)
@@ -85,8 +85,8 @@ class Motor():
     
 
     # Set the speed
-    def setSpeed(self, newVal):
-        self.target = newVal
+    def setSpeed(self):
+        # self.target = newVal
         pca.channels[self.pin].duty_cycle = abs(self.target)
 
 
@@ -95,20 +95,33 @@ class Motor():
         GPIO.output(self.dir, val)
 
 
+    # Send output signal to actuators (& checks direction)
     def checkDir(self):
-        # check if our target is in a direction that's opposite of our current direction
-        # if so, bring it down to zero before switching directions
-        if self.current != self.target:
-            if self.target < 0 and self.current > 0:
-                self.setSpeed(0)
+        if self.target < 0 and self.current > 0:
+                speed = self.target
+                self.target = 0
+                self.setSpeed()
+                time.sleep(1)
+                
+                # reverses the dirPin output, causing negative spin
                 self.setDir(False)
-                self.setSpeed(self.target())
-            elif self.target > 0 and self.current < 0:
-                self.setSpeed(0)
+                self.target = speed
+                self.setSpeed()
+                print("target neg")
+        elif self.target > 0 and self.current < 0:
+                # defines dirPin output = True as positive target
+                speed = self.target
+                self.target = 0
+                self.setSpeed()
+                time.sleep(1)
+                
                 self.setDir(True)
-                self.setSpeed(self.target())
+                self.target = speed
+                self.setSpeed()
+                print("target pos")
         else:
-            self.setSpeed(self.target())
+            self.setSpeed()
+            print("SUS! target is in same direction as current spin")
 
 
     # convert duty cycle to RPM

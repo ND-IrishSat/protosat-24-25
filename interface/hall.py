@@ -24,6 +24,7 @@ hallList = [13,8,16]
 # Check motor speed (in duty cycles)
 def checkHall(sensor): 
 	count = 0
+	hall_speed = 0
 	data = []
 	while count < 10:
 		if GPIO.event_detected(sensor):

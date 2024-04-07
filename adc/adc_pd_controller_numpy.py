@@ -43,6 +43,8 @@ def delta_q(state,target):
     '''
     # normalizing factor
     scalar = (target[0]**2 + target[1]**2 + target[2]**2 + target[3]**2)
+    if scalar == 0:
+        scalar = 1
     # Takes the inverse of the quaternion given on page 39 of Fundamentals book q-1 = q* / ||q||^2 where q*=[q4; -q1:3]
     quat_inv_target = np.array([target[0],
                        -target[1],
@@ -51,7 +53,7 @@ def delta_q(state,target):
     
     return quaternionMultiply(state,quat_inv_target)
 
-def pd_controller(state,target, omega, kp, kd):
+def pd_controller(state,target, omega, kp, kd, old_pwm, dt):
     '''
     pd_controller
         proportional derivative controller as described in Fundamentals book pgs 289 -293
@@ -73,10 +75,10 @@ def pd_controller(state,target, omega, kp, kd):
     delta_q_out = delta_q(state, target) # outputs 4x1 with the first element being w
     #print("Error Quaternion: ", delta_q_out)
     # loop through list to get 3 pwm vals
-    pwm = -kp * np.sign(delta_q_out[0]) * delta_q_out[1:4] - kd * omega
+    L = -kp * np.sign(delta_q_out[0]) * delta_q_out[1:4] - kd * omega
     # for i in range(len(pwm)):
     #     pwm[i] = -kp * np.sign(delta_q_out[0]) * delta_q_out[i+1] - kd * omega[i]
-    #print('pwm: ', pwm)
+    # print('pwm: ', L)
 
     # transformation matrix for NASA configuration
     alpha = 1/np.sqrt(3)
@@ -98,26 +100,32 @@ def pd_controller(state,target, omega, kp, kd):
              [alpha, beta, gamma]])/n
     
     # convert output for 3 rx wheels to 4
-    pwm = np.matmul(W_inv,pwm)
+    L = np.matmul(W_inv,L)
+
+    pwm = np.add(L*dt,old_pwm)
+
     # Convert to integers
     pwm = np.array([int(pwm[0]),int(pwm[1]),int(pwm[2]),int(pwm[3])])
     # Convert back to 1x4 list
     #pwm = [int(pwm[0][0]), int(pwm[1][0]), int(pwm[2][0]), int(pwm[3][0])]
-    #print(pwm)
+    print("pwm: ", pwm)
     # Ensure pwm is always within limits of RPMs
     np.putmask(pwm, pwm > 0.5*MAX_PWM, 0.5*MAX_PWM)
     np.putmask(pwm, pwm < 0.5*-MAX_PWM, 0.5*-MAX_PWM)
 
     return pwm
 
-# Test to make sure it works
-test_state = np.array([0, 1, 0, 0]) # current quaternion
-test_target = np.array([1, 0, 0, 0]) # goal quaternion
-test_omega = np.array([3,3,3]) # rad/s
+if __name__ == "__main__":
+    # Test to make sure it works
+    test_state = np.array([0, 1, 0, 0]) # current quaternion
+    test_target = np.array([0, 0, 0, 0]) # goal quaternion
+    test_omega = np.array([3,3,3]) # rad/s
+    dt = 1e-2
+    old_pwm = np.array([500,500,500,500])
 
-# Gains
-kp = .05*MAX_PWM # I think these would be good to start with
-kd = .01*MAX_PWM
+    # Gains
+    kp = .05*MAX_PWM # I think these would be good to start with
+    kd = .01*MAX_PWM
 
-test_pwm = pd_controller(test_state,test_target, test_omega, kp, kd)
-print(test_pwm)
+    test_pwm = pd_controller(test_state,test_target, test_omega, kp, kd,old_pwm,dt)
+    print(test_pwm)

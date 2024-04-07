@@ -44,14 +44,19 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     # Initialize setup for motors (I2C and GPIO)
 
     # i2c needs to be in motors.py???
-    initialize_setup()
-    print("initialized setup\n")
+    # initialize_setup()
+    # print("initialized setup\n")
 
     # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
     x = Motor(pinX,dirX,hallX,default,default)
     # y = Motor(pinY,dirY,hallY,default,default)
     # z = Motor(pinZ,dirZ,hallZ,default,default)
     # print("initialized motors\n")
+
+    # GPIO setup
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(enable,GPIO.OUT)
+    GPIO.output(enable,True)
 
     # Dimension of state and measurement space
     dim = 7
@@ -163,7 +168,6 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         kd = .1*MAX_DUTY
         
         # find time since last pd call
-        cur_time = time.time()
         end_time_pwm = time.time()
         pwm_total_time = end_time_pwm - curr_time_pwm
 
@@ -172,6 +176,7 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
 
         curr_time_pwm = time.time()
         old_pwm = pwm
+        print("pwm after controller: ", pwm)
 
         # pwm[0] = abs(pwm[0])
 
