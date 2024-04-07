@@ -39,6 +39,8 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         
         - fix initialization
         - rewrite/comment motors.py
+        - find workaround for magnetometer being busted (calculate b field from previous quaternion?)
+            - implement new IMU
     '''
 
     # Initialize setup for motors (I2C and GPIO)
