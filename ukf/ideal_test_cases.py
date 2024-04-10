@@ -119,9 +119,9 @@ def run_moving_test():
     # starting quaternion for propogator
     initQ = np.array([1, 0, 0, 0])
     # starting state estimate (should match initQ and w)
-    start = [1, 0, 0, 0, 0, speed, 0]
+    start = [1, 0, 0, 0, 0, speed, speed/2]
     # angular velocity
-    w = np.array([0, speed, 0])
+    w = np.array([0, speed, speed/2])
     # starting covariance
     cov = np.identity(dim) * 5e-10
     # constant B field
@@ -181,9 +181,13 @@ def run_moving_test():
 
         # debug print statements
         # print("Data: ", data)
+        print("Data: ", ["{:0.4f}".format(x) for x in data])
         # print("State: ", start[:4])
-        # print("Ideal: ", states[i])
-        # print("")
+        print("State quaternion: ", ["{:0.4f}".format(x) for x in start[:4]])
+        # print("Ideal quaternion: ", states[i])
+        print("Ideal quaternion: ", ["{:0.4f}".format(x) for x in states[i]])
+
+        print("")
 
         # draw our estimate's quaternion
         game_visualize(np.array([start[:4]]), i)
