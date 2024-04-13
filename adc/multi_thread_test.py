@@ -39,11 +39,13 @@ if __name__ == "__main__":
 
 
     #########################################################
+    mw=2 #max workers
     print()
-    pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)
-    
-    pool.submit(worker(os.getpid()))
-    pool.submit(worker(os.getpid()))
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=mw)
+
+    pid=os.getpid()
+    for i in range(mw):
+        pool.submit(worker(pid))
     
     pool.shutdown(wait=True)
     
