@@ -39,8 +39,9 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         
         - fix initialization
         - rewrite/comment motors.py
-        - find workaround for magnetometer being busted (calculate b field from previous quaternion?)
-            - implement new IMU
+        - implement new IMU
+
+        - fix 1D EOMs bug!!!
     '''
 
     # Initialize setup for motors (I2C and GPIO)
@@ -79,6 +80,13 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     state = np.array([1, 0, 0, 0, 0, 0, 0]) #[q0, q1, q2, q3, omega_x, omega_y, omega_z]
     cov = np.identity(dim) * 5e-10
 
+    '''
+    smaller noise = more trust = less uncertainty
+    higher noise = lower kalman gain = smooth out noise, lower responsivness
+    Strive to strike a balance between precision and robustness. 
+    Too much uncertainty (high covariances) can lead to poor estimation accuracy, 
+    while too little uncertainty can make the filter overly sensitive to noise and outliers.
+    '''
     # r: measurement noise (m x m)
     noise_mag = .05
     # r = np.diag([noise_mag] * dim_mes)

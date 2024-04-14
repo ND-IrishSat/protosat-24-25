@@ -89,9 +89,12 @@ class TEST1EOMS():
         #beta = 1/np.sqrt(3)
         #gamma = 1/np.sqrt(3) 
 
-        #self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
+        # self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
+        # Double check to make sure rw_config for dynamics for 1D test is correct!
+        # Update: self.rw_config is almost certainly wrong here, need to rewrite! Looks like it's a rotation about Z
+        # by theta_1D = 135 degrees
         theta_1D = 135*np.pi/180.0
-        self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [np.cos(theta_1D), -np.sin(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
+        self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [-np.sin(theta_1D), np.cos(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
         
         # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
         for i in np.arange(self.rw_config.shape[1]):

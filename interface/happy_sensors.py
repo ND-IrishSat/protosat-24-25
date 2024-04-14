@@ -13,7 +13,12 @@ mpu = MPU9250(
         mfs = AK8963_BIT_16,
         mode = AK8963_MODE_C100HZ)
 
-
+'''
+https://docs.nanoframework.net/devicesdetails/Mpu9250/README.html
+https://docs.nanoframework.net/devicesdetails/Ak8963/README.html
+https://github.com/nanoframework/nanoFramework.IoT.Device/blob/develop/devices/Mpu9250/samples/Program.cs
+https://www.instructables.com/Quaternion-Compass/
+'''
 def calibrate():
     # Calibrate and configure the IMU
     try:
