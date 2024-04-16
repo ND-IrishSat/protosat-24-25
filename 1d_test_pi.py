@@ -51,7 +51,7 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     '''
 
     #you can change where you put this but this is reading in the magnetometer calibration values
-    fname="calvals.txt"
+    fname="../interface/calvals.txt"
     fin=open(fname,"r")
     mcoeffs=numpy.zeros((1,3))
     mscales=numpy.zeros((1,3))
