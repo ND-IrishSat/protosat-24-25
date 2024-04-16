@@ -75,7 +75,8 @@ def pd_controller(state,target, omega, kp, kd, old_pwm, dt):
     delta_q_out = delta_q(state, target) # outputs 4x1 with the first element being w
     #print("Error Quaternion: ", delta_q_out)
     # loop through list to get 3 pwm vals
-    L = -kp * np.sign(delta_q_out[0]) * delta_q_out[1:4] - kd * omega # this gets torque
+    L = -kp * np.sign(delta_q_out[0]) * delta_q_out[1:4] - kd * omega # this is torque (which is proportional to angular acceleration)
+
     # for i in range(len(pwm)):
     #     pwm[i] = -kp * np.sign(delta_q_out[0]) * delta_q_out[i+1] - kd * omega[i]
     # print('pwm: ', L)
@@ -102,7 +103,8 @@ def pd_controller(state,target, omega, kp, kd, old_pwm, dt):
     # convert output for 3 rx wheels to 4
     L = np.matmul(W_inv,L)
 
-    pwm = np.add(L*dt,old_pwm)
+    pwm = np.add(L*dt,old_pwm) # this does finite difference to get velocity from acceleration
+
 
     # Convert to integers
     pwm = np.array([int(pwm[0]),int(pwm[1]),int(pwm[2]),int(pwm[3])])

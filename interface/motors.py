@@ -4,6 +4,7 @@ Authors: Tim Roberts
 
 motor interface class 
 checks hall sensors readings and sets reaction wheel speeds
+initialization must be done through init.py
 
 '''
 from board import SCL, SDA
@@ -17,15 +18,22 @@ from hall import checkHall
 import random
 
 
-# Initialize i2c
+# # GPIO
+# GPIO.setmode(GPIO.BCM)
+# GPIO.setup(enable,GPIO.OUT)
+# GPIO.output(enable,True)
+# # note: must also run GPIO.cleanup() at end of script
+
+# I2C
 i2c_bus = busio.I2C(SCL, SDA)
 pca = PCA9685(i2c_bus)
 pca.frequency = 1500
 
+
 # Constants
-c = 9100
+MAX_RPM = 9100
 # max duty cycles
-k = 65535
+MAX_DUTY = 65535
 default = 0
 enable = 11
 pinX = 10
@@ -71,14 +79,14 @@ class Motor():
         # c = np.arange(10).reshape(-1,1)
         # model = LinearRegression().fit(c,t)
         # frequency = 1/model.coef_
-        # speed += ((frequency * 15) / c) * k
+        # speed += ((frequency * 15) / c) * MAX_DUTY
         # # Return the speed according to Hall sensor (duty cycles)
         # return speed
     
 
     # Set the speed
-    def setSpeed(self, newVal):
-        self.target = newVal
+    def setSpeed(self):
+        # self.target = newVal
         pca.channels[self.pin].duty_cycle = abs(self.target)
 
 
@@ -88,26 +96,40 @@ class Motor():
 
 
     # Send output signal to actuators (& checks direction)
-    def changeSpeed(self):
-        if self.current != self.target:
-            if self.target < 0 and self.current > 0:
-                self.setSpeed(0)
+    def checkDir(self):
+        if self.target < 0 and self.current > 0:
+                speed = self.target
+                self.target = 0
+                self.setSpeed()
+                time.sleep(1)
+                
+                # reverses the dirPin output, causing negative spin
                 self.setDir(False)
-                self.setSpeed(self.target())
-            elif self.target > 0 and self.current < 0:
-                self.setSpeed(0)
+                self.target = speed
+                self.setSpeed()
+                print("target neg")
+        elif self.target > 0 and self.current < 0:
+                # defines dirPin output = True as positive target
+                speed = self.target
+                self.target = 0
+                self.setSpeed()
+                time.sleep(1)
+                
                 self.setDir(True)
-                self.setSpeed(self.target())
+                self.target = speed
+                self.setSpeed()
+                print("target pos")
         else:
-            self.setSpeed(self.target())
+            self.setSpeed()
+            print("SUS! target is in same direction as current spin")
 
 
     # convert duty cycle to RPM
     def convertToRPM(self): 
-        return (self.current / k) * c
+        return (self.current / MAX_DUTY) * MAX_RPM
 
     # convert RPM to duty cycle
     def convertToDuty(RPM):
-        if RPM > c:
-            RPM = c
-        return (RPM / c) * k
+        if RPM > MAX_RPM:
+            RPM = MAX_RPM
+        return (RPM / MAX_RPM) * MAX_DUTY

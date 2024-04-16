@@ -89,9 +89,15 @@ class TEST1EOMS():
         #beta = 1/np.sqrt(3)
         #gamma = 1/np.sqrt(3) 
 
-        #self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
-        theta_1D = 135*np.pi/180.0
-        self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [np.cos(theta_1D), -np.sin(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
+        # self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
+        # Double check to make sure rw_config for dynamics for 1D test is correct!
+        # make sure x axis aligns with wheel
+        self.rw_config = np.identity(3)
+
+        # Update: self.rw_config is almost certainly wrong here, need to rewrite! Looks like it's a rotation about Z
+        # by theta_1D = 135 degrees
+        #theta_1D = 135*np.pi/180.0
+        #self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [-np.sin(theta_1D), np.cos(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
         
         # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
         for i in np.arange(self.rw_config.shape[1]):
@@ -106,7 +112,7 @@ class TEST1EOMS():
             w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
             w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
             tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
-            alpha_rw (nd.ndarray, (1x4)): angular acceleration of the reaction wheels in their respective wheel frames
+            alpha_rw (nd.ndarray, (1x3)): angular acceleration of the reaction wheels in their respective wheel frames
             dt (float)
         Out:
             quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
