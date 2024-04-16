@@ -108,7 +108,7 @@ def pd_controller(state,target, omega, kp, kd, old_pwm, dt):
     pwm = np.array([int(pwm[0]),int(pwm[1]),int(pwm[2]),int(pwm[3])])
     # Convert back to 1x4 list
     #pwm = [int(pwm[0][0]), int(pwm[1][0]), int(pwm[2][0]), int(pwm[3][0])]
-    print("pwm: ", pwm)
+    # print("pwm: ", pwm)
     # Ensure pwm is always within limits of RPMs
     np.putmask(pwm, pwm > 0.5*MAX_PWM, 0.5*MAX_PWM)
     np.putmask(pwm, pwm < 0.5*-MAX_PWM, 0.5*-MAX_PWM)

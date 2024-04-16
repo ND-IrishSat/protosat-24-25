@@ -11,7 +11,8 @@ import RPi.GPIO as GPIO
 import numpy as np
 from sklearn.linear_model import LinearRegression
 import time
-from motors import *
+# from motors import *
+from motors import MAX_DUTY, MAX_RPM
 
 # Constants (imported from motors.py)
 # MAX_RPM = 9100

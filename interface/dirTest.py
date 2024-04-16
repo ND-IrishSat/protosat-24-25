@@ -1,3 +1,11 @@
+'''
+dirTest.py
+Author: Tim Roberts
+
+fundamental motors direction test that does not use structure of motors.py
+
+'''
+
 from board import SCL, SDA
 import busio
 from adafruit_pca9685 import PCA9685

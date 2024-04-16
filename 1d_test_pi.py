@@ -45,6 +45,7 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         - fix initialization
         - rewrite/comment motors.py
         - implement new IMU
+        - ask juwan about calibrating
 
         - fix 1D EOMs bug!!!
     '''
@@ -57,9 +58,9 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
 
     # GPIO setup
     # NOTE: uncomment only gpio to run motors
-    #GPIO.setmode(GPIO.BCM)
-    #GPIO.setup(enable,GPIO.OUT)
-    #GPIO.output(enable,True)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(enable,GPIO.OUT)
+    GPIO.output(enable,True)
 
     # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
     #x = Motor(pinX,dirX,hallX,default,default)
