@@ -6,6 +6,7 @@ Last updated: 2/25/24
 Main script for 1D systems integration test
 Collab test between GOAT lab and protoSat
 Implements UKF, PD, hall sensors, IMU, visualizer, and actuators to rotate cubeSat on frictionless table on 1 axis 
+For use at 2024 end-of-year banquet
 
 '''
 
@@ -21,7 +22,8 @@ from ukf.simulator import *
 from adc.adc_pd_controller_numpy import pd_controller
 from ukf.UKF_algorithm import *
 import time
-from interface.happy_sensors import get_imu_data, calibrate
+# from interface.happy_sensors import get_imu_data, calibrate
+from interface.happy_sensors import *
 from ukf.hfunc import *
 from interface.motors import *
 from interface.hall import checkHall
@@ -29,6 +31,9 @@ from interface.init import initialize_setup
 
 # MAX_DUTY (65535, used for pwm) and MAX_RPM (9100) are declared in motors.py
 
+# pi info:
+# scp -r test irishsat@10.7.85.47:/home/irishsat/test .
+# password: irishsat
 
 def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     '''NOTE
@@ -44,22 +49,29 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         - fix 1D EOMs bug!!!
     '''
 
-    # Initialize setup for motors (I2C and GPIO)
-
+    # Initialize setup for motors (I2C and GPIO): not functional currently
     # i2c needs to be in motors.py???
+    # currently non-functional
     # initialize_setup()
     # print("initialized setup\n")
 
-    # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
-    x = Motor(pinX,dirX,hallX,default,default)
-    # y = Motor(pinY,dirY,hallY,default,default)
-    # z = Motor(pinZ,dirZ,hallZ,default,default)
-    # print("initialized motors\n")
-
     # GPIO setup
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(enable,GPIO.OUT)
-    GPIO.output(enable,True)
+    # NOTE: uncomment only gpio to run motors
+    #GPIO.setmode(GPIO.BCM)
+    #GPIO.setup(enable,GPIO.OUT)
+    #GPIO.output(enable,True)
+
+    # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
+    #x = Motor(pinX,dirX,hallX,default,default)
+    #y = Motor(pinY,dirY,hallY,default,default)
+    #z = Motor(pinZ,dirZ,hallZ,default,default)
+
+    # i2c initialization
+    # NOTE: DO NOT INITALIZE HERE. DONE IN MOTORS.PY
+    #i2c_bus = busio.I2C(SCL, SDA)
+    #pca = PCA9685(i2c_bus)
+    #pca.frequency = 1500
+    # print("initialized motors\n")
 
     # Dimension of state and measurement space
     dim = 7
@@ -81,25 +93,26 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     cov = np.identity(dim) * 5e-10
 
     '''
-    smaller noise = more trust = less uncertainty
+    smaller noise = more trust = less uncertainty = source is less noisy
     higher noise = lower kalman gain = smooth out noise, lower responsivness
     Strive to strike a balance between precision and robustness. 
     Too much uncertainty (high covariances) can lead to poor estimation accuracy, 
     while too little uncertainty can make the filter overly sensitive to noise and outliers.
     '''
     # r: measurement noise (m x m)
-    noise_mag = .05
+    noise_mag = 40
+    noise2 = .1
     # r = np.diag([noise_mag] * dim_mes)
-    r = np.array([noise_mag, 0, 0, 0, 0, 0],
+    r = np.array([[noise_mag, 0, 0, 0, 0, 0],
                  [0, noise_mag, 0, 0, 0, 0],
                  [0, 0, noise_mag, 0, 0, 0],
-                 [0, 0, 0, noise_mag, 0, 0],
-                 [0, 0, 0, 0, noise_mag, 0],
-                 [0, 0, 0, 0, 0, noise_mag])
+                 [0, 0, 0, noise2, 0, 0],
+                 [0, 0, 0, 0, noise2, 0],
+                 [0, 0, 0, 0, 0, noise2]])
 
     # q: process noise (n x n)
     # Should depend on dt
-    noise_mag = .5
+    noise_mag = .05
     # q = np.diag([noise_mag] * dim)
     q = np.array([[dt, 3*dt/4, dt/2, dt/4, 0, 0, 0],
                 [3*dt/4, dt, 3*dt/4, dt/2, 0, 0, 0],
@@ -122,10 +135,38 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
 
     # Set negative of last element to match magnetometer
     # Convert to North East Down to North East Up, matching X, Y, Z reference frame of magnetometer
-    # currently: -y on imu is +x on simulator
-    # +x on imu is +y on simulator 
     B_true[1] *= -1
     B_true[2] *= -1
+
+    # Our North West Up true magnetic field should be: 19.42900375, 1.74830615, 49.13746833 [micro Teslas]
+    # can use mag_calibration.py to find mbias
+    #offsets = custom_calibrate(mpu, 10, B_true)
+    #print(mpu.mbias)
+    #print(mpu.magScale)
+
+    # Offsets from using mag_calibration.py, adopted from existing online code
+    mpu.mbias = [30.335109508547004, 59.71757955586081, 38.51908195970696] 
+    mpu.magScale = [1, 1, 1]
+    
+    # print(mpu.mbias)
+    # print(mpu.magScale)
+    #print('B_true: ', B_true)
+    
+    # Set B_true as the average of count number of
+    # measurements of the magnetometer upon initialization
+    # if in same config for a while, can run a couple times and hardcode
+    B_true_num = np.zeros(3)
+    count = 50
+    for i in range(count):
+        reading = np.array(get_imu_data())
+        print(reading[:3])
+        B_true_num = B_true_num + reading[:3]
+        time.sleep(1)
+    B_true_num = B_true_num / count
+    
+    print("B_true from sensor average: ", B_true_num)
+    B_true = B_true_num
+
 
     # Initialize current step and last step reaction wheel speeds
     # For this test they're 1x3: x, y, skew (z) wheels
@@ -139,11 +180,14 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     # inialize starting speed because hall sensor is read at end of loop
     x_speed = 0
 
+    # calculated b field if fudging mag data
+    b_calc = [0, 0, 0]
+
     # Infinite loop to run until you kill it
     i = 0
     while (i < 10000):
         # Starting time for loop 
-        start_time = time.time()
+        # start_time = time.time()
 
         # Store reaction wheel speeds of last iteration
         old_reaction_speeds = reaction_speeds
@@ -151,14 +195,20 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         # Get current imu data (mag*3, gyro*3)
         imu_data = get_imu_data()
 
+        #b_calc = list(np.matmul(quaternion_rotation_matrix(state[:4]), B_true))
+        #print("\nfake b data: ", b_calc, "\n")
+
         # Angular velocity comes from gyro
         angular_vel = imu_data[3:]
 
-        # Data array to pass into
+        # Data array to pass into ukf
         data = [0] * dim_mes
         data[0] = imu_data[0]
+        #data[0] = b_calc[0][0]
         data[1] = imu_data[1]
+        #data[1] = b_calc[1][0]
         data[2] = imu_data[2]
+        #data[2] = b_calc[2][0]
         data[3] = angular_vel[0]
         data[4] = angular_vel[1]
         data[5] = angular_vel[2]
@@ -171,6 +221,7 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         # print current quaternion estimate
         print("Current state: ", state[:4])
 
+
         # Run PD controller
         curr_quaternion = state[:4]
 
@@ -178,7 +229,9 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         omega = np.array([angular_vel[0], angular_vel[1], angular_vel[2]])
         # PD gains parameters (dependant upon max pwm/duty cycles)
         kp = .2*MAX_DUTY
+        kp = .05*MAX_DUTY
         kd = .1*MAX_DUTY
+        kd = .01*MAX_DUTY
         
         # find time since last pd call
         end_time_pwm = time.time()
@@ -237,6 +290,6 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     GPIO.cleanup()
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
     # target = [1, 0, 0, 0]
     main()
