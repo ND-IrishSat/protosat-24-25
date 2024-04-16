@@ -53,10 +53,10 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     #you can change where you put this but this is reading in the magnetometer calibration values
     fname="../interface/calvals.txt"
     fin=open(fname,"r")
-    mcoeffs=numpy.zeros((1,3))
-    mscales=numpy.zeros((1,3))
+    mcoeffs=[0]*3
+    mscales=[0]*3
     for i in range(3):
-        mcoeffs[0][i],mscales[0][i]=[int(x) for x in fin.readline().split()]
+        mcoeffs[i],mscales[i]=[int(x) for x in fin.readline().split()]
     fin.close()
     
     # Initialize setup for motors (I2C and GPIO): not functional currently
