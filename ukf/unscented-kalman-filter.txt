@@ -1,1 +1,0 @@
-Scripts for running unscented kalman filter for accurate attitude determination.

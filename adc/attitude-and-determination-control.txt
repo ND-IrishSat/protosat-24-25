@@ -1,2 +1,0 @@
-Contains scripts for getting orientation from Unscented Kalman Filter.
-Controls voltage output to reaction wheels and magnetorquers to create momentum of CubeSat.
