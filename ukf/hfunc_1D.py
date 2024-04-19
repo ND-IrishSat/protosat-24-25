@@ -54,3 +54,27 @@ def angle2quat(psi):
     quat = (0.5/np.sqrt(t)) * quat
 
     return quat
+
+
+def euler2quat(roll, pitch, yaw):
+    '''
+    '''
+
+    # Define intermediate variables for cos and sin of roll, pitch, yaw angles
+    cr = np.cos(roll * 0.5)
+    sr = np.sin(roll * 0.5)
+    cp = np.cos(pitch * 0.5)
+    sp = np.sin(pitch * 0.5)
+    cy = np.cos(yaw * 0.5)
+    sy = np.sin(yaw * 0.5)
+
+    # Define quaternion
+    q0 = cr*cp*cy + sr*sp*sy
+    q1 = sr*cp*cy - cr*sp*sy
+    q2 = cr*sp*cy + sr*cp*sy
+    q3 = cr*cp*sy - sr*sp*cy
+
+    return np.array([q0, q1, q2, q3])
+
+if __name__ == "__main__":
+    print(euler2quat(0, 0, 0.5))
