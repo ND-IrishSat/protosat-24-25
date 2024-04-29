@@ -31,23 +31,24 @@ from interface.init import initialize_setup
 
 # MAX_DUTY (65535, used for pwm) and MAX_RPM (9100) are declared in motors.py
 
-# pi info:
+# pi info (PUT IN TUTORIAL FILE SOMEWHERE):
 # scp -r test irishsat@10.7.85.47:/home/irishsat/test .
 # password: irishsat
+# download vnc viewer for exact screen mirroring
 
 def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     '''NOTE
         - things to take out for UKF only test: motor initialization, reaction wheel update, pd section (127-146)
         - What is starting state guess? read from sensors?
         - Set proper target quaternion?
-        - do we need to worry about hall sensors not reading if wheels not spinning?
         
         - fix initialization
         - rewrite/comment motors.py
         - implement new IMU
-        - ask juwan about calibrating
-
-        - fix 1D EOMs bug!!!
+        - flags for testing only ukf, etc
+        - fix file of constants (maybe not with new sensor)
+        - effiency testing somehow
+        - update visualizer with gui
     '''
 
     #you can change where you put this but this is reading in the magnetometer calibration values
