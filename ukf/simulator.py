@@ -303,3 +303,11 @@ def game_visualize(states, a):
         if i == num_states:
             break
 
+def draw_cube():
+    print("   +------+")  # Top face
+    print("  /      /|")
+    print(" /      / |")
+    print("+------+  |")
+    print("|      |  +")  # Right face
+    print("|      | /")
+    print("+------+")

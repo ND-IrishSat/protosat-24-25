@@ -191,6 +191,13 @@ if __name__ == '__main__':
         # Magnetometer Calibration
         ###################################
         #
+        #mcoeffs, mscales, data = mag_cal()
+        #print(mcoeffs)
+        #print(mscales)
+        #print(data)
+        #
+
+        # Save mag calibration files to text file
         mcoeffs, mscales, data = mag_cal()
         print(mcoeffs)
         print(mscales)

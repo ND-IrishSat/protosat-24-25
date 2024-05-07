@@ -28,7 +28,7 @@ from interface.happy_sensors import *
 from ukf.hfunc_1D import *
 from interface.motors import *
 from interface.hall import checkHall
-from interface.draw_sat import draw_cube
+# from interface.draw_sat import draw_cube
 #from interface.init import initialize_setup
 
 # Color constants
