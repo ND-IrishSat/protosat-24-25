@@ -1,3 +1,11 @@
+'''
+vn100_interface.py
+Authors: Andrew Gaylord
+
+test script for connecting to and reading data from vn100 imu
+
+'''
+
 from vnpy import *
 #import Serial
 

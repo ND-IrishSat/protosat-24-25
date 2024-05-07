@@ -1,11 +1,10 @@
 '''
-motorsandmags.py
+magnetorquers.py
 Authors: Tim Roberts & Sarah Kopfer
 
-motor interface class
 mag interface class
-checks hall sensors readings and sets reaction wheel speeds
-initialization must be done through init.py
+checks hall sensors readings and sets reaction wheel speeds??
+initialization must be done through init.py??
 
 MUST GET PINS BEFORE USING
 

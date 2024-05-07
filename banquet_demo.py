@@ -24,7 +24,7 @@ from adc.adc_pd_controller_numpy import pd_controller
 from ukf.UKF_algorithm_1D import *
 import time
 import signal
-from interface.happy_sensors import *
+from interface.mpu9250.happy_sensors import *
 from ukf.hfunc_1D import *
 from interface.motors import *
 from interface.hall import checkHall
