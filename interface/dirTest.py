@@ -38,6 +38,8 @@ GPIO.output(enable,True)
 
 GPIO.setup(pinX,GPIO.OUT)
 GPIO.setup(dirX,GPIO.OUT)
+GPIO.output(dirX, True)
+
 GPIO.setup(hallX[0],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
 GPIO.add_event_detect(hallX[0], GPIO.FALLING)
 

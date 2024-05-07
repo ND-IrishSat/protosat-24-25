@@ -51,6 +51,8 @@ def main(target=[1, 0, 0, 0]):
         - effiency testing somehow
         - update visualizer with gui
         - update organization of interface folder
+
+        - magnetorquer...? magdriver repo
     '''
 
     #you can change where you put this but this is reading in the magnetometer calibration values

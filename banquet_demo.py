@@ -252,8 +252,8 @@ def main(target):
         print(f"*PWM after controller: ({pwm[0]}, {pwm[1]}, {pwm[2]}, {pwm[3]})")
         # pwm[0] = abs(pwm[0])
 
-        # use x.current to store prev target for sign comparison
-        x.current = x.target
+        # use x.lastSpeed to store prev target for sign comparison
+        x.lastSpeed = x.target
         
         # Get the pwm signals
         x.target = pwm[2]
@@ -290,9 +290,6 @@ def main(target):
         #z_speed = checkHall(z.hallList[2])
         #y_speed=0
         #z_speed=0
-        
-        # no: instead, use x.current to store prev target
-        #x.current = x_speed???
 
         reaction_speeds = x_speed
  
