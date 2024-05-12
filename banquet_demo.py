@@ -29,7 +29,7 @@ from ukf.hfunc_1D import *
 from interface.motors import *
 from interface.hall import checkHall
 # from interface.draw_sat import draw_cube
-#from interface.init import initialize_setup
+from interface.init import initialize_setup, cleanup
 
 # Color constants
 BLUE = '\033[94m'
@@ -47,14 +47,15 @@ def signal_handler(sig, frame, x):
     print("SIGNAL RECEIVED: shutting down...")
     print()
 
+    cleanup(x)
     # Bring the wheels to a stop
-    x.target = 0
-    x.changeSpeed()
+    # x.target = 0
+    # x.changeSpeed()
 
-    # Confirm it is done
-    print("STATUS: done with script! ending...")
-    GPIO.cleanup()
-    sys.exit(0)
+    # # Confirm it is done
+    # print("STATUS: done with script! ending...")
+    # GPIO.cleanup()
+    # sys.exit(0)
 
 
 # Main method
@@ -72,12 +73,15 @@ def main(target):
     print(line, "\n")
 
     # GPIO setup used for motor communication
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setup(enable,GPIO.OUT)
-    GPIO.output(enable,True)
+    # GPIO.setmode(GPIO.BCM)
+    # GPIO.setup(enable,GPIO.OUT)
+    # GPIO.output(enable,True)
+
+    # return pca object from init.py for motor communication
+    pca = initialize_setup()
 
     # Initialize motor classes (for each of 3 reactions wheels) using global variables from motors.py
-    x = Motor(pinX,dirX,hallX,default,default)
+    x = Motor(pinX,dirX,hallX,default,default, pca)
     #y = Motor(pinY,dirY,hallY,default,default)
     #z = Motor(pinZ,dirZ,hallZ,default,default)
 

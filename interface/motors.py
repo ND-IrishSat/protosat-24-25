@@ -26,9 +26,9 @@ import random
 # # note: must also run GPIO.cleanup() at end of script
 
 # I2C
-i2c_bus = busio.I2C(SCL, SDA)
-pca = PCA9685(i2c_bus)
-pca.frequency = 1500
+# i2c_bus = busio.I2C(SCL, SDA)
+# pca = PCA9685(i2c_bus)
+# pca.frequency = 1500
 
 
 # Constants
@@ -50,7 +50,7 @@ hallZ = [16,20,21]
 # motor class!
 class Motor():
     # IO setup
-    def __init__(self, pin, direction, hallList, lastSpeed, target):
+    def __init__(self, pin, direction, hallList, lastSpeed, target, pca):
         self.pin = pin
         self.dirPin = direction
         self.hallList = hallList
@@ -60,6 +60,7 @@ class Motor():
         self.count = 0
         self.M_switch = 0
         self.rate = 0
+        self.pca = None
         GPIO.setup(self.dirPin,GPIO.OUT)
         GPIO.setup(self.hallList[0],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.hallList[1],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
@@ -72,7 +73,7 @@ class Motor():
     # Set the speed
     def setSpeed(self):
         # self.target = newVal
-        pca.channels[self.pin].duty_cycle = abs(self.target)
+        self.pca.channels[self.pin].duty_cycle = abs(self.target)
 
 
     # Set the direction
@@ -107,14 +108,14 @@ class Motor():
                 self.count+=1
                 if self.count >= 10:
                     #self.M_switch = 1
-                    mag.magOn(50,0, pca)
-                    mag.magOn(50,1, pca)
+                    mag.magOn(50,0, self.pca)
+                    mag.magOn(50,1, self.pca)
             else:
                 self.count = 0
                 if abs(self.target) < .87 * MAX_DUTY: 
                     #self.M_switch = 0
-                    mag.magOff(0, pca)
-                    mag.magOff(1, pca)
+                    mag.magOff(0, self.pca)
+                    mag.magOff(1, self.pca)
             self.target -= 1 * self.rate # NOTE: M_switch doesn't exist?
             self.setSpeed()
     
