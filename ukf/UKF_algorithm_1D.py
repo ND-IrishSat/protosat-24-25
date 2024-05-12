@@ -1,6 +1,5 @@
 '''
 1D_UKF_algorithm.py
-edited by Juwan
 
 Unscented Kalman Filter algorithm for IrishSat based on following resource:
 The Unscented Kalman Filter for Nonlinear Estimation 
@@ -71,7 +70,6 @@ def sigma(means, cov, n, scaling):
     # return the sigma matrix (2 * n + 1 columns)
     return sigmaMatrix
 
-
 class DEMO_1D_EOMS():
     def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
         
@@ -113,14 +111,118 @@ class DEMO_1D_EOMS():
         new_psi = psi + psi_dot * dt
         new_psi_dot = psi_dot + psi_ddot * dt
 
-        #print(new_psi)
-        #print(new_psi_dot)
-        
         new_state = np.array([new_psi, new_psi_dot])
 
         return new_state
     
-    
+
+class TEST1EOMS():
+    '''
+    Equations of motion class for 1D test specifically--does not implement 3rd reaction wheel
+    '''
+    def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
+        
+        # Initially store moment of inertia tensor w/o reaction wheel inertias!
+        self.I_body = I_body
+
+        # Store principal moment of inertia for reaction wheels about spin axis and about axis transverse to spin axis respectively
+        self.I_w_spin = I_w_spin
+        self.I_w_trans = I_w_trans
+
+        # changes for test
+        #alpha = 1/np.sqrt(3)
+        #beta = 1/np.sqrt(3)
+        #gamma = 1/np.sqrt(3) 
+
+        # self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
+        # Double check to make sure rw_config for dynamics for 1D test is correct!
+        # make sure x axis aligns with wheel
+        self.rw_config = np.identity(3)
+
+        # Update: self.rw_config is almost certainly wrong here, need to rewrite! Looks like it's a rotation about Z
+        # by theta_1D = 135 degrees
+        #theta_1D = 135*np.pi/180.0
+        #self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [-np.sin(theta_1D), np.cos(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
+        
+        # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
+        for i in np.arange(self.rw_config.shape[1]):
+            self.I_body = self.I_body + I_w_trans*(np.identity(3) - np.matmul(self.rw_config[:, i], np.transpose(self.rw_config[:, i]))) 
+
+    def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray, dt: float):
+        ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
+        body + wheels w_sat, given current state + external torques
+        
+        Args:
+            quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
+            w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
+            w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
+            tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
+            alpha_rw (nd.ndarray, (1x3)): angular acceleration of the reaction wheels in their respective wheel frames
+            dt (float)
+        Out:
+            quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
+            w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite
+        '''
+
+        # Store norm of w_vect as separate variable, as w_magnitude. Also separate out components of w
+        w_x = w_sat[0]
+        w_y = w_sat[1]
+        w_z = w_sat[2]
+
+        ### THIS IS THE BIG OMEGA THAT MARKLEY AND CRASSIDIS USES, IT USES THE q1, q2, q3, q4 notation where first three make the axis while we use
+        # the q0, q1, q2, q3 notation where the latter three are the rotation axis
+        #w_sat_skew_mat = np.array([[0, -w_z, w_y, w_x],
+        #    [w_z, 0, -w_x, w_y],
+        #    [-w_y, w_x, 0, w_z],
+        #    [-w_x, -w_y, -w_z, 0]])
+        
+        ### THIS IS THE BIG OMEGA that should work for our scalar-component first notation (based on https://ahrs.readthedocs.io/en/latest/filters/angular.html)
+        w_sat_skew_mat = np.array([[0, -w_x, -w_y, -w_z],
+            [w_x, 0, w_z, -w_y],
+            [w_y, -w_z, 0, w_x],
+            [w_z, w_y, -w_x, 0]])
+        
+        # Construct vector describing reaction wheel angular momentum in the body frame. The product of rw_config and w_rw is the angular velocity of the wheels
+        # in the body frame
+        H_B_w = self.I_w_spin * np.matmul(self.rw_config, w_rw)
+
+        # Similarly construct vector describing torque caused by reaction wheel angular momentum in the body frame
+        H_B_w_dot = self.I_w_spin * np.matmul(self.rw_config, alpha_rw)
+
+        # First derivative of quaternion
+        quaternion_dot = (1/2) * np.matmul(w_sat_skew_mat, quaternion)        
+
+        # First derivative of angular velocity
+        w_sat_dot = np.matmul(np.linalg.inv(self.I_body), (tau_sat - H_B_w_dot - np.cross(w_sat, np.matmul(self.I_body, w_sat) + H_B_w)))
+
+        # First derivative of rw speeds = angular acceleration of wheels
+        w_rw_dot = alpha_rw
+        
+        # Add propagation here
+        quaternion_new = quaternion + quaternion_dot*dt
+        w_sat_new = w_sat + w_sat_dot*dt
+
+        new_state = np.append(quaternion_new, w_sat_new)
+
+        return new_state
+
+def quaternionMultiply(a, b):
+    '''
+    quaternionMultiply
+        custom function to perform quaternion multiply on two passed-in matrices
+
+    @params
+        a, b: quaternion matrices (1 x 4)
+
+    @returns
+        multiplied quaternion matrix
+    '''
+    return [[a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]],
+            [a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]],
+            [a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]],
+            [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
+
+
 def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speed, old_reaction_speed, n):
     '''
     generatePredMeans
@@ -150,7 +252,7 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speed, old_reacti
     # pass all sigma points to the transformation function
     for i in range(1, n * 2 + 1):
         # 3a) and 4a)
-        x = eomsClass.eoms(sigmaPoints[i][0], sigmaPoints[i][1], alpha, dt)
+        x = eomsClass.eoms(sigmaPoints[i][1], sigmaPoints[i][2], alpha, dt)
 
         # store calculated sigma point in transformed sigma matrix
         transformedSigma[i] = x
@@ -161,7 +263,7 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speed, old_reacti
     means *= w1
 
     # pass first sigma point through transformation function
-    x = eomsClass.eoms(sigmaPoints[i][0], sigmaPoints[i][1], alpha, dt)
+    x = eomsClass.eoms(sigmaPoints[i][1], sigmaPoints[i][2], alpha, dt)
     
     # store new point as first element in transformed sigma matrix
     transformedSigma[0] = x
@@ -356,36 +458,15 @@ def UKF(means, cov, q, r, gps_data, reaction_speed, old_reaction_speed, data):
 
     # prediction step
     # intertia constants from juwan
-    I_body = np.array([[2337899.19, -14882.35, 38212.04],
-              [-14882.35, 5112345.28,19754.53],
-              [38212.04, 19754.53, 5387496.72]])
+    I_body = np.array([[46535.388, 257.834, 536.12],
+              [257.834, 47934.771, -710.058],
+              [536.12, -710.058, 23138.181]])
     I_body = I_body * 1e-7
-
-    # Reorder moment of inertia matrix. This is as the moment of inertia
-    # was calculated in CAD where y is pointing up vertically, while our body frame
-    # uses z as pointing up vertically. Transform from CAD to body frame is rotation
-    # about X by 90 degrees
-    Ixx = I_body[0,0]
-    Ixy = I_body[0,1]
-    Ixz = I_body[0,2]
-    Iyx = I_body[1,0]
-    Iyy = I_body[1,1]
-    Iyz = I_body[1,2]
-    Izx = I_body[2,0]
-    Izy = I_body[2,1]
-    Izz = I_body[2,2]
-
-    # Define rotated I (given by [R][I][R]^T)
-    I_body = np.array([[Ixx, -Ixz, Ixy],
-                       [-Izx, Izz, -Izy],
-                       [Iyx, -Iyz, Iyy]])
-
-    # Define I_spin and I_trans of RW
-    I_spin = 0.319 * 1.82899783e-5 # kg (m^2)
+    I_spin = 5.1e-7
     I_trans = 0
 
     # intialize 1D EOMs using intertia measurements of cubeSat
-    EOMS = DEMO_1D_EOMS(I_body, I_spin, I_trans)
+    EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
     # eq 8-9: pass sigma points through EOMs (f) and generate mean in state space
     predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speed, old_reaction_speed, n)
@@ -434,6 +515,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speed, old_reaction_speed, data):
     means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
 
     # normalize the quaternion to reduce small calculation errors over time
+    means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
 
     # eq 17: updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
     cov = np.subtract(predCov, np.matmul(np.matmul(kalman, mesCov), kalman.transpose()))
@@ -442,3 +524,4 @@ def UKF(means, cov, q, r, gps_data, reaction_speed, old_reaction_speed, data):
     # print("MEANS AT END: ", means)
     # print("COV AT END: ", cov)
     return [means, cov]
+
