@@ -3,7 +3,7 @@ hall.py
 Authors: Tim Roberts
 
 interfaces with hall sensors, allowing us to read motor speed of reaction wheels
-initialization must be done through init.py
+GPIO initialization must be done beforehand
 
 '''
 

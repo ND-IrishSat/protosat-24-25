@@ -31,25 +31,40 @@ from interface.init import initialize_setup
 
 # MAX_DUTY (65535, used for pwm) and MAX_RPM (9100) are declared in motors.py
 
-# pi info:
+# pi info (PUT IN TUTORIAL FILE SOMEWHERE):
 # scp -r test irishsat@10.7.85.47:/home/irishsat/test .
 # password: irishsat
+# download vnc viewer for exact screen mirroring
 
-def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
+def main(target=[1, 0, 0, 0]):
     '''NOTE
-        - things to take out for UKF only test: motor initialization, reaction wheel update, pd section (127-146)
+        - things to take out for UKF only test: motor initialization, reaction wheel update, pd section
         - What is starting state guess? read from sensors?
         - Set proper target quaternion?
-        - do we need to worry about hall sensors not reading if wheels not spinning?
         
-        - fix initialization
+        - implement new IMU (redo this script)!!! maybe forget following workarounds for the moment:
+            - fix initialization
+            - fix file of constants (maybe not with new sensor)
+            - seperate script for initialization of imu + b true
         - rewrite/comment motors.py
-        - implement new IMU
-        - ask juwan about calibrating
+        - flags for testing only ukf, etc
+        - effiency testing somehow
+            - update run_UKF?
+        - update visualizer with gui
+        - update organization of interface folder
 
-        - fix 1D EOMs bug!!!
+        - magnetorquer...? magdriver repo
     '''
 
+    #you can change where you put this but this is reading in the magnetometer calibration values
+    fname="interface/calvals.txt"
+    fin=open(fname,"r")
+    mcoeffs=[0]*3
+    mscales=[0]*3
+    for i in range(3):
+        mcoeffs[i],mscales[i]=[float(x) for x in fin.readline().split()]
+    fin.close()
+    
     # Initialize setup for motors (I2C and GPIO): not functional currently
     # i2c needs to be in motors.py???
     # currently non-functional
@@ -101,18 +116,21 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     while too little uncertainty can make the filter overly sensitive to noise and outliers.
     '''
     # r: measurement noise (m x m)
-    noise_mag = 40
-    noise2 = .1
+    # smaller value = trust it more = source is less noisy
+    noise_mag = 5
+    noise_gyro = 0.1
+
     # r = np.diag([noise_mag] * dim_mes)
     r = np.array([[noise_mag, 0, 0, 0, 0, 0],
                  [0, noise_mag, 0, 0, 0, 0],
                  [0, 0, noise_mag, 0, 0, 0],
-                 [0, 0, 0, noise2, 0, 0],
-                 [0, 0, 0, 0, noise2, 0],
-                 [0, 0, 0, 0, 0, noise2]])
+                 [0, 0, 0, noise_gyro, 0, 0],
+                 [0, 0, 0, 0, noise_gyro, 0],
+                 [0, 0, 0, 0, 0, noise_gyro]])
 
     # q: process noise (n x n)
     # Should depend on dt
+    # try negative noises?
     noise_mag = .05
     # q = np.diag([noise_mag] * dim)
     q = np.array([[dt, 3*dt/4, dt/2, dt/4, 0, 0, 0],
@@ -145,7 +163,7 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     #print(mpu.mbias)
     #print(mpu.magScale)
 
-    # Offsets from using mag_calibration.py, adopted from existing online code
+    # Offsets and scaling from mag_custom_cal.py, custom written calibration
     mpu.mbias = [30.335109508547004, 59.71757955586081, 38.51908195970696] 
     mpu.magScale = [1, 1, 1]
     
@@ -156,18 +174,22 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
     # Set B_true as the average of count number of
     # measurements of the magnetometer upon initialization
     # if in same config for a while, can run a couple times and hardcode
-    B_true_num = np.zeros(3)
-    count = 50
+    # Also, run as own script separately and store B_true in file
+    first_read = np.array(get_imu_data())
+    B_true_num = first_read[:3]
+    count = 60
     for i in range(count):
-        reading = np.array(get_imu_data())
-        print(reading[:3])
-        B_true_num = B_true_num + reading[:3]
-        time.sleep(1)
+            reading = np.array(get_imu_data())
+            print(reading[:3])
+            #B_true_num = np.vstack((B_true_num, reading[:3]))
+            B_true_num = B_true_num + reading[:3]
+            time.sleep(0.2)
+    #B_true_num = -B_true_num / count
+    #B_true_num = np.median(B_true_num, axis = 0)
     B_true_num = B_true_num / count
-    
+
     print("B_true from sensor average: ", B_true_num)
     B_true = B_true_num
-
 
     # Initialize current step and last step reaction wheel speeds
     # For this test they're 1x3: x, y, skew (z) wheels
@@ -246,7 +268,7 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         print("pwm after controller: ", pwm)
 
         # pwm[0] = abs(pwm[0])
-
+        '''
         # Get the pwm signals
         x.target = pwm[0]
         # y.target = pwm[1]
@@ -256,14 +278,17 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         # TODO: rewrite motors.py for clarity
 
         # so that our wheel continues to spin, enact a minimum speed that activates the wheels
-        if x.target < 1500:
-            x.target = 1500
-            x.checkDir()
+        print(f'target = {x.target}')
+        if x.target < 5000:
+            x.target = 5000
+            print(f'updated target to {x.target}')
+            x.changeSpeed()
         else:
-            x.checkDir()
-
+            x.changeSpeed()
+        time.sleep(1)
         # Ending time for loop
-        end_time = time.time()
+        #end_time = time.time()
+        x.current = checkHall(x.hallList[0])
 
         # Output total runtime for single loop iteration
         #print("Time to run single iteration of ADC loop: {:.2f}".format(end_time-start_time))
@@ -277,13 +302,13 @@ def main(target=[-0.97080345,0.07323411,-0.0268571,-0.22683942]):
         # z_speed = checkHall(z.hallList[2])
         # reaction_speeds = [*x_speed, *y_speed, *z_speed]
         reaction_speeds[0] = x_speed
-
+        '''
         # Increment iteration count
         i += 1
 
     # Bring the wheels to a stop
-    x.target = 0
-    x.checkDir()
+    # x.target = 0
+    # x.checkDir()
 
     # Confirm it is done
     print("done with script! ending...")

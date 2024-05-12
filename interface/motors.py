@@ -15,6 +15,7 @@ import time
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from hall import checkHall
+from motorsandmags import mag
 import random
 
 
@@ -25,9 +26,9 @@ import random
 # # note: must also run GPIO.cleanup() at end of script
 
 # I2C
-i2c_bus = busio.I2C(SCL, SDA)
-pca = PCA9685(i2c_bus)
-pca.frequency = 1500
+# i2c_bus = busio.I2C(SCL, SDA)
+# pca = PCA9685(i2c_bus)
+# pca.frequency = 1500
 
 
 # Constants
@@ -49,13 +50,17 @@ hallZ = [16,20,21]
 # motor class!
 class Motor():
     # IO setup
-    def __init__(self, pin, dir, hallList, current, target):
+    def __init__(self, pin, direction, hallList, lastSpeed, target, pca):
         self.pin = pin
-        self.dirPin = dir
+        self.dirPin = direction
         self.hallList = hallList
         self.hData = [[],[],[]]
-        self.current = current
+        self.lastSpeed = lastSpeed
         self.target = target
+        self.count = 0
+        self.M_switch = 0
+        self.rate = 0
+        self.pca = None
         GPIO.setup(self.dirPin,GPIO.OUT)
         GPIO.setup(self.hallList[0],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(self.hallList[1],GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
@@ -63,70 +68,62 @@ class Motor():
         GPIO.add_event_detect(self.hallList[0], GPIO.FALLING)
         GPIO.add_event_detect(self.hallList[1], GPIO.FALLING)
         GPIO.add_event_detect(self.hallList[2], GPIO.FALLING)
-
-
-    # Check Hall sensor (motor) speed
-    def checkSpeed(self): 
-        # use hall.py to check speed (duty cycles) for first hall sensor
-        return checkHall(self.hallList[0])
-        # count = 0
-        # data = []
-        # while count < 10:
-        #     if GPIO.event_detected(self.hallList[0]):
-        #         data.append(time.perf_counter())
-        #         count += 1
-        # t = np.array(data)
-        # c = np.arange(10).reshape(-1,1)
-        # model = LinearRegression().fit(c,t)
-        # frequency = 1/model.coef_
-        # speed += ((frequency * 15) / c) * MAX_DUTY
-        # # Return the speed according to Hall sensor (duty cycles)
-        # return speed
     
-
+    
     # Set the speed
     def setSpeed(self):
         # self.target = newVal
-        pca.channels[self.pin].duty_cycle = abs(self.target)
+        self.pca.channels[self.pin].duty_cycle = abs(self.target)
 
 
     # Set the direction
     def setDir(self, val):
-        GPIO.output(self.dir, val)
+        GPIO.output(self.dirPin, val)
 
 
     # Send output signal to actuators (& checks direction)
-    def checkDir(self):
-        if self.target < 0 and self.current > 0:
-                speed = self.target
-                self.target = 0
-                self.setSpeed()
-                time.sleep(1)
-                
-                # reverses the dirPin output, causing negative spin
-                self.setDir(False)
-                self.target = speed
-                self.setSpeed()
-                print("target neg")
-        elif self.target > 0 and self.current < 0:
-                # defines dirPin output = True as positive target
-                speed = self.target
-                self.target = 0
-                self.setSpeed()
-                time.sleep(1)
-                
-                self.setDir(True)
-                self.target = speed
-                self.setSpeed()
-                print("target pos")
-        else:
+    def changeSpeed(self):
+        temp_target = self.target
+        if self.target < 0 and self.lastSpeed > 0:
+            self.target = 0
             self.setSpeed()
-            print("SUS! target is in same direction as current spin")
+            time.sleep(.75)
 
+            # reverses the dirPin output, causing negative spin
+            self.setDir(False)
+            self.target = temp_target
+            self.setSpeed()
+
+        elif self.target > 0 and self.lastSpeed < 0:
+            self.target = 0
+            self.setSpeed()
+            time.sleep(.75)
+
+            # defines dirPin output = True as positive spin
+            self.setDir(True)
+            self.target = temp_target
+            self.setSpeed()
+        else:
+            if abs(self.target) > .87 * MAX_DUTY:
+                self.count+=1
+                if self.count >= 10:
+                    #self.M_switch = 1
+                    mag.magOn(50,0, self.pca)
+                    mag.magOn(50,1, self.pca)
+            else:
+                self.count = 0
+                if abs(self.target) < .87 * MAX_DUTY: 
+                    #self.M_switch = 0
+                    mag.magOff(0, self.pca)
+                    mag.magOff(1, self.pca)
+            self.target -= 1 * self.rate # NOTE: M_switch doesn't exist?
+            self.setSpeed()
+    
+	
 
     # convert duty cycle to RPM
     def convertToRPM(self): 
-        return (self.current / MAX_DUTY) * MAX_RPM
+        return (self.target / MAX_DUTY) * MAX_RPM
 
     # convert RPM to duty cycle
     def convertToDuty(RPM):

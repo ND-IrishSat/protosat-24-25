@@ -191,9 +191,23 @@ if __name__ == '__main__':
         # Magnetometer Calibration
         ###################################
         #
+        #mcoeffs, mscales, data = mag_cal()
+        #print(mcoeffs)
+        #print(mscales)
+        #print(data)
+        #
+
+        # Save mag calibration files to text file
         mcoeffs, mscales, data = mag_cal()
         print(mcoeffs)
         print(mscales)
+        #fname=input("Enter file name to store the data")
+        #fout=open(fname,"w")
+        fout=open("calvals.txt","w")
+        if(fout): #idk if you want it printed out like this but eh i cant test it so
+            for i in range(3):
+                fout.write(str(mcoeffs[i])+" "+str(mscales[i])+"\n")
+            fout.close()
         #print(data)
         #
         ###################################

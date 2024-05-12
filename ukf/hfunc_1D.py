@@ -1,14 +1,16 @@
 '''
 1D_hfunc.py
+Author: Juwan
 
 Simplified h function relating magnetometer to angle in XY plane 
+
 '''
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 
-def hfunc(state, Bx_true, By_true):
+def hfunc(state, B_true):
     '''
     hfunc
         transformation from state space to measurement space using magnetic field
@@ -19,8 +21,8 @@ def hfunc(state, Bx_true, By_true):
     rotationMatrix = np.array([[np.cos(psi), -np.sin(psi)], [np.sin(psi), np.cos(psi)]])
     
     # calculate measured B-field
-    Btrue = np.array([Bx_true, By_true])
-    Bmeas = np.matmul(rotationMatrix, Btrue)
+    #Btrue = np.array([Bx_true, By_true])
+    Bmeas = np.matmul(rotationMatrix, B_true)
     
     return np.append(Bmeas, state[1])
 
@@ -52,9 +54,10 @@ def angle2quat(psi):
         quat = np.array([m12 - m21, m20 - m02, m01 - m10, t])
     
     quat = (0.5/np.sqrt(t)) * quat
-
+    quat = quat / np.linalg.norm(quat)
+    #quat[0] = 1
+    
     return quat
-
 
 def euler2quat(roll, pitch, yaw):
     '''
@@ -75,6 +78,3 @@ def euler2quat(roll, pitch, yaw):
     q3 = cr*cp*sy - sr*sp*cy
 
     return np.array([q0, q1, q2, q3])
-
-if __name__ == "__main__":
-    print(euler2quat(0, 0, 0.5))

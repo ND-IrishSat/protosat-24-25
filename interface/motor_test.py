@@ -7,7 +7,7 @@ and run our motors at desired rpm
 '''
 
 from motors import *
-from hall import checkHall
+#from hall import checkHall
 from init import initialize_setup
 from time import sleep
 
@@ -29,6 +29,7 @@ GPIO.output(enable,True)
 count = 0
 x.target = 0
 x.setSpeed()
+x.lastSpeed = 0
 time.sleep(3)
 
 while (count < 20):
@@ -39,14 +40,14 @@ while (count < 20):
     x.target = speed
 
     # Check directions & alter speeds
-    x.checkDir()
-    x.current = x.checkSpeed()
-    print("hall sensor reading: ", x.current)
+    x.changeSpeed()
+    x.lastSpeed = checkHall(x.hallList[0])
+    print("hall sensor reading: ", x.lastSpeed)
     
     count += 1
 
 count = 0
-time.sleep(1)
+time.sleep(5)
 print("CHANGING DIR")
 while (count < 20):
     speed = -20000
@@ -54,13 +55,13 @@ while (count < 20):
     x.target = speed
     
     # Check directions & alter speeds
-    x.checkDir()
-    x.current = -(x.checkSpeed())
-    print(x.current)
+    x.changeSpeed()
+    x.lastSpeed = -(checkHall(x.hallList[0]))
+    print(x.lastSpeed)
     count += 1
     
 count = 0
-time.sleep(1)
+time.sleep(2)
 print("CHANGING DIR2")
 
 while (count < 20):
@@ -69,15 +70,15 @@ while (count < 20):
     # Get the pwm signals
     x.target = speed
     
-    x.checkDir()
-    x.current = x.checkSpeed()
-    print(x.current)
+    x.changeSpeed()
+    x.lastSpeed = checkHall(x.hallList[0])
+    print(x.lastSpeed)
     count += 1
 
 # Bring the wheels to a stop
 speed = 0
 x.target = speed
-x.checkDir()
+x.changeSpeed()
 
 # Confrim it is done
 print("done with script! ending...")

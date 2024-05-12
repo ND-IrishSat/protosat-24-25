@@ -23,6 +23,8 @@ mpu = MPU9250(
         mfs = AK8963_BIT_16,
         mode = AK8963_MODE_C100HZ)
 
+mpu.configure()
+
 '''
 calibrate resources: 
 https://docs.nanoframework.net/devicesdetails/Mpu9250/README.html
@@ -77,7 +79,7 @@ def custom_calibrate(sensor, num, B_true):
 def get_imu_data():
     data = [*mpu.readMagnetometerMaster(),
             *convertToRad(mpu.readGyroscopeMaster())]
-    print(data)
+    print("*IMU data: [{:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}, {:.2f}]".format(data[0],data[1],data[2],data[3],data[4],data[5]))
     
     return data
 
