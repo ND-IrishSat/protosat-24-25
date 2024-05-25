@@ -72,6 +72,14 @@ def bfield_calc(controls):
     return converted
 
 
+def normalize(v):
+    # normalizes the vector v (usuallly a quaternion)
+    norm = np.linalg.norm(v)
+    if norm == 0: 
+       return v
+    return v / norm
+
+
 def quaternion_rotation_matrix(Q):
     '''
     Covert a quaternion into a full three-dimensional rotation matrix.
