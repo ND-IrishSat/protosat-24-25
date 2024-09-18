@@ -19,21 +19,19 @@ def hfunc(state, Bfield):
         goes from earth orientation to CubeSat orientation so that it aligns with what our sensors will be giving us
 
     @params
-        state: state estimate of system-quaternion, angular velocity, reaction wheel speed (1 x n)
-        Bfield: B field of state (1 x 3) in milliteslas???
+        state: state estimate of system: quaternion, angular velocity (1 x n)
+        Bfield: B field of state (1 x 3) in milliteslas
             used to be controls: gps and time data needed to calculate magnetic field with respect to the earth 
             (latitude, longitude, height, time arrays)
             but now we calculate that separately
 
     @returns
-        state array in measurement space (1 x n, with first element of quaternion becoming 0)
+        state array in measurement space (1 x m)
     '''
 
     # find rotation matrix of state quaternion
     quaternion = state[:4]
     rotationMatrix = quaternion_rotation_matrix(quaternion)
-
-    # should we normalize?
 
     # combine rotation matrix and b field of earth
     # other elements of state have 1 to 1 conversion, so add back before returning
@@ -123,50 +121,30 @@ def quaternion_rotation_matrix(Q):
 
 if __name__ == '__main__':
 
-
-    n = 10
-    state = np.random.rand(n)
-    transformed = np.array()
-    # need some kind of generator for random long/lat coordinates, height, and time
-    #   arrays needed for controls: 
-        # lat_gd (np.array): array holding the geodesic latitude associated with a state
-        # lon (np.array): array holding the longtitude associated with a state
-        # h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
-        # t (np.array): array of times associated with an array of states, given in decimal years
-    controls = [[]]
-
-    # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
-    transformed.append(transformed, np.array(hfunc(state, controls)))
-
-    transformed.append(transformed, np.array(state[4:]))
-
-    # transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])
-
-
-
-
-
-    q = np.array([1,0,1,1])
-    val = np.linalg.norm(q)
-    q = q/val
+    # example quaternion that we want to represent in measurement space
+    # converts local frame of 1 to global frame dictated by earth's B field
+    q = np.array([1, 0, 1, 1])
+    q = normalize(q)
     rotationMatrix = quaternion_rotation_matrix(q)
 
     print('quaternion: ',q,'\nrotation matrix: ', rotationMatrix)
 
+    # in our H func, original is the B field, q is our current quaternion
     original = [1,0,0]
     rotated = np.matmul(rotationMatrix,original)
+    print("rotated: ", rotated)
 
     #PLOTTING (DOESNT MATTER)
     original = np.concatenate(([0, 0, 0], original))
     rotated = np.concatenate(([0, 0, 0], rotated))
 
-    print(original)
+    # print(original)
 
     soa = np.array([original, rotated])
 
     X, Y, Z, U, V, W = zip(*soa)
 
-    print(X, Y, Z, U, V, W)
+    print("vectors to graph: ", X, Y, Z, U, V, W)
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.quiver(X, Y, Z, U, V, W)
@@ -174,3 +152,24 @@ if __name__ == '__main__':
     ax.set_ylim([-2, 2])
     ax.set_zlim([-2, 2])
     plt.show()
+
+
+
+
+        # n = 10
+    # state = np.random.rand(n)
+    # transformed = np.array()
+    # need some kind of generator for random long/lat coordinates, height, and time
+    #   arrays needed for controls: 
+        # lat_gd (np.array): array holding the geodesic latitude associated with a state
+        # lon (np.array): array holding the longtitude associated with a state
+        # h_ellp (np.array): array holding the estimated heights above the ellipsoid in m
+        # t (np.array): array of times associated with an array of states, given in decimal years
+    # controls = [[]]
+
+    # Perform observation function, only needed for quaternion components. The rest have 1 to 1 mapping
+    # transformed.append(transformed, np.array(hfunc(state, controls)))
+
+    # transformed.append(transformed, np.array(state[4:]))
+
+    # transformed = np.array([np.array(hfunc(state, q_wmm)), np.array(state[4:])])

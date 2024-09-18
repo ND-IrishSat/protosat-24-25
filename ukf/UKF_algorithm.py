@@ -193,8 +193,8 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
         n: dimensionality of state space
 
     @returns
-        means: mean of distribution in state or measurement space (1 x n or 1 x m)
-        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+        means: mean of distribution in state space (1 x n)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n)
     '''
     # initialize means and new sigma matrix with correct dimensionality
     means = np.zeros(n)
@@ -245,8 +245,8 @@ def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality
         dimensionality: dimensionality of what state we are generating for (measurement space: m)
 
     @returns
-        means: mean of distribution in state or measurement space (1 x n or 1 x m)
-        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+        means: mean of distribution in measurement space (1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x m)
     '''
     # initialize means and new sigma matrix with correct dimensionality
     means = np.zeros(dimensionality)
