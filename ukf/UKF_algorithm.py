@@ -154,7 +154,7 @@ class TEST1EOMS():
         w_rw_dot = alpha_rw
         
         # Add propagation here
-        quaternion_new = quaternion + quaternion_dot*dt
+        quaternion_new = normalize(quaternion + quaternion_dot*dt)
         w_sat_new = w_sat + w_sat_dot*dt
 
         new_state = np.append(quaternion_new, w_sat_new)
@@ -193,8 +193,8 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
         n: dimensionality of state space
 
     @returns
-        means: mean of distribution in state or measurement space (1 x n or 1 x m)
-        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+        means: mean of distribution in state space (1 x n)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x n)
     '''
     # initialize means and new sigma matrix with correct dimensionality
     means = np.zeros(n)
@@ -245,8 +245,8 @@ def generateMesMeans(func, controlVector, sigmaPoints, w0, w1, n, dimensionality
         dimensionality: dimensionality of what state we are generating for (measurement space: m)
 
     @returns
-        means: mean of distribution in state or measurement space (1 x n or 1 x m)
-        transformedSigma: sigma matrix of transformed points (n*2+1 x n or n*2+1 x m)
+        means: mean of distribution in measurement space (1 x m)
+        transformedSigma: sigma matrix of transformed points (n*2+1 x m)
     '''
     # initialize means and new sigma matrix with correct dimensionality
     means = np.zeros(dimensionality)
@@ -467,11 +467,25 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
 
     # normalize the quaternion to reduce small calculation errors over time
-    means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
+    # means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
+    means[0:4] = normalize(means[:4])
 
     # eq 17: updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
     cov = np.subtract(predCov, np.matmul(np.matmul(kalman, mesCov), kalman.transpose()))
 
+    # innovation testing
+
+    # difference between measurement and prediction
+    # V_k+1 = Z_k+1 - Z~_k+1|k
+    # V_k+1 = Z_k+1 - H_k+1 * X_k+1|k
+
+    # innovation = np.subtract(data, mesMeans)
+
+    # inovation cov
+    # measurement noise + transition matrix * cov matrix
+    # S_k+1 = R_k+1 + H_K+1 * P_k+1|k * H^T_k+1
+    # which literally equals cov in measurement haha
+    # innovationCov = mesCov
 
     # print("MEANS AT END: ", means)
     # print("COV AT END: ", cov)
