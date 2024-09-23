@@ -15,7 +15,7 @@ sys.path.extend([f'./{name}' for name in os.listdir(".") if os.path.isdir(name)]
 import os
 import numpy as np
 
-from interface.vn100.vn100_library.vnpy import *
+from vnpy import *
 #import Serial
 
 import ukf.simulator as simulator
@@ -23,8 +23,6 @@ import ukf.simulator as simulator
 import ukf.hfunc as hfunc
 
 # import ahrs
-
-
 
 
 def visualize_data(i, data):
@@ -42,18 +40,12 @@ def visualize_data(i, data):
     simulator.game_visualize(np.array([quaternion]), i)
 
 '''
-TODO: VN100 Software Documentation file, VN100 Quick Start Guide (both in VN100 References Folder in Drive)
-explaination of ahrs from same company as VN100:
-    https://www.vectornav.com/resources/inertial-navigation-primer/theory-of-operation/theory-ahrs
+TODO: read VN100 Software Documentation file, VN100 Quick Start Guide (both in VN100 References Folder in Drive)
+what is an IMU:
+    https://www.vectornav.com/resources/detail/what-is-an-inertial-measurement-unit?return=/resources/by-product/vn-100&title=VN-100
 
-Quaternion visualizer:
-    https://quaternions.online/
+get consistant data from VN100 IMU and generate data sets
 
-potentially research ahrs attitude estimation library
-https://ahrs.readthedocs.io/en/latest/
-provides methods to estimate orientation (quaternion) from IMU data
-    https://ahrs.readthedocs.io/en/latest/filters.html
-    look at Madwick and Algebraic Quaternion Algorithm (AQUA)
 '''
     
 if __name__ == "__main__":
@@ -63,8 +55,8 @@ if __name__ == "__main__":
     # this is code that we had tried unsuccessfully at the end of last year
 
 	# declare sensor object
-	# s = VnSensor()
-	# print(type(s))
+	s = VnSensor()
+	print(type(s))
 	
 	# attempt connection: baud rate is bugged
 	# ez = EzAsyncData.connect('/dev/ttyUSB0', 115200)
@@ -99,22 +91,3 @@ if __name__ == "__main__":
 
 
     # ==============================================================================
-
-
-
-
-
-# example of reading from a data text file
-
-# filename = "interface/sample_data/test-still.txt"
-# # find absolute path to text file
-# script_path = os.path.abspath(__file__)
-# script_dir = os.path.split(script_path)[0]
-# abs_file_path = os.path.join(script_dir, filename)
-# f = open(abs_file_path, "r")
-
-# data = f.readline()
-# splitData2 = np.array([float(x) for x in data.split(",")])
-# # for test-still: accelerometer, gyro, magnetometer (microteslas)
-# # data is in the form of magnetic field (bx, by, zy) and angular velocity (wx, wy, wz)
-# splitData = np.concatenate((splitData2[6:], splitData2[3:6]))
