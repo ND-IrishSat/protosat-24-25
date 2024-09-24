@@ -16,7 +16,6 @@ import os
 import numpy as np
 
 from vnpy import *
-#import Serial
 
 import ukf.simulator as simulator
 # provides functions for us to transform state space (quaternion) to measurement space
@@ -24,25 +23,22 @@ import ukf.hfunc as hfunc
 
 # import ahrs
 
+import time
 
-def visualize_data(i, data):
+def visualize_data(i, quaternion):
     '''
-    use our cubesat simulator to show one set of magnetometer data
-    need to convert to quaternion first so our simulator can use it
+    use our cubesat simulator to show quaternion (orientation)
 
     @params:
-        data: magnetometer data from VN100 IMU (1 x 3)
+        quaternion: orientation from one data read of VN100 IMU (1 x 4)
     '''
 
-    # convert to quaternion
-    # TODO: use ahrs library to convert to quaternion
-    quaternion = [0] + data
     simulator.game_visualize(np.array([quaternion]), i)
 
+
 '''
-TODO: read VN100 Software Documentation file, VN100 Quick Start Guide (both in VN100 References Folder in Drive)
-what is an IMU:
-    https://www.vectornav.com/resources/detail/what-is-an-inertial-measurement-unit?return=/resources/by-product/vn-100&title=VN-100
+read VN100 Software Documentation file, VN100 Quick Start Guide (both in VN100 References Folder in Drive)
+    also open index.html from file explorer
 
 get consistant data from VN100 IMU and generate data sets
 
@@ -52,40 +48,38 @@ if __name__ == "__main__":
 
     # ==============================================================================
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
-    # this is code that we had tried unsuccessfully at the end of last year
 
 	# declare sensor object
-	s = VnSensor()
-	print(type(s))
-	
-	# attempt connection: baud rate is bugged
-	# ez = EzAsyncData.connect('/dev/ttyUSB0', 115200)
-	
-	# alternate connection
-	#s.connect('/dev/ttyUSB0', 9600)
-	
-	# info from sensor object
-	# print(s.is_connected)
-	# print(s.port)
-	
-	# s.change_baudrate(9600)
-	#print(s.read_serial_number())
-	
-	#print(s.port)
-	# print(s.read_model_number())
+    s = VnSensor()
+    s.connect('COM5', 115200)
+    print("CONNECTED")
 
     # ==============================================================================
-    # once you can connec to IMU, set up a loop to read a stream of data
+    # once we're connected to IMU, set up a loop to read a stream of data
 
     # keep track of our iteration count
-    # i = 0
-    # while(True):
+    i = 0
 
-        # read magnetometer data from IMU
-        # data = s.whatevery_function_is_to_read_magnetometer_data()
+    while True:
+        #print(s.read_yaw_pitch_roll())
+        #print(s.read_magnetic_measurements())
+        #  print(s.read_quaternion_magnetic_acceleration_and_angular_rates());
+        #print((s.read_quaternion_magnetic_acceleration_and_angular_rates().mag))
+        #print("mag")
+        #print((s.read_quaternion_magnetic_acceleration_and_angular_rates().gyro))
+        #print("gyro")
+        #print((s.read_quaternion_magnetic_acceleration_and_angular_rates().accel))
+        #print("accel")
 
-        # this funciton will draw our Cubesat simulator
-        # visualize_data(i, data)
+        quat = s.read_quaternion_magnetic_acceleration_and_angular_rates().quat
+        quat = [quat.w, quat.x, quat.y, quat.z]
+        #print("quat\n")
+
+        visualize_data(i, quat)
+
+        #  time.sleep(5);
+        i += 1
+
 
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
 
