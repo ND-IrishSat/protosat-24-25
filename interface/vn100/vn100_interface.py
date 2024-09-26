@@ -6,6 +6,7 @@ test script for connecting to and reading data from vn100 imu
 
 '''
 
+# from vn100_library.vnpy import *
 from vnpy import *
 #import Serial
 
