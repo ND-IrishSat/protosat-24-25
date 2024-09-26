@@ -4,7 +4,7 @@ Authors:
 
 Combined script for interfacing with our BERTHA test bed.
 WIP
-First step, connect to VN100 IMU and read data
+First step, connect to VN100 IMU and read datapip
 
 '''
 
@@ -58,13 +58,22 @@ provides methods to estimate orientation (quaternion) from IMU data
     
 if __name__ == "__main__":
 
+    s = VnSensor()
+print(type(s))
+
+ez = EzAsyncData.connect('/dev/ttyUSB0', 115200)
+print(s.is_connected)
+print(s.port)
+
+
+
+
     # ==============================================================================
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
     # this is code that we had tried unsuccessfully at the end of last year
 
 	# declare sensor object
-	# s = VnSensor()
-	# print(type(s))
+	 
 	
 	# attempt connection: baud rate is bugged
 	# ez = EzAsyncData.connect('/dev/ttyUSB0', 115200)
