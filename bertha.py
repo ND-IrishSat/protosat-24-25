@@ -50,38 +50,23 @@ if __name__ == "__main__":
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
 
 	# declare sensor object
-    # vn.connect()
-    # vn.read_gps()
-    ez = EzAsyncData.connect('COM5', 115200)
-
+    vn.connect()
 
     # vn.print_mag_calibration()
+
+
     # ==============================================================================
     # once we're connected to IMU, set up a loop to read a stream of data
 
     # keep track of our iteration count
     i = 0
-    while i < 10:
+    while i < 10000:
 
-        print(ez.sensor.read_imu_measurements())
-        print(ez.sensor.read_ins_solution_lla())
+        quat = vn.read_quat()
+        visualize_data(i, quat)
 
-        # this returns a compositeData object
-        data = ez.current_data
-
-        print(dir(data))
-
-        # print(data.position_gps_ecef)
-
-        print(data.position_estimated_ecef)
-
-        print(data.angular_rate)
-
-
-
-    #   vn.read_ang_rates();
-    #     visualize_data(i, quat)
-    #     #  time.sleep(5);
+        # time.sleep(.1)
+        # print("")
         i += 1
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
 

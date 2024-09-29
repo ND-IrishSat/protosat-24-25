@@ -9,6 +9,24 @@ from vnpy import *
 
 s = VnSensor()
 
+'''
+Alternate connection route:
+
+ez = EzAsyncData.connect('COM5', 115200)
+
+# call the sensor object through the object and read the relevant data
+ez.sensor.read_imu_measurements()
+
+# this returns a compositeData object
+# lots of helper functions exist to extract the data from this object
+data = ez.current_data
+
+print("angular: ", data.angular_rate)
+
+print("quat: ", data.any_attitude.quat)
+
+'''
+
 def get_intance():
 	return s
 
@@ -22,7 +40,7 @@ def disconnect():
 	print("DISCONNECTED")
 
 def read_quat():
-	quat = s.read_quaternion_magnetic_acceleration_and_angular_rates().quat
+	quat = s.read_attitude_quaternion()
 	quat = [quat.w, quat.x, quat.y, quat.z]
 	return quat
 
@@ -49,7 +67,9 @@ def print_mag_calibration():
 	print("b: ", mag_cal.b) # b and c are objects
 	print("c: ", mag_cal.c)
 
-def read_gps():
-	#gps_reading = s.read_gps_solution_lla()
-	gps_reading = s.read_gps_solution_ecef()
-	print("GPS: ", gps_reading);
+def read_temp():
+	# read_imu_measurements returns mag, accel, gyro, temp, and pressure
+	return s.read_imu_measurements().temp
+
+def read_pressure():
+	return s.read_imu_measurements().pressure
