@@ -15,7 +15,9 @@ sys.path.extend([f'./{name}' for name in os.listdir(".") if os.path.isdir(name)]
 import os
 import numpy as np
 
-from vnpy import *
+# from vnpy import *
+
+import interface.vn100.vn100_interface as vn
 
 import ukf.simulator as simulator
 # provides functions for us to transform state space (quaternion) to measurement space
@@ -60,35 +62,23 @@ print(s.port)
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
 
 	# declare sensor object
-    s = VnSensor()
-    s.connect('COM5', 115200)
-    print("CONNECTED")
+    vn.connect()
 
+    # vn.print_mag_calibration()
     # ==============================================================================
     # once we're connected to IMU, set up a loop to read a stream of data
 
     # keep track of our iteration count
     i = 0
 
-    while True:
-        #print(s.read_yaw_pitch_roll())
-        #print(s.read_magnetic_measurements())
-        #  print(s.read_quaternion_magnetic_acceleration_and_angular_rates());
-        #print((s.read_quaternion_magnetic_acceleration_and_angular_rates().mag))
-        #print("mag")
-        #print((s.read_quaternion_magnetic_acceleration_and_angular_rates().gyro))
-        #print("gyro")
-        #print((s.read_quaternion_magnetic_acceleration_and_angular_rates().accel))
-        #print("accel")
+    #while True:
+    #   vn.read_ang_rates();
+    
 
-        quat = s.read_quaternion_magnetic_acceleration_and_angular_rates().quat
-        quat = [quat.w, quat.x, quat.y, quat.z]
-        #print("quat\n")
+    #     visualize_data(i, quat)
 
-        visualize_data(i, quat)
-
-        #  time.sleep(5);
-        i += 1
+    #     #  time.sleep(5);
+    #     i += 1
 
 
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
