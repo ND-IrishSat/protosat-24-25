@@ -15,13 +15,11 @@ sys.path.extend([f'./{name}' for name in os.listdir(".") if os.path.isdir(name)]
 import os
 import numpy as np
 
-# from vnpy import *
+from vnpy import *
 
 import interface.vn100.vn100_interface as vn
 
 import ukf.simulator as simulator
-# provides functions for us to transform state space (quaternion) to measurement space
-import ukf.hfunc as hfunc
 
 # import ahrs
 
@@ -52,7 +50,10 @@ if __name__ == "__main__":
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
 
 	# declare sensor object
-    vn.connect()
+    # vn.connect()
+    # vn.read_gps()
+    ez = EzAsyncData.connect('COM5', 115200)
+
 
     # vn.print_mag_calibration()
     # ==============================================================================
@@ -60,17 +61,28 @@ if __name__ == "__main__":
 
     # keep track of our iteration count
     i = 0
+    while i < 10:
 
-    #while True:
+        print(ez.sensor.read_imu_measurements())
+        print(ez.sensor.read_ins_solution_lla())
+
+        # this returns a compositeData object
+        data = ez.current_data
+
+        print(dir(data))
+
+        # print(data.position_gps_ecef)
+
+        print(data.position_estimated_ecef)
+
+        print(data.angular_rate)
+
+
+
     #   vn.read_ang_rates();
-    
-
     #     visualize_data(i, quat)
-
     #     #  time.sleep(5);
-    #     i += 1
-
-
+        i += 1
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
 
 

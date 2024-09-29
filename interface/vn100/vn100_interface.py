@@ -14,7 +14,12 @@ def get_intance():
 
 def connect():
 	s.connect('COM5', 115200)
-	print("CONNECTED")
+	if(s.verify_sensor_connectivity()):
+		print("CONNECTED")
+
+def disconnect():
+	s.disconnect()
+	print("DISCONNECTED")
 
 def read_quat():
 	quat = s.read_quaternion_magnetic_acceleration_and_angular_rates().quat
@@ -43,3 +48,8 @@ def print_mag_calibration():
 	mag_cal = s.read_calculated_magnetometer_calibration()
 	print("b: ", mag_cal.b) # b and c are objects
 	print("c: ", mag_cal.c)
+
+def read_gps():
+	#gps_reading = s.read_gps_solution_lla()
+	gps_reading = s.read_gps_solution_ecef()
+	print("GPS: ", gps_reading);
