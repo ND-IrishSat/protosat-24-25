@@ -109,7 +109,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     # data is in the form of magnetic field (bx, by, zy) and angular velocity (wx, wy, wz)
     splitData = np.concatenate((splitData2[6:], splitData2[3:6]))
 
-    reaction_speeds = np.zeros(3)
+    reaction_speeds = np.zeros(4)
     i = 0
     while(data):
         # gps_data = gps_interface.get_gps_data()

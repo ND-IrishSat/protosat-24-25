@@ -108,7 +108,9 @@ class TEST1EOMS():
 
         # Moments of Inertia of rxn wheels [g cm^2] - measured
         Iw1 = (1/2)*38*1.8**2 # I_disc = 1/2 * M * R^2
-        Iw2, Iw3, Iw4 = Iw1
+        Iw2 = Iw1
+        Iw3 = Iw1
+        Iw4 = Iw1
 
         # Moment of inertia tensor of rxn wheels [kg m^2]
         self.rw_config = np.array([[Iw1, 0, 0, 0],
