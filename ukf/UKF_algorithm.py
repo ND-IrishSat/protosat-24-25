@@ -79,10 +79,17 @@ class TEST1EOMS():
         
         # Initially store moment of inertia tensor w/o reaction wheel inertias!
         self.I_body = I_body
+        self.I_body_inv = np.linalg.inv(I_body)
 
         # Store principal moment of inertia for reaction wheels about spin axis and about axis transverse to spin axis respectively
         self.I_w_spin = I_w_spin
         self.I_w_trans = I_w_trans
+
+        # Transformation matrix for NASA config given in Fundamentals pg
+        # 153-154
+        self.W = np.array([[1, 0, 0, 1/np.sqrt(3)],
+                    [0, 1, 0, 1/np.sqrt(3)],
+                    [0, 0, 1, 1/np.sqrt(3)]])
 
         # changes for test
         #alpha = 1/np.sqrt(3)
@@ -92,66 +99,73 @@ class TEST1EOMS():
         # self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
         # Double check to make sure rw_config for dynamics for 1D test is correct!
         # make sure x axis aligns with wheel
-        self.rw_config = np.identity(3)
+        # self.rw_config = np.identity(3)
 
         # Update: self.rw_config is almost certainly wrong here, need to rewrite! Looks like it's a rotation about Z
         # by theta_1D = 135 degrees
         #theta_1D = 135*np.pi/180.0
         #self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [-np.sin(theta_1D), np.cos(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
+
+        # Moments of Inertia of rxn wheels [g cm^2] - measured
+        Iw1 = (1/2)*38*1.8**2 # I_disc = 1/2 * M * R^2
+        Iw2, Iw3, Iw4 = Iw1
+
+        # Moment of inertia tensor of rxn wheels [kg m^2]
+        self.rw_config = np.array([[Iw1, 0, 0, 0],
+                                    [0, Iw2, 0, 0],
+                                    [0, 0, Iw3, 0],
+                                    [0, 0, 0, Iw4]])
         
         # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
+        # wtf this mean?????
         for i in np.arange(self.rw_config.shape[1]):
             self.I_body = self.I_body + I_w_trans*(np.identity(3) - np.matmul(self.rw_config[:, i], np.transpose(self.rw_config[:, i]))) 
 
     def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray, dt: float):
         ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
         body + wheels w_sat, given current state + external torques
+        Used to propagate state vector through time using physics predictions
         
         Args:
             quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
             w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
             w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
-            tau_sat (np.ndarray, (1x3)): external and internal torque applied on the satellite, such as magnetorquers
+            tau_sat (np.ndarray, (1x3)): external torque applied on the satellite, such as magnetorquers
             alpha_rw (nd.ndarray, (1x3)): angular acceleration of the reaction wheels in their respective wheel frames
             dt (float)
         Out:
-            quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
-            w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite
+            (1x7) state vector containing quaternion and angular velocity of satellite
+                quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
+                w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite
         '''
 
         # Store norm of w_vect as separate variable, as w_magnitude. Also separate out components of w
         w_x = w_sat[0]
         w_y = w_sat[1]
         w_z = w_sat[2]
-
-        ### THIS IS THE BIG OMEGA THAT MARKLEY AND CRASSIDIS USES, IT USES THE q1, q2, q3, q4 notation where first three make the axis while we use
-        # the q0, q1, q2, q3 notation where the latter three are the rotation axis
-        #w_sat_skew_mat = np.array([[0, -w_z, w_y, w_x],
-        #    [w_z, 0, -w_x, w_y],
-        #    [-w_y, w_x, 0, w_z],
-        #    [-w_x, -w_y, -w_z, 0]])
         
-        ### THIS IS THE BIG OMEGA that should work for our scalar-component first notation (based on https://ahrs.readthedocs.io/en/latest/filters/angular.html)
+        # Quaternion product matrix for angular velocity of satellite
+        ### THIS IS THE BIG OMEGA that should work for our scalar-component of quaternion first notation (based on https://ahrs.readthedocs.io/en/latest/filters/angular.html)
         w_sat_skew_mat = np.array([[0, -w_x, -w_y, -w_z],
             [w_x, 0, w_z, -w_y],
             [w_y, -w_z, 0, w_x],
             [w_z, w_y, -w_x, 0]])
+        
+        # First derivative of rw speeds = angular acceleration of wheels
+        w_rw_dot = alpha_rw
         
         # Construct vector describing reaction wheel angular momentum in the body frame. The product of rw_config and w_rw is the angular velocity of the wheels
         # in the body frame
         H_B_w = self.I_w_spin * np.matmul(self.rw_config, w_rw)
 
         # Similarly construct vector describing torque caused by reaction wheel angular momentum in the body frame
-        H_B_w_dot = self.I_w_spin * np.matmul(self.rw_config, alpha_rw)
+        H_B_w_dot = self.I_w_spin * np.matmul(self.rw_config, w_rw_dot)
 
         # First derivative of quaternion
         quaternion_dot = (1/2) * np.matmul(w_sat_skew_mat, quaternion)        
 
         # First derivative of angular velocity
-        w_sat_dot = np.matmul(np.linalg.inv(self.I_body), (tau_sat - H_B_w_dot - np.cross(w_sat, np.matmul(self.I_body, w_sat) + H_B_w)))
-
-        # First derivative of rw speeds = angular acceleration of wheels
-        w_rw_dot = alpha_rw
+        w_sat_dot = np.matmul(self.I_body_inv, (tau_sat - np.matmul(self.W, H_B_w_dot) - np.cross(-w_sat, np.matmul(self.I_body, w_sat) + np.matmul(self.W, H_B_w))))
         
         # Add propagation here
         quaternion_new = normalize(quaternion + quaternion_dot*dt)
@@ -208,6 +222,7 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
     # pass all sigma points to the transformation function
     for i in range(1, n * 2 + 1):
         # 3a) and 4a)
+        # TODO: add external torques (tau_sat)
         x = eomsClass.eoms(sigmaPoints[i][:4], sigmaPoints[i][4:], reaction_speeds, 0, alpha, dt)
 
         # store calculated sigma point in transformed sigma matrix
@@ -410,12 +425,13 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
 
 
     # prediction step
-    # intertia constants from juwan
-    I_body = np.array([[46535.388, 257.834, 536.12],
-              [257.834, 47934.771, -710.058],
-              [536.12, -710.058, 23138.181]])
-    I_body = I_body * 1e-7
+    # Moments of intertia constants from CubeSat CAD
+    I_body = (1e-7)*np.array([[46535.388, 257.834, 536.12],
+                            [257.834, 47934.771, -710.058],
+                            [536.12, -710.058, 23138.181]])
+    # TODO: try 1e-7
     I_spin = 5.1e-7
+    # used to edit our body's moment of inertia tensor somehow (0 for none)
     I_trans = 0
     # intialize 1D EOMs using intertia measurements of cubeSat
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
