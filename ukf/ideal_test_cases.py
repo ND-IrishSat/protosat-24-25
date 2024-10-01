@@ -82,11 +82,11 @@ def run_basic_test():
     gps_data = np.zeros(3)
 
     # control input vector for eoms, zero for this test
-    reaction_speeds = np.zeros(3)
+    reaction_speeds = np.zeros(4)
     
     i = 0
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, reaction_speeds, data)
 
         game_visualize(np.array([start[:4]]), i)
         # print(start[:4])
@@ -127,8 +127,8 @@ def run_moving_test():
     # constant B field
     B_true = np.array([0, 0, 1])
     # reaction wheel speeds (0 for this test)
-    reaction_speeds = np.zeros(3)
-    old_reaction_speeds = np.zeros(3)
+    reaction_speeds = np.zeros(4)
+    old_reaction_speeds = np.zeros(4)
 
     # note: if model is less reliable/changes quickly, then q > r
     # r: measurement noise (m x m)
