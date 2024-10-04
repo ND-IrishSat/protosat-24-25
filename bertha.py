@@ -42,6 +42,9 @@ read VN100 Software Documentation file, VN100 Quick Start Guide (both in VN100 R
 
 get consistant data from VN100 IMU and generate data sets
 
+Control center:
+https://www.vectornav.com/downloader?file=https://www.vectornav.com/docs/default-source/software/controlcenter_setup_v3_4_0.exe&key=d2dfe074-c44c-4eb5-940e-c9e0356721c&id=16b36c6b-14d6-4bb8-962a-a081816b205e
+
 '''
     
 if __name__ == "__main__":
