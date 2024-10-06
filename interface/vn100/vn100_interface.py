@@ -62,6 +62,16 @@ def read_all():
 	gyro = allData.gyro
 	return [mag, gyro]
 
+def print_mag_gyro_quat():
+	# returns string with mag, gyro, and quat data (in that order)
+	# to use when creating sample data txt files
+	mag = [ str(a) for a in read_mag()]
+	gyro = [ str(b) for b in read_gyro()]
+	quat = [ str(c) for c in read_quat()]
+	all_three = mag + gyro + quat # create list with all data
+	all_three_string = ", ".join(all_three)
+	return all_three_string
+
 def print_mag_calibration():
 	mag_cal = s.read_calculated_magnetometer_calibration()
 	print("b: ", mag_cal.b) # b and c are objects
