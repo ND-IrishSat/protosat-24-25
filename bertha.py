@@ -65,7 +65,8 @@ if __name__ == "__main__":
     i = 0
     
     #while i < 10000:
-    while i < 1000:
+    count = 1000
+    while i < count:
 
         # quat = vn.read_quat()
         # visualize_data(i, quat)
@@ -76,7 +77,7 @@ if __name__ == "__main__":
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
         f = open("new_test_still.txt", "a+")
         f.write(vn.print_mag_gyro_quat()) # put mag, gyro, quat data into text file
-        if (i < 10):    f.write("\n") # add newline to separate data sets
+        if (i < count):    f.write("\n") # add newline to separate data sets
         f.close()
 
     vn.disconnect()
