@@ -57,6 +57,7 @@ def run_basic_test():
 
     n = 7
     m = n - 1
+    dt = .1
 
     # quaternion and angular velocity should be zero
     start = np.array([0, 0, 1, 0, 0, 0, 0])
@@ -86,7 +87,7 @@ def run_basic_test():
     
     i = 0
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, dt, gps_data, reaction_speeds, reaction_speeds, data)
 
         game_visualize(np.array([start[:4]]), i)
         # print(start[:4])
@@ -140,7 +141,7 @@ def run_moving_test():
     q = np.diag([noiseMagnitude] * dim)
 
     t0 = 0
-    tf = 100
+    tf = n * dt
     i = 0
 
     # uncomment to store results and visualize after calculating
@@ -174,7 +175,7 @@ def run_moving_test():
 
         # run ukf algorithm for each iteration
         # note: for this test, b field is passed as gps_data instead of gps data
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, list(B_true), reaction_speeds, old_reaction_speeds, data)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, dt, list(B_true), reaction_speeds, old_reaction_speeds, data)
 
         # uncomment to run fully and visualize after
         # results.append(list(start[:4]))
