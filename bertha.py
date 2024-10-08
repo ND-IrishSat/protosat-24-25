@@ -55,31 +55,32 @@ if __name__ == "__main__":
 	# declare sensor object
     vn.connect()
 
-    # vn.print_mag_calibration()
+    count = 100
+    file_name = "test.txt"
+    vn.print_data_to_file(count, file_name)
+    # print 'count' counts of data into the file with name 'file_name'
+    
+    vn.disconnect()
 
 
     # ==============================================================================
     # once we're connected to IMU, set up a loop to read a stream of data
 
     # keep track of our iteration count
-    i = 0
-    
-    #while i < 10000:
-    count = 1000
-    while i < count:
+    #i = 0
+    #count = 100
+    #while i < count:
 
         # quat = vn.read_quat()
         # visualize_data(i, quat)
 
         # time.sleep(.1)
         # print("")
-        i += 1
+        #i += 1
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
-        f = open("new_test_still.txt", "a+")
-        f.write(vn.print_mag_gyro_quat()) # put mag, gyro, quat data into text file
-        if (i < count):    f.write("\n") # add newline to separate data sets
-        f.close()
-
-    vn.disconnect()
+        #f = open("spinning_circle_one_axis.txt", "a+")
+        #f.write(vn.print_mag_gyro_quat()) # put mag, gyro, quat data into text file
+        #if (i < count):    f.write("\n") # add newline to separate data sets
+        #f.close()
 
     # ==============================================================================

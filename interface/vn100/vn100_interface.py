@@ -72,6 +72,21 @@ def print_mag_gyro_quat():
 	all_three_string = ", ".join(all_three)
 	return all_three_string
 
+def print_data_to_file(count, file_name):
+	i = 0 # keep track of our iteration count
+	f = open(file_name, "a+")
+	while i < count:
+		i += 1
+		# save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
+		f.write(print_mag_gyro_quat()) # put mag, gyro, quat data into text file
+		if (i < count): f.write("\n") # add newline to separate data sets
+
+	f.close()
+	#source = f'./{file_name}'
+	#destination = './new_sensor_tests'
+	#os.rename(source, destination)
+	return
+
 def print_mag_calibration():
 	mag_cal = s.read_calculated_magnetometer_calibration()
 	print("b: ", mag_cal.b) # b and c are objects
