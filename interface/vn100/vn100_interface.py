@@ -92,19 +92,25 @@ def read_accel():
 
 def read_all():
 	'''
-	Use
-		A get function for magnetic acceleration and angular orentation
+	read_all
+		A get function for magnetic acceleration and angular velocity
 	@return
-		Returns magnetic acceleration and angle orentation as 1 by 6 array, first the x,y,z of magnetic then x,y,z of angular
+		Returns magnetic acceleration and angular velocity as 1 by 6 array, first the x,y,z of magnetic then x,y,z of angular velocity
 	'''
 	allData = s.read_magnetic_acceleration_and_angular_rates()
 	mag = allData.mag
 	gyro = allData.gyro
 	return [mag, gyro]
 
-def print_mag_gyro_quat():
-	# returns string with mag, gyro, and quat data (in that order)
-	# to use when creating sample data txt files
+def get_mag_gyro_quat():
+	'''
+	get_mag_gyro_quat
+		A get function for the mag gyro and quat, for creating sample data txt files
+
+	@return
+		returns a string comprised of three lists joined and seperated by commas 9 joining the x,y,z for mag, gyro, and quat
+	'''
+
 	mag = [ str(a) for a in read_mag()]
 	gyro = [ str(b) for b in read_gyro()]
 	quat = [ str(c) for c in read_quat()]
@@ -113,6 +119,14 @@ def print_mag_gyro_quat():
 	return all_three_string
 
 def print_data_to_file(count, file_name):
+	'''
+	print_data_to_file
+		Updates a text file with data from Magnetometer, Gyroscope, and Accelerometer, seperating each data set on a new line
+	@params
+		count: Number of desried data sets
+		file_name: Name of the file
+	
+	'''
 	i = 0 # keep track of our iteration count
 	f = open(file_name, "a+")
 	while i < count:
@@ -131,7 +145,7 @@ def print_mag_calibration():
 	'''
 	Note: Unfinished
 	
-	Use
+	print_mag_calibration
 		A method that prints out the calculated calibration for both B and C
 	'''
 	mag_cal = s.read_calculated_magnetometer_calibration()
