@@ -81,6 +81,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     DT = dt.timedelta(hours = duration)
     # resolution = timestep. Must match with rest of ukf
+    dt_ukf = .1
     sim.propogate(DT, resolution =  .1)
     orb_laln = sim.scs[0].state_mat.LALN
     orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
@@ -109,7 +110,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     # data is in the form of magnetic field (bx, by, zy) and angular velocity (wx, wy, wz)
     splitData = np.concatenate((splitData2[6:], splitData2[3:6]))
 
-    reaction_speeds = np.zeros(3)
+    reaction_speeds = np.zeros(4)
     i = 0
     while(data):
         # gps_data = gps_interface.get_gps_data()
@@ -120,7 +121,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
         gps_data = B_true
         # run ukf and visualize output
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, gps_data, reaction_speeds, reaction_speeds, splitData)
+        start, cov = UKF_algorithm.UKF(start, cov, q, r, dt_ukf, gps_data, reaction_speeds, reaction_speeds, splitData)
         # option to just visualize data
         # start = np.concatenate((np.array([0]), splitData))
         simulator.game_visualize(np.array([start[:4]]), i)
