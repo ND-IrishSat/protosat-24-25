@@ -73,7 +73,31 @@ def read_all():
 	gyro = allData.gyro
 	return [mag, gyro]
 
-#Outputs the calibrated magnetometer calculations of B and C (Unfinished)
+def print_mag_gyro_quat():
+	# returns string with mag, gyro, and quat data (in that order)
+	# to use when creating sample data txt files
+	mag = [ str(a) for a in read_mag()]
+	gyro = [ str(b) for b in read_gyro()]
+	quat = [ str(c) for c in read_quat()]
+	all_three = mag + gyro + quat # create list with all data
+	all_three_string = ", ".join(all_three)
+	return all_three_string
+
+def print_data_to_file(count, file_name):
+	i = 0 # keep track of our iteration count
+	f = open(file_name, "a+")
+	while i < count:
+		i += 1
+		# save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
+		f.write(print_mag_gyro_quat()) # put mag, gyro, quat data into text file
+		if (i < count): f.write("\n") # add newline to separate data sets
+
+	f.close()
+	#source = f'./{file_name}'
+	#destination = './new_sensor_tests'
+	#os.rename(source, destination)
+	return
+
 def print_mag_calibration():
 	'''
 	Note: Unfinished

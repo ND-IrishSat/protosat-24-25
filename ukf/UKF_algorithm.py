@@ -195,7 +195,7 @@ def quaternionMultiply(a, b):
             [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
-def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_reaction_speeds, n):
+def generatePredMeans(eomsClass, sigmaPoints, w0, w1, dt, reaction_speeds, old_reaction_speeds, n):
     '''
     generatePredMeans
         generate mean (eq 9) after passing sigma point distribution through a transformation function (eq 8)
@@ -205,6 +205,7 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
         eomsClass: EOMs class to pass our sigma points through
         sigmaPoints: sigma point matrix (2xn+1 x n)
         w0, w1: weight for first and all other sigma points, respectively
+        dt: time step to propagate state through EOMs with Euler's method
         reaction_speeds/old_reaction_speeds: reaction wheel speeds for current and last time step (1 x 3 for 1d test)
         n: dimensionality of state space
 
@@ -216,8 +217,6 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, reaction_speeds, old_react
     means = np.zeros(n)
     transformedSigma = np.zeros((2 * n + 1, n))
 
-    # CHANGE TO PASS TO FUNCITON THROUGHOUT??
-    dt = 0.1
     # calculate angular acceleration using old and current reaction wheel speeds
     alpha = (reaction_speeds - old_reaction_speeds) / dt
 
@@ -380,7 +379,7 @@ def generateCrossCov(predMeans, mesMeans, f, h, w0, w1, n):
     return crossCov
 
 
-def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
+def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, data):
     '''
     UKF
         estimates state at time step based on sensor data, noise, and equations of motion
@@ -390,6 +389,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
         cov: covariance matrix of state (n x n)
         q: process noise covariance matrix (n x n)
         r: measurement noise covariance matrix (m x m)
+        dt: time step for this iteration
         gps_data: control input vector for hfunc (gps data: longitude, latitude, height, time)
         reaction_speeds: control input for EOMs (1 x 4)
         old_reaction_speeds: speeds for past step, used to find angular acceleration (1 x 4)
@@ -439,7 +439,7 @@ def UKF(means, cov, q, r, gps_data, reaction_speeds, old_reaction_speeds, data):
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
     # eq 8-9: pass sigma points through EOMs (f) and generate mean in state space
-    predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, reaction_speeds, old_reaction_speeds, n)
+    predMeans, f = generatePredMeans(EOMS, sigmaPoints, w0_m, w1, dt, reaction_speeds, old_reaction_speeds, n)
     
     # print("PREDICTED MEANS: ", predMeans)
     
