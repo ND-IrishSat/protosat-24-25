@@ -4,6 +4,10 @@ Authors: Andrew Gaylord
 
 test script for connecting to and reading data from vn100 imu
 
+Script for changing connectivity to VN100 IMU sensor, and reading and/or getting data from the sensor.
+Data such as quaternion, magnetic, angle, acceleration, and temperature.
+
+
 '''
 from vnpy import *
 
@@ -26,6 +30,7 @@ print("angular: ", data.angular_rate)
 print("quat: ", data.any_attitude.quat)
 
 '''
+
 
 def get_intance():
 	return s
@@ -57,19 +62,34 @@ def read_accel():
 	return [accel_reading.x, accel_reading.y, accel_reading.z]
 
 def read_all():
+	'''
+	Use
+		A get function for magnetic acceleration and angular orentation
+	@return
+		Returns magnetic acceleration and angle orentation as 1 by 6 array, first the x,y,z of magnetic then x,y,z of angular
+	'''
 	allData = s.read_magnetic_acceleration_and_angular_rates()
 	mag = allData.mag
 	gyro = allData.gyro
 	return [mag, gyro]
 
+#Outputs the calibrated magnetometer calculations of B and C (Unfinished)
 def print_mag_calibration():
+	'''
+	Note: Unfinished
+	
+	Use
+		A method that prints out the calculated calibration for both B and C
+	'''
 	mag_cal = s.read_calculated_magnetometer_calibration()
 	print("b: ", mag_cal.b) # b and c are objects
 	print("c: ", mag_cal.c)
 
+#Returns temp from the sensor as 
 def read_temp():
 	# read_imu_measurements returns mag, accel, gyro, temp, and pressure
 	return s.read_imu_measurements().temp
 
+#Returns the pressure reading of the sensor as a float 
 def read_pressure():
 	return s.read_imu_measurements().pressure
