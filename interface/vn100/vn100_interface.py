@@ -60,14 +60,33 @@ def read_quat():#returnes a 1 by 4 array (w, x, y, z) of quaternion magnetic_acc
 	return quat
 
 def read_mag():
+	'''
+	readmag(): represnting the current magnetic fields reading from the sensor as three values corresponding to x,y,z dimensions 
+
+	@return 
+	it returns a truple containing 3 float values in microtesla (x,y,z). x, y, z returns to vector part. 
+	'''
 	mag_reading = s.read_magnetic_measurements()
 	return [mag_reading.x, mag_reading.y, mag_reading.z]
 
 def read_gyro():
+	'''
+	read_gyro(): detects the devaiation of the object and is used to measure angular rates from the sensor as x, y, z three values. 
+
+	@return 
+	it returns a 1 by 3 array (x, y, z), reading the angular rate in three different dimensions. 
+	'''
 	gyro_reading = s.read_angular_rate_measurements()
 	return [gyro_reading.x, gyro_reading.y, gyro_reading.z]
+	
 
 def read_accel():
+	'''
+	read_accel(): detecs the acceleration of the object and displays 3 values 
+
+	@return 
+	it returns a 1 by 3 array (x,y,z), reading the acceleration in three different dimensions. 
+	'''
 	accel_reading = s.read_acceleration_measurements()
 	return [accel_reading.x, accel_reading.y, accel_reading.z]
 
@@ -121,9 +140,18 @@ def print_mag_calibration():
 
 #Returns temp from the sensor as 
 def read_temp():
-	# read_imu_measurements returns mag, accel, gyro, temp, and pressure
+	'''
+	read_temp(): measures the temperature in Celcius 
+	@return
+	returs the temperature reading of the sensor as a float 
+	'''
 	return s.read_imu_measurements().temp
 
 #Returns the pressure reading of the sensor as a float 
 def read_pressure():
+	'''
+	read_pressure(): measures the pressure in hectopascals (hPa)
+	@return
+	returs the pressure reading of the sensor as a float 
+	'''
 	return s.read_imu_measurements().pressure
