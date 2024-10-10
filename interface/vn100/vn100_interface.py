@@ -32,10 +32,13 @@ print("quat: ", data.any_attitude.quat)
 '''
 
 
-def get_intance():
+def get_intance(): #returns the singleton instance of the VnSensor 
 	return s
 
 def connect():
+	'''
+	  connect(): connecting to the VnSensor version using specified COM port and printing connected to show 
+	'''
 	s.connect('COM5', 115200)
 	if(s.verify_sensor_connectivity()):
 		print("CONNECTED")
@@ -44,7 +47,14 @@ def disconnect():
 	s.disconnect()
 	print("DISCONNECTED")
 
-def read_quat():
+def read_quat():#returnes a 1 by 4 array (w, x, y, z) of quaternion magnetic_acceleration_and_angular_rates
+	'''
+	readquat(): represnting the orientation of the object in 3d space through providing data about magentic acceleration and angular rates.
+
+	@return 
+	it returns a 1 by 4 array (w,x,y,z). w is the scalar part and x, y, z returns to vector part 
+	'''
+	
 	quat = s.read_attitude_quaternion()
 	quat = [quat.w, quat.x, quat.y, quat.z]
 	return quat
