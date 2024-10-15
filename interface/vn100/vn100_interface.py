@@ -32,27 +32,39 @@ print("quat: ", data.any_attitude.quat)
 '''
 
 
-def get_intance(): #returns the singleton instance of the VnSensor 
+def get_instance(): 
+	'''
+	@returns 
+		The singleton instance of the VnSensor 
+	'''
 	return s
 
 def connect():
 	'''
-	  connect(): connecting to the VnSensor version using specified COM port and printing connected to show 
+	Connects to the VnSensor version using specified COM port
+
+	Prints "CONNECTED" upon succesful connection verification
 	'''
 	s.connect('COM5', 115200)
 	if(s.verify_sensor_connectivity()):
 		print("CONNECTED")
 
 def disconnect():
+	'''
+	Disconnects from the VnSensor version using specified COM port
+
+	Prints "DICONNECTED" upon end
+	'''
 	s.disconnect()
 	print("DISCONNECTED")
 
-def read_quat():#returnes a 1 by 4 array (w, x, y, z) of quaternion magnetic_acceleration_and_angular_rates
+def read_quat():
 	'''
-	readquat(): represnting the orientation of the object in 3d space through providing data about magentic acceleration and angular rates.
+	readquat(): reads current orientation from sensor in quaternion form
 
 	@return 
-	it returns a 1 by 4 array (w,x,y,z). w is the scalar part and x, y, z returns to vector part 
+		A 4 element list containing the quaternion values (w, x, y, z)
+		Note: Quaternions do not have units
 	'''
 	
 	quat = s.read_attitude_quaternion()
@@ -61,20 +73,20 @@ def read_quat():#returnes a 1 by 4 array (w, x, y, z) of quaternion magnetic_acc
 
 def read_mag():
 	'''
-	readmag(): represnting the current magnetic fields reading from the sensor as three values corresponding to x,y,z dimensions 
+	readmag(): Reads the current magnetic fields from the sensor as three values corresponding to x,y,z dimensions 
 
 	@return 
-	it returns a truple containing 3 float values in microtesla (x,y,z). x, y, z returns to vector part. 
+		A 3 element list containing 3 float values in microtesla (x,y,z)
 	'''
 	mag_reading = s.read_magnetic_measurements()
 	return [mag_reading.x, mag_reading.y, mag_reading.z]
 
 def read_gyro():
 	'''
-	read_gyro(): detects the devaiation of the object and is used to measure angular rates from the sensor as x, y, z three values. 
+	read_gyro(): reads angular velocity values from sensor
 
 	@return 
-	it returns a 1 by 3 array (x, y, z), reading the angular rate in three different dimensions. 
+		A returns 3 element list containing 3 float values in °/s (x,y,z)
 	'''
 	gyro_reading = s.read_angular_rate_measurements()
 	return [gyro_reading.x, gyro_reading.y, gyro_reading.z]
@@ -82,20 +94,19 @@ def read_gyro():
 
 def read_accel():
 	'''
-	read_accel(): detecs the acceleration of the object and displays 3 values 
+	read_accel(): reads angular acceleration value from sensor
 
 	@return 
-	it returns a 1 by 3 array (x,y,z), reading the acceleration in three different dimensions. 
+		A returns 3 element list containing 3 float values in °/s^2 (x,y,z)
 	'''
 	accel_reading = s.read_acceleration_measurements()
 	return [accel_reading.x, accel_reading.y, accel_reading.z]
 
 def read_all():
 	'''
-	read_all
-		A get function for magnetic acceleration and angular velocity
+	read_all(): Gets magnetic acceleration and angular velocity
 	@return
-		Returns magnetic acceleration and angular velocity as 1 by 6 array, first the x,y,z of magnetic then x,y,z of angular velocity
+		Returns a 2 element list containing all data from magnetic field and angular velocity
 	'''
 	allData = s.read_magnetic_acceleration_and_angular_rates()
 	mag = allData.mag
@@ -104,11 +115,10 @@ def read_all():
 
 def get_mag_gyro_quat():
 	'''
-	get_mag_gyro_quat
-		A get function for the mag gyro and quat, for creating sample data txt files
+	get_mag_gyro_quat: Wraps mag gyro and quaternion data in a String
 
 	@return
-		returns a string comprised of three lists joined and seperated by commas 9 joining the x,y,z for mag, gyro, and quat
+		A string comprised of three lists joined and seperated by commas (x,y,z) x (mag, gyro, quat)
 	'''
 
 	mag = [ str(a) for a in read_mag()]
@@ -120,8 +130,8 @@ def get_mag_gyro_quat():
 
 def print_data_to_file(count, file_name):
 	'''
-	print_data_to_file
-		Updates a text file with data from Magnetometer, Gyroscope, and Accelerometer, seperating each data set on a new line
+	print_data_to_file(): Updates a text file with data from Magnetometer, Gyroscope, and Accelerometer, seperating each data set on a new line
+	
 	@params
 		count: Number of desried data sets
 		file_name: Name of the file
@@ -142,6 +152,7 @@ def print_data_to_file(count, file_name):
 	return
 
 def print_mag_calibration():
+	#TODO: Finish implementing this method
 	'''
 	Note: Unfinished
 	
@@ -155,17 +166,17 @@ def print_mag_calibration():
 #Returns temp from the sensor as 
 def read_temp():
 	'''
-	read_temp(): measures the temperature in Celcius 
-	@return
-	returs the temperature reading of the sensor as a float 
+	read_temp(): reads temperature value from sensor
+	@return 
+		Returns a float with the temperature in °C
 	'''
 	return s.read_imu_measurements().temp
 
 #Returns the pressure reading of the sensor as a float 
 def read_pressure():
 	'''
-	read_pressure(): measures the pressure in hectopascals (hPa)
+	read_pressure(): reads pressure value from sensor
 	@return
-	returs the pressure reading of the sensor as a float 
+		Returns a float with the pressure in Hectopascals (hPO)
 	'''
 	return s.read_imu_measurements().pressure
