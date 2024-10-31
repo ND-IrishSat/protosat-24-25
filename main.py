@@ -14,14 +14,14 @@ Uses the Filter class from filter.py to represent a state estimation model for a
 import sys, os
 sys.path.extend([f'./{name}' for name in os.listdir(".") if os.path.isdir(name)])
 
-from irishsat_ukf.PySOL.wmm import *
-from irishsat_ukf.simulator import *
-from irishsat_ukf.UKF_algorithm import *
-from irishsat_ukf.hfunc import *
-from filter import *
-from graphing import *
-from tests import *
-from saving import *
+from sim.PySOL.wmm import *
+from sim.visualizer import *
+from ukf.UKF_algorithm import *
+from ukf.hfunc import *
+from sim.filter import *
+from sim.graphing import *
+from sim.tests import *
+from sim.saving import *
 from params import *
 
 import matplotlib.pyplot as plt
@@ -42,21 +42,14 @@ https://stats.stackexchange.com/questions/40466/how-can-i-debug-and-check-the-co
 WikibookonKalmanFilter.pdf
 
 TODO: impliment PySol and print B field (and globe?)
-TODO: move quat_multiply and others from hfunc (or rename to orientaiton helper)
-TODO: clean up params.py
+TODO: move runfilter into Filter, make different getData funcs, put step into propogate, change name to Simulate class 
+TODO: clean up params.py + get access everywhere
 TODO: more statistical tests, test data reading w/ wheels
-
-notes:
-    must ensure quaternion is normalized when output by EOMs
-    added innovation and innovation covariance to UKF_algorithm
-    user must pip install fpdf
-
-    which method is correct for normalized innovation covariance (test #2)? (and which CI?) (see tests.py)
-        should interval bound be added to measurement, 0, or average?
-
-
 in main: run filter option should have 3 get data options: real (with viz), ideal, text file 
-everything has to access params.py
+
+which method is correct for normalized innovation covariance (test #2)? (and which CI?) (see tests.py)
+    should interval bound be added to measurement, 0, or average?
+
 '''
 
 
@@ -245,8 +238,8 @@ if __name__ == "__main__":
     gyroSD = SENSOR_GYROSCOPE_SD
     gyroNoises = np.random.normal(0, gyroSD, (ukf.n, 3))
 
-    run_filter_sim(ukf, magNoises, gyroNoises)
-    # run_controls_sim(ukf, magNoises, gyroNoises)
+    # run_filter_sim(ukf, magNoises, gyroNoises)
+    run_controls_sim(ukf, magNoises, gyroNoises)
 
 
     # # plot3DVectors(np.array([ukf.B_true, ukf.data[50][:3], ukf.data[100][:3], ukf.data[150][:3]]), 121)

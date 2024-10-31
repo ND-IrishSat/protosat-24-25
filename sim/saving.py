@@ -308,10 +308,17 @@ def openFile(outputFile):
 
 
 def clearDir(outputDir):
+
+    # create the output directory if it doesn't exist
+    my_path = os.path.dirname(os.path.abspath(__file__)) 
+    saveDirectory = os.path.join(my_path, outputDir)
+    if not os.path.exists(saveDirectory):
+        os.makedirs(saveDirectory)
+
     # removes all files in the output directory
-    files = os.listdir(outputDir)
+    files = os.listdir(saveDirectory)
     for file in files:
-        file_path = os.path.join(outputDir, file)
+        file_path = os.path.join(saveDirectory, file)
         if os.path.isfile(file_path):
             os.remove(file_path)
     

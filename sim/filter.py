@@ -9,16 +9,22 @@ class functions allow for easy initialization, propagation, data generation, sim
 '''
 
 
-from irishsat_ukf.PySOL.wmm import *
-from irishsat_ukf.simulator import *
-from irishsat_ukf.UKF_algorithm import *
-from irishsat_ukf.hfunc import *
+from sim.PySOL.wmm import *
+from visualizer import *
 import time
 from graphing import *
 from tests import *
 from saving import *
+
+import os
+import sys
+
+# import params module from parent directory
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
 from params import *
-from irishsat_ukf.PID_controller import *
+from controls.PID_controller import *
+from ukf.UKF_algorithm import *
+from ukf.hfunc import *
 
 
 class Filter():

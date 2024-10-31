@@ -28,7 +28,6 @@ Variables needed throughout UKF process:
 
 import numpy as np
 import math
-import bigEOMS
 import scipy
 import scipy.linalg
 from hfunc import *
@@ -40,32 +39,6 @@ import sys
 sys.path.insert(1, os.path.join(sys.path[0], '..'))
 
 from params import *
-
-# ALPHA = 0.001
-# K = 0
-# BETA = 2
-
-# Iw1 = (1/2)*38*1.8**2 # I_disc = 1/2 * M * R^2
-# Iw2 = Iw1
-# Iw3 = Iw1
-# Iw4 = Iw1
-# RW_CONFIG_INERTIA = np.array([[Iw1, 0, 0, 0],
-#                         [0, Iw2, 0, 0],
-#                         [0, 0, Iw3, 0],
-#                         [0, 0, 0, Iw4]])
-
-
-# TRANSFORMATION = np.array([[1, 0, 0, 1/np.sqrt(3)],
-#                     [0, 1, 0, 1/np.sqrt(3)],
-#                     [0, 0, 1, 1/np.sqrt(3)]])
-
-# SPIN_AXIS_INERTIA = 5.1e-7
-# TRANSVERSE_AXIS_INERTIA = 0.0
-
-# # store moment of inertia tensor w/o reaction wheel inertias
-# CUBESAT_BODY_INERTIA = (1e-7) * np.array([[46535.388, 257.834, 536.12],
-#                                         [257.834, 47934.771, -710.058],
-#                                         [536.12, -710.058, 23138.181]])
 
 
 def sigma(means, cov, n, scaling):
@@ -201,23 +174,6 @@ class TEST1EOMS():
         new_state = np.append(quaternion_new, w_sat_new)
 
         return new_state
-
-
-def quaternionMultiply(a, b):
-    '''
-    quaternionMultiply
-        custom function to perform quaternion multiply on two passed-in matrices
-
-    @params
-        a, b: quaternion matrices (1 x 4)
-
-    @returns
-        multiplied quaternion matrix
-    '''
-    return [[a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]],
-            [a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]],
-            [a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]],
-            [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
 def generatePredMeans(eomsClass, sigmaPoints, w0, w1, dt, reaction_speeds, old_reaction_speeds, n):
@@ -403,7 +359,7 @@ def generateCrossCov(predMeans, mesMeans, f, h, w0, w1, n):
     return crossCov
 
 
-def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, data):
+def UKF(means, cov, q, r, dt, b_true, reaction_speeds, old_reaction_speeds, data):
     '''
     UKF
         estimates state at time step based on sensor data, noise, and equations of motion
@@ -413,7 +369,7 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
         cov: covariance matrix of state (n x n)
         q: process noise covariance matrix (n x n)
         r: measurement noise covariance matrix (m x m)
-        gps_data: control input vector for hfunc (gps data: longitude, latitude, height, time)
+        b_true: true magnetic field of satelitte with respect to earth in eci frame (microteslas) (1 x 3)
         reaction_speeds: control input for EOMs (1 x 4)
         old_reaction_speeds: speeds for past step, used to find angular acceleration (1 x 4)
         data: magnetometer (magnetic field) and gyroscope (angular velocity) data reading from sensor (1 x m)
@@ -421,6 +377,8 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
     @returns
         means: calculated state estimate at current time (1 x n)
         cov: covariance matrix (n x n)
+        innovation: difference between measurement and prediction (1 x m)
+        innovationCov: covariance matrix of innovation (m x m)
     '''
 
     # dimensionality of state space = dimension of means
@@ -468,19 +426,9 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
     # print("PRED COVID: ", predCov)
 
 
-    if len(gps_data) == 4:
-        # finds true B field based on gps data
-        Bfield = bfield_calc(gps_data)
-    else: 
-        # for ideal tests only, use gps_data as b field vector and skip calculating it from the gps data
-        Bfield = gps_data
-
-
-    # print("BFIELD: ", Bfield)
-
     # non linear transformation
     # eq 11-12: non linear transformation of predicted sigma points f into measurement space (h), and mean generation
-    mesMeans, h = generateMesMeans(hfunc, Bfield, f, w0_m, w1, n, m)
+    mesMeans, h = generateMesMeans(hfunc, b_true, f, w0_m, w1, n, m)
 
     # print("MEAN IN MEASUREMENT: ", mesMeans)
 

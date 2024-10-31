@@ -1,3 +1,4 @@
 *.pyc
 plotOutput/**
 output.pdf
+sim/plotOutput/**

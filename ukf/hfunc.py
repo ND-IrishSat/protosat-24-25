@@ -43,38 +43,6 @@ def hfunc(state, Bfield):
     return np.concatenate((np.matmul(rotationMatrix, Bfield).ravel(), np.array(state[4:])))
 
 
-
-
-def bfield_calc(controls):
-    '''
-    bfield_calc
-        calculates the current true magnetic field based on gps data input
-    
-    @params
-        controls: gps and time data for current time step (latitude, longitude, height, time arrays) (1 x 4)
-
-    @returns
-        converted: true, earth centered (eci frame) magnetic field in ???? units (1 x 3)
-    '''
-    # get lat, long, and height from control input vector
-    lat = controls[0] 
-    long = controls[1]
-    height = controls[2] 
-
-    # time data formatted as 2023.percentage of the year in month type stuff
-    time = controls[3] 
-
-    # calculate wmm: b frame with respect to eci frame (earth-centered)
-    wmm_model = WMM(12, 'WMMcoef.csv')
-    wmm_model.calc_gcc_components(lat, long, height, time, degrees=True)
-    Bfield1 = wmm_model.get_Bfield()
-    
-    # Convert nanotesla to microtesla
-    converted = Bfield1 / 1000
-
-    return converted
-
-
 def normalize(v):
     # normalizes the vector v (usuallly a quaternion)
     norm = np.linalg.norm(v)
@@ -122,6 +90,23 @@ def quaternion_rotation_matrix(Q):
                            [r20, r21, r22]])
                             
     return rot_matrix
+
+
+def quaternionMultiply(a, b):
+    '''
+    quaternionMultiply
+        custom function to perform quaternion multiply on two passed-in matrices
+
+    @params
+        a, b: quaternion matrices (1 x 4)
+
+    @returns
+        multiplied quaternion matrix
+    '''
+    return [[a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3]],
+            [a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2]],
+            [a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1]],
+            [a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]]]
 
 
 def euler_from_quaternion(w, x, y, z):
