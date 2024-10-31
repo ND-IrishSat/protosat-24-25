@@ -10,6 +10,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PySOL.wmm import WMM
 from mpl_toolkits.mplot3d import Axes3D
+import math
+from scipy.spatial.transform import Rotation
+
 
 
 def hfunc(state, Bfield):
@@ -19,19 +22,21 @@ def hfunc(state, Bfield):
         goes from earth orientation to CubeSat orientation so that it aligns with what our sensors will be giving us
 
     @params
-        state: state estimate of system: quaternion, angular velocity (1 x n)
-        Bfield: B field of state (1 x 3) in milliteslas
+        state: state estimate of system-quaternion, angular velocity, reaction wheel speed (1 x n)
+        Bfield: B field of state (1 x 3) in milliteslas???
             used to be controls: gps and time data needed to calculate magnetic field with respect to the earth 
             (latitude, longitude, height, time arrays)
             but now we calculate that separately
 
     @returns
-        state array in measurement space (1 x m)
+        state array in measurement space (1 x n, with first element of quaternion becoming 0)
     '''
 
     # find rotation matrix of state quaternion
     quaternion = state[:4]
     rotationMatrix = quaternion_rotation_matrix(quaternion)
+
+    # should we normalize?
 
     # combine rotation matrix and b field of earth
     # other elements of state have 1 to 1 conversion, so add back before returning
@@ -117,6 +122,33 @@ def quaternion_rotation_matrix(Q):
                            [r20, r21, r22]])
                             
     return rot_matrix
+
+
+def euler_from_quaternion(w, x, y, z):
+    """
+    Convert a quaternion into euler angles (roll, pitch, yaw)
+    roll is rotation around x in radians (counterclockwise)
+    pitch is rotation around y in radians (counterclockwise)
+    yaw is rotation around z in radians (counterclockwise)
+    """
+    # switch to other quaternion notation
+    rot = Rotation.from_quat([x, y, z, w])
+    return rot.as_euler('xyz', degrees=False)
+
+    t0 = +2.0 * (w * x + y * z)
+    t1 = +1.0 - 2.0 * (x * x + y * y)
+    roll_x = math.atan2(t0, t1)
+    
+    t2 = +2.0 * (w * y - z * x)
+    t2 = +1.0 if t2 > +1.0 else t2
+    t2 = -1.0 if t2 < -1.0 else t2
+    pitch_y = math.asin(t2)
+    
+    t3 = +2.0 * (w * z + x * y)
+    t4 = +1.0 - 2.0 * (y * y + z * z)
+    yaw_z = math.atan2(t3, t4)
+    
+    return roll_x, pitch_y, yaw_z # in radians
 
 
 if __name__ == '__main__':

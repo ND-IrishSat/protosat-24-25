@@ -33,6 +33,39 @@ import scipy
 import scipy.linalg
 from hfunc import *
 from typing import Optional
+import os
+import sys
+
+# To import module that is in the parent directory of your current module:
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+
+from params import *
+
+# ALPHA = 0.001
+# K = 0
+# BETA = 2
+
+# Iw1 = (1/2)*38*1.8**2 # I_disc = 1/2 * M * R^2
+# Iw2 = Iw1
+# Iw3 = Iw1
+# Iw4 = Iw1
+# RW_CONFIG_INERTIA = np.array([[Iw1, 0, 0, 0],
+#                         [0, Iw2, 0, 0],
+#                         [0, 0, Iw3, 0],
+#                         [0, 0, 0, Iw4]])
+
+
+# TRANSFORMATION = np.array([[1, 0, 0, 1/np.sqrt(3)],
+#                     [0, 1, 0, 1/np.sqrt(3)],
+#                     [0, 0, 1, 1/np.sqrt(3)]])
+
+# SPIN_AXIS_INERTIA = 5.1e-7
+# TRANSVERSE_AXIS_INERTIA = 0.0
+
+# # store moment of inertia tensor w/o reaction wheel inertias
+# CUBESAT_BODY_INERTIA = (1e-7) * np.array([[46535.388, 257.834, 536.12],
+#                                         [257.834, 47934.771, -710.058],
+#                                         [536.12, -710.058, 23138.181]])
 
 
 def sigma(means, cov, n, scaling):
@@ -87,16 +120,8 @@ class TEST1EOMS():
 
         # Transformation matrix for NASA config given in Fundamentals pg
         # 153-154
-        self.W = np.array([[1, 0, 0, 1/np.sqrt(3)],
-                    [0, 1, 0, 1/np.sqrt(3)],
-                    [0, 0, 1, 1/np.sqrt(3)]])
+        self.W = TRANSFORMATION
 
-        # changes for test
-        #alpha = 1/np.sqrt(3)
-        #beta = 1/np.sqrt(3)
-        #gamma = 1/np.sqrt(3) 
-
-        # self.rw_config = np.array([[1, 0, alpha], [0, 1, beta], [0, 0, gamma]])
         # Double check to make sure rw_config for dynamics for 1D test is correct!
         # make sure x axis aligns with wheel
         # self.rw_config = np.identity(3)
@@ -106,22 +131,14 @@ class TEST1EOMS():
         #theta_1D = 135*np.pi/180.0
         #self.rw_config = np.array([[np.cos(theta_1D), np.sin(theta_1D), 0], [-np.sin(theta_1D), np.cos(theta_1D), 0], [1/np.sqrt(2), 0, 1/np.sqrt(2)]])
 
-        # Moments of Inertia of rxn wheels [g cm^2] - measured
-        Iw1 = (1/2)*38*1.8**2 # I_disc = 1/2 * M * R^2
-        Iw2 = Iw1
-        Iw3 = Iw1
-        Iw4 = Iw1
-
         # Moment of inertia tensor of rxn wheels [kg m^2]
-        self.rw_config = np.array([[Iw1, 0, 0, 0],
-                                    [0, Iw2, 0, 0],
-                                    [0, 0, Iw3, 0],
-                                    [0, 0, 0, Iw4]])
+        self.rw_config = RW_CONFIG_INERTIA
         
         # Calculate contributions of reaction wheel to moment of inertia tensor due to principal moment transverse to the spin axis
         # wtf this mean?????
         for i in np.arange(self.rw_config.shape[1]):
             self.I_body = self.I_body + I_w_trans*(np.identity(3) - np.matmul(self.rw_config[:, i], np.transpose(self.rw_config[:, i]))) 
+        
 
     def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray, dt: float):
         ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
@@ -170,6 +187,14 @@ class TEST1EOMS():
         w_sat_dot = np.matmul(self.I_body_inv, (tau_sat - np.matmul(self.W, H_B_w_dot) - np.cross(-w_sat, np.matmul(self.I_body, w_sat) + np.matmul(self.W, H_B_w))))
         
         # Add propagation here
+        # normalize to avoid quadratic growth error
+        # double qmagsq = quat.square_magnitude();
+        # if (std::abs(1.0 - qmagsq) < 2.107342e-08) {
+        #     quat.scale (2.0 / (1.0 + qmagsq));
+        # }
+        # else {
+        #     quat.scale (1.0 / std::sqrt(qmagsq));
+        # }
         quaternion_new = normalize(quaternion + quaternion_dot*dt)
         w_sat_new = w_sat + w_sat_dot*dt
 
@@ -205,7 +230,6 @@ def generatePredMeans(eomsClass, sigmaPoints, w0, w1, dt, reaction_speeds, old_r
         eomsClass: EOMs class to pass our sigma points through
         sigmaPoints: sigma point matrix (2xn+1 x n)
         w0, w1: weight for first and all other sigma points, respectively
-        dt: time step to propagate state through EOMs with Euler's method
         reaction_speeds/old_reaction_speeds: reaction wheel speeds for current and last time step (1 x 3 for 1d test)
         n: dimensionality of state space
 
@@ -389,7 +413,6 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
         cov: covariance matrix of state (n x n)
         q: process noise covariance matrix (n x n)
         r: measurement noise covariance matrix (m x m)
-        dt: time step for this iteration
         gps_data: control input vector for hfunc (gps data: longitude, latitude, height, time)
         reaction_speeds: control input for EOMs (1 x 4)
         old_reaction_speeds: speeds for past step, used to find angular acceleration (1 x 4)
@@ -409,10 +432,10 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
     # alpha and k scale points around the mean. To capture the kurtosis of a gaussian distribution, a=1 and k=3-n should be used
     #   If a decrease in the spread of the SPs is desired, use κ = 0 and alpha < 1
     #   If an increase in the spread of the SPs is desired, use κ > 0 and alpha = 1
-    alpha = 0.001
-    k = 0
+    alpha = ALPHA
+    k = K
     # beta minimizes higher order errors in covariance estimation
-    beta = 2
+    beta = BETA
     # eq 1: scaling factor lambda
     scaling = alpha * alpha * (n + k) - n
 
@@ -427,14 +450,10 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
 
 
     # prediction step
-    # Moments of intertia constants from CubeSat CAD
-    I_body = (1e-7)*np.array([[46535.388, 257.834, 536.12],
-                            [257.834, 47934.771, -710.058],
-                            [536.12, -710.058, 23138.181]])
-    # TODO: try 1e-7
-    I_spin = 5.1e-7
+    I_body = CUBESAT_BODY_INERTIA
+    I_spin = SPIN_AXIS_INERTIA
     # used to edit our body's moment of inertia tensor somehow (0 for none)
-    I_trans = 0
+    I_trans = TRANSVERSE_AXIS_INERTIA
     # intialize 1D EOMs using intertia measurements of cubeSat
     EOMS = TEST1EOMS(I_body, I_spin, I_trans)
     
@@ -485,7 +504,7 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
     means = np.add(predMeans, np.matmul(kalman, np.subtract(data, mesMeans)))
 
     # normalize the quaternion to reduce small calculation errors over time
-    # means[0:4] = means[0:4]/np.linalg.norm(means[0:4])
+    # see note in eoms about normalizing
     means[0:4] = normalize(means[:4])
 
     # eq 17: updated covariance = predicted covariance - kalman * measurement cov * transposed kalman
@@ -497,14 +516,14 @@ def UKF(means, cov, q, r, dt, gps_data, reaction_speeds, old_reaction_speeds, da
     # V_k+1 = Z_k+1 - Z~_k+1|k
     # V_k+1 = Z_k+1 - H_k+1 * X_k+1|k
 
-    # innovation = np.subtract(data, mesMeans)
+    innovation = np.subtract(data, mesMeans)
 
     # inovation cov
     # measurement noise + transition matrix * cov matrix
     # S_k+1 = R_k+1 + H_K+1 * P_k+1|k * H^T_k+1
     # which literally equals cov in measurement haha
-    # innovationCov = mesCov
+    innovationCov = mesCov
 
     # print("MEANS AT END: ", means)
     # print("COV AT END: ", cov)
-    return [means, cov]
+    return [means, cov, innovation, innovationCov]

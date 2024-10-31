@@ -1,1 +1,3 @@
 *.pyc
+plotOutput/**
+output.pdf
