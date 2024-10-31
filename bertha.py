@@ -19,7 +19,7 @@ from vnpy import *
 
 import interface.vn100.vn100_interface as vn
 
-import ukf.simulator as simulator
+import sim.visualizer as simulator
 
 # import ahrs
 

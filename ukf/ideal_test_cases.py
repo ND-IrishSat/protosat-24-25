@@ -19,7 +19,13 @@ from pyquaternion import Quaternion
 
 import UKF_algorithm
 import hfunc
-from simulator import *
+
+import os
+import sys
+
+# import params module from parent directory
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+from sim.visualizer import *
 
 # from PySOL import spacecraft as sp
 # from PySol.spacecraft import *
@@ -87,7 +93,7 @@ def run_basic_test():
     
     i = 0
     while(1):
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, dt, gps_data, reaction_speeds, reaction_speeds, data)
+        start, cov, innov, innovCov = UKF_algorithm.UKF(start, cov, q, r, dt, gps_data, reaction_speeds, reaction_speeds, data)
 
         game_visualize(np.array([start[:4]]), i)
         # print(start[:4])
@@ -175,7 +181,7 @@ def run_moving_test():
 
         # run ukf algorithm for each iteration
         # note: for this test, b field is passed as gps_data instead of gps data
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, dt, list(B_true), reaction_speeds, old_reaction_speeds, data)
+        start, cov, innov, innovCov = UKF_algorithm.UKF(start, cov, q, r, dt, list(B_true), reaction_speeds, old_reaction_speeds, data)
 
         # uncomment to run fully and visualize after
         # results.append(list(start[:4]))

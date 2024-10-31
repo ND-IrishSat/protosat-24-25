@@ -26,16 +26,17 @@ import ukf.UKF_algorithm as UKF_algorithm
 import interface.gps_interface as gps_interface
 import ukf.ideal_test_cases as ideal_test_cases
 import ukf.hfunc as hfunc
-import ukf.simulator as simulator
+import sim.visualizer as simulator
+import sim.PySOL.wmm as wmm
 # from interface.happy_sensors import get_imu_data
 
-# from ukf.PySOL import spacecraft as sp
-# from ukf.PySol.spacecraft import *
-from ukf.PySOL.sol_sim import *
-import ukf.PySOL.spacecraft as sp
-import ukf.PySOL.orb_tools as ot
-# from ukf.PySOL import sol_sim
-# from ukf.PySOL import orb_tools as ot
+# from sim.PySOL import spacecraft as sp
+# from sim.PySol.spacecraft import *
+from sim.PySOL.sol_sim import *
+import sim.PySOL.spacecraft as sp
+import sim.PySOL.orb_tools as ot
+# from sim.PySOL import sol_sim
+# from sim.PySOL import orb_tools as ot
 
 
 def check_zeros(data):
@@ -96,7 +97,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     lat = np.array([41.675])
     long = np.array([-86.252])
     alt = np.array([225.552]) # 740 feet (this is in meters)
-    B_true = hfunc.bfield_calc(np.array([lat, long, alt, curr_date_time]))
+    B_true = wmm.bfield_calc(np.array([lat, long, alt, curr_date_time]))
 
     # find absolute path to text file
     script_path = os.path.abspath(__file__)
@@ -112,7 +113,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     reaction_speeds = np.zeros(4)
     i = 0
-    while(data):
+    while(i < len(orb_laln) and data):
         # gps_data = gps_interface.get_gps_data()
         # gps_data = gps_interface.ecef_to_latlong(gps_data[0], gps_data[1], gps_data[2]) # add time
 
@@ -121,7 +122,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
         gps_data = B_true
         # run ukf and visualize output
-        start, cov = UKF_algorithm.UKF(start, cov, q, r, dt_ukf, gps_data, reaction_speeds, reaction_speeds, splitData)
+        start, cov, innov, innovCov = UKF_algorithm.UKF(start, cov, q, r, dt_ukf, gps_data, reaction_speeds, reaction_speeds, splitData)
         # option to just visualize data
         # start = np.concatenate((np.array([0]), splitData))
         simulator.game_visualize(np.array([start[:4]]), i)
@@ -150,7 +151,9 @@ def run_ukf_sensor_iteration(state, cov, r, q, i):
     if check_zeros(data): 
         return "Error" 
 
-    state, cov = UKF_algorithm.UKF(state, cov, r, q, gps_data, data)
+    b_true = wmm.bfield_calc(gps_data)
+
+    state, cov, innov, innovCov = UKF_algorithm.UKF(state, cov, r, q, b_true, data)
     # Visualize only if needed
     # game_visualize(np.array([state[:4]]), i) 
 

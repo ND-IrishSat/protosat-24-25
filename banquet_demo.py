@@ -19,7 +19,7 @@ from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from ukf.PySOL.wmm import *
-from ukf.simulator import *
+from sim.visualizer import *
 from adc.adc_pd_controller_numpy import pd_controller
 from ukf.UKF_algorithm_1D import *
 import time

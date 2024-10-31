@@ -137,8 +137,13 @@ def print_data_to_file(count, file_name):
 		file_name: Name of the file
 	
 	'''
+
+	#TODO: Please verify this fuction put the file is in correct folder
+	folder_path = '../new_sensor_tests/'
+	full_path = folder_path + file_name
+
 	i = 0 # keep track of our iteration count
-	f = open(file_name, "a+")
+	f = open(full_path, "a+")
 	while i < count:
 		i += 1
 		# save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
