@@ -4,7 +4,7 @@ Authors:
 
 Combined script for interfacing with our BERTHA test bed.
 WIP
-First step, connect to VN100 IMU and read data
+First step, connect to VN100 IMU and read datapip
 
 '''
 
@@ -48,6 +48,16 @@ https://www.vectornav.com/downloader?file=https://www.vectornav.com/docs/default
 '''
     
 if __name__ == "__main__":
+
+    s = VnSensor()
+print(type(s))
+
+ez = EzAsyncData.connect('/dev/ttyUSB0', 115200)
+print(s.is_connected)
+print(s.port)
+
+
+
 
     # ==============================================================================
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
