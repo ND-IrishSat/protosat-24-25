@@ -43,6 +43,7 @@ WikibookonKalmanFilter.pdf
 
 TODO: impliment PySol and print B field (and globe?)
 TODO: move runfilter into Filter, make different getData funcs, put step into propogate, change name to Simulate class 
+    **put all params in filter_init**
 TODO: clean up params.py + get access everywhere
 TODO: more statistical tests, test data reading w/ wheels
 in main: run filter option should have 3 get data options: real (with viz), ideal, text file 

@@ -79,7 +79,7 @@ def sigma(means, cov, n, scaling):
 
 class TEST1EOMS():
     '''
-    Equations of motion class for 1D test specifically--does not implement 3rd reaction wheel
+    Equations of motion class cubesat model
     '''
     def __init__(self, I_body: np.ndarray, I_w_spin: float, I_w_trans: float):
         
@@ -114,18 +114,20 @@ class TEST1EOMS():
         
 
     def eoms(self, quaternion: np.ndarray, w_sat: np.ndarray, w_rw: np.ndarray, tau_sat: np.ndarray, alpha_rw: np.ndarray, dt: float):
-        ''' Function constructing the equations of motion / state-space equations to yield the first derivative of quaternion w and angular velocity of 
-        body + wheels w_sat, given current state + external torques
-        Used to propagate state vector through time using physics predictions
+        '''
+        Uses the Equations of Motion (EOMs) to yield the next values of quaternion and angular velocity of satellite
+        The EOMs are based upon the current state, current reaction wheel speeds, and external torque being applied by the magnetorquers
+        Propogates our state vector through time using physics predictions
         
-        Args:
+        @params:
             quaternion (np.ndarray, (1x4)): quaternion describing orientation of satellite with respect to given reference frame
             w_sat (np.ndarray, (1x3)): angular velocity of whole satellite (w/ reaction wheel)
             w_rw (np.ndarray, (1x3) for 1D test only): angular velocities of wheels (in respective wheel frame)
             tau_sat (np.ndarray, (1x3)): external torque applied on the satellite, such as magnetorquers
             alpha_rw (nd.ndarray, (1x3)): angular acceleration of the reaction wheels in their respective wheel frames
-            dt (float)
-        Out:
+            dt (float): timestep
+
+        @returns:
             (1x7) state vector containing quaternion and angular velocity of satellite
                 quaternion_dot (np.ndarray, (1x4)): first derivative of quaternion
                 w_sat (np.ndarray, (1x3)): first derivative of angular velocity of satellite

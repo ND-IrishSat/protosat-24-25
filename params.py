@@ -7,10 +7,8 @@ Here, all factors that we would want to change are easily accessible
 
 import numpy as np
 
-
-QUAT_INITIAL = np.array([1.0, 0.0, 0.0, 0.0])
-RW_INITIAL = np.array([0.0, 0.0, 0.0, 0.0])
-RW_EXTERNAL_TORQUE = np.array([0.0, 0.0, 0.0, 0.0])
+# TODO list: max torque, transverse inertia, accurate motor params
+#   also, add stenson remick gps + b field data
 
 # Pulse Width Modulation (PWM) signal that generates the max speed in our motors
 MAX_PWM = 65535
@@ -19,6 +17,12 @@ MAX_RW_TORQUE = 0.02
 
 # =======  OPTIONS  =======================================
 
+# starting states
+QUAT_INITIAL = np.array([1.0, 0.0, 0.0, 0.0])
+VELOCITY_INITIAL = np.array([0.0, 0.0, 0.0])
+RW_INITIAL = np.array([0.0, 0.0, 0.0, 0.0])
+
+# whether we know our ideal states (or are using real data)
 IDEAL_KNOWN = True
 DATA_FILE = "data.txt"
 
@@ -28,6 +32,7 @@ RUN_STATISTICAL_TESTS = False
 # 0 = create pdf report, 1 = show 3D animation visualization, 2 = both, 3 = none
 RESULT = 2
 
+# name of output pdf file
 OUTPUT_FILE = "output.pdf"
 
 # =======  CONTROLS  =======================================
@@ -107,6 +112,8 @@ TRANSFORMATION = np.array([[1, 0, 0, 1/np.sqrt(3)],
                            [0, 1, 0, 1/np.sqrt(3)],
                            [0, 0, 1, 1/np.sqrt(3)]])
 
+# =======  REACTION WHEELS  ================================================
+
 # motor model parameters (Maxon DCX 8 M (9 volts)) used for controls sim
 # TODO: find accurate numbers for these
 MAX_CURRENT = 1
@@ -114,6 +121,9 @@ MIN_CURRENT = -1
 THERMAL_RESISTANCE = 0.01  # °C per A^2 (or Kelvin per A^2). how much the current flowing through the system causes heat generation
 COOLING_CONSTANT = 0.1     # 1/s (rate of cooling). how quickly the temperature difference between the system and its surroundings dissipates
 WHEEL_COUPLING_FACTOR = 0.5  # coupling between ambient and reaction wheel temperature
+
+# external torque on the wheels
+RW_EXTERNAL_TORQUE = np.array([0.0, 0.0, 0.0, 0.0])
 
 RWA = 3.54      # Ohms, winding resistance at ambient temperature
 LW = 0.424e-3  # Henry

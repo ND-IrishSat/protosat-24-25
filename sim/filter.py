@@ -43,9 +43,7 @@ class Filter():
         self.Q = np.diag([q_mag] * dim)
 
         # starting state (default is standard quaternion and no angular velocity)
-        self.state = np.array([1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
-        # enforce normalized quaternion
-        self.state[:4] = normalize(QUAT_INITIAL)
+        self.state = np.concatenate((normalize(QUAT_INITIAL), VELOCITY_INITIAL))
         # starting covariance (overrid by ukf_setQ)
         self.cov = np.identity(dim) * COVARIANCE_INITIAL_MAG
 
