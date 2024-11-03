@@ -35,7 +35,7 @@ def saveFig(fig, fileName):
 
 
 
-def savePDF(outputFile, pngDir, filter, controller=None, target=[1, 0, 0, 0], sum=0, printTests=False):
+def savePDF(outputFile, pngDir, sim, controller=None, target=[1, 0, 0, 0], sum=0, printTests=False):
     '''
     creates a simulation report using FPDF with all PNGs found in pngDir
     Describes the different graphs and their significance
@@ -43,7 +43,7 @@ def savePDF(outputFile, pngDir, filter, controller=None, target=[1, 0, 0, 0], su
     @params:
         outputFile: name of pdf to be generated
         pngDir: name of folder where graph PNGs are found
-        filter: Filter object with sim info
+        sim: Simulator object with sim info
         controller: PIDController object with weights info. If = None, controls info is not printed
         target: our target quaternion for this simulation
         sum: statistical tests sum
@@ -71,8 +71,8 @@ def savePDF(outputFile, pngDir, filter, controller=None, target=[1, 0, 0, 0], su
     dataText = ""
 
     # if we are running with real data and do not know ideal behavior, leave that page out
-    if filter.ideal_known:
-        introText = f"""Ideal behavior is dictated by our propogating initial state and reaction wheel info for each step through our Equations of Motion (EOMs) and the true magnetic field ({filter.B_true[0][0]}, {filter.B_true[0][1]}, {filter.B_true[0][2]} microteslas)."""
+    if sim.ideal_known:
+        introText = f"""Ideal behavior is dictated by our propogating initial state and reaction wheel info for each step through our Equations of Motion (EOMs) and the true magnetic field ({sim.B_true[0][0]}, {sim.B_true[0][1]}, {sim.B_true[0][2]} microteslas)."""
         
         pdf.multi_cell(0, 5, introText, 0, 'L')
 
@@ -88,7 +88,7 @@ def savePDF(outputFile, pngDir, filter, controller=None, target=[1, 0, 0, 0], su
 
     else:
 
-        dataText = f"""IMU sensor data in true magnetic field of ({filter.B_true[0]}, {filter.B_true[1]}, {filter.B_true[2]}. For vn100, magnetometer noise = {round(magSD, 5)} and gyroscope noise = {round(gyroSD, 5)}."""
+        dataText = f"""IMU sensor data in true magnetic field of ({sim.B_true[0]}, {sim.B_true[1]}, {sim.B_true[2]}. For vn100, magnetometer noise = {round(magSD, 5)} and gyroscope noise = {round(gyroSD, 5)}."""
 
     pdf.multi_cell(0, 5, dataText, 0, 'L')
 
@@ -101,7 +101,7 @@ def savePDF(outputFile, pngDir, filter, controller=None, target=[1, 0, 0, 0], su
 
     pdfHeader(pdf, "Filter Results")
 
-    filterText = f"""Kalman filter estimates our state each time step by combining noisy data and physics EOMs over {filter.n * filter.dt} seconds."""
+    filterText = f"""Kalman filter estimates our state each time step by combining noisy data and physics EOMs over {sim.n * sim.dt} seconds."""
 
     pdf.multi_cell(0, 5, filterText, 0, 'L')
 
@@ -149,15 +149,15 @@ def savePDF(outputFile, pngDir, filter, controller=None, target=[1, 0, 0, 0], su
     # set numpy printing option so that 0's don't have scientific notation
     np.set_printoptions(formatter={'all': lambda x: '{:<11d}'.format(int(x)) if x == 0 else "{:+.2e}".format(x)})
 
-    infoText = f"""{filter.n} filter iterations were completed in {round(np.sum(filter.times) * 1000, 2)} milliseconds. This kalman filter took {round(np.mean(filter.times) * 1000, 2)} ms per iteration.
+    infoText = f"""{sim.n} filter iterations were completed in {round(np.sum(sim.times) * 1000, 2)} milliseconds. This kalman filter took {round(np.mean(sim.times) * 1000, 2)} ms per iteration.
     
 Process Noise:
 
-{filter.R}
+{sim.R}
 
 Measurement Noise:
 
-{filter.Q}"""
+{sim.Q}"""
 
     pdf.multi_cell(0, 5, infoText, 0, 'L')
 
@@ -171,7 +171,7 @@ Measurement Noise:
 
     Speed tests:
 
-    {filter.n} iterations were completed in {round(np.sum(filter.times) * 1000, 2)} milliseconds. This kalman filter took {round(np.mean(filter.times) * 1000, 2)} ms per iteration.
+    {sim.n} iterations were completed in {round(np.sum(sim.times) * 1000, 2)} milliseconds. This kalman filter took {round(np.mean(sim.times) * 1000, 2)} ms per iteration.
 
     The statistical tests are based on Estimation II by Ian Reid. He outlines 3 tests that examine the innovation (or residual) of the filter, which is the difference betwee a measurement and the filter's prediction. 
 
@@ -203,10 +203,10 @@ Measurement Noise:
         pdfHeader(pdf, "Test 2")
 
         # pdf.multi_cell(0, 5, "Sum of each innovation must be within chi square bounds " + str([round(x, 3) for x in chi2.interval(0.95, 100)]) + " (df=100)", 0, 'L')
-        pdf.multi_cell(0, 5, "Sum of each innovation must be within chi square bounds {} (df={})".format(str([round(x, 3) for x in chi2.interval(0.95, filter.n)]), filter.n), 0, 'L')
+        pdf.multi_cell(0, 5, "Sum of each innovation must be within chi square bounds {} (df={})".format(str([round(x, 3) for x in chi2.interval(0.95, sim.n)]), sim.n), 0, 'L')
 
         # pdf.multi_cell(0, 5, "Total sum " + str(round(sum, 3)) + " must be within interval " + str([round(x, 3) for x in chi2.interval(0.95, 600)]) + " (df=600)", 0, 'L')
-        pdf.multi_cell(0, 5, "Total sum {} must be within 95% interval {} (df={})".format(str(round(sum, 3)), str([round(x, 3) for x in chi2.interval(0.95, filter.n*6)]), filter.n * filter.dim_mes), 0, 'L')
+        pdf.multi_cell(0, 5, "Total sum {} must be within 95% interval {} (df={})".format(str(round(sum, 3)), str([round(x, 3) for x in chi2.interval(0.95, sim.n*6)]), sim.n * sim.dim_mes), 0, 'L')
 
         pdf.multi_cell(0, 5, "If distributions are too small, decrease measurement/process noise (and vice versa)", 0, 'L')
 

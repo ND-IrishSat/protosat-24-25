@@ -28,7 +28,6 @@ The error covariance, P, must decrease.
 
 import numpy as np
 from graphing import *
-from filter import *
 from scipy.stats import chi2
 import scipy.signal as signal
 

@@ -2,11 +2,12 @@
 main.py
 Author: Andrew Gaylord
 
-Main file for Kalman_Testing repo
+Main file from Kalman_Testing repo
 
-Sets up fake models to simulate CubeSat and compare results of different kalman filters
+Sets up fake models to simulate CubeSat and surrounding sensor suites
+    This allows us to compare results of different kalman filters and controllers
 Utilizes graphing.py for vizualizations of state and statistical tests
-Uses the Filter class from filter.py to represent a state estimation model for a certain kalman filter
+Uses the Simulator class from simulator.py to represent a state estimation model for a certain kalman filter
 
 '''
 
@@ -18,7 +19,7 @@ from sim.PySOL.wmm import *
 from sim.visualizer import *
 from ukf.UKF_algorithm import *
 from ukf.hfunc import *
-from sim.filter import *
+from sim.simulator import *
 from sim.graphing import *
 from sim.tests import *
 from sim.saving import *
@@ -42,7 +43,7 @@ https://stats.stackexchange.com/questions/40466/how-can-i-debug-and-check-the-co
 WikibookonKalmanFilter.pdf
 
 TODO: impliment PySol and print B field (and globe?)
-TODO: move runfilter into Filter, make different getData funcs, put step into propogate, change name to Simulate class 
+TODO: move runfilter into Filter, make different getData funcs, put step into propogate
     **put all params in filter_init**
 TODO: clean up params.py + get access everywhere
 TODO: more statistical tests, test data reading w/ wheels
@@ -205,42 +206,13 @@ if __name__ == "__main__":
     # set up signal handler to shut down pyplot tabs
     signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame))
 
-    tf = TF
-    # time step should be small to combat instability of euler's method
-    dt = DT
-    n = int(tf/dt)
+    ukf = Simulator(UKF, PIDController(KP, KI, KD, DT))
 
-    # create unscented kalman filter object
-    # Our North West Up true magnetic field in stenson remick should be: 19.42900375, 1.74830615, 49.13746833 [micro Teslas]
-    ukf = Filter(n,                         # number of steps to simulate
-                 dt,                        # timestep
-                 7, 6,                      # state space dimension, measurement space dimension
-                 0, 0,                      # measurement noise, process noise (overwritten later)
-                 np.array([19, 1.7, 49]),   # true magnetic field
-                 RW_INITIAL,                # starting reaction wheel speed
-                 IDEAL_KNOWN,               # whether we know ideal state or we are using actual sensor data
-                 UKF)                       # filter type
-    
     # clear output directory from last simulation
     clearDir(outputDir)
 
-    # set process noise
-    # parameters: noise magnitude, k (see Estimation II article by Ian Reed)
-    ukf.ukf_setQ(PROCESS_NOISE_MAG, PROCESS_NOISE_K)
-
-    # set measurement noise
-    # parameters: magnetometer noise, gyroscope noise
-    ukf.ukf_setR(MEASUREMENT_MAGNETOMETER_NOISE, MEASUREMENT_GYROSCOPE_NOISE)
-
-    # set sensor noises
-    magSD = SENSOR_MAGNETOMETER_SD
-    magNoises = np.random.normal(0, magSD, (ukf.n, 3))
-    
-    gyroSD = SENSOR_GYROSCOPE_SD
-    gyroNoises = np.random.normal(0, gyroSD, (ukf.n, 3))
-
-    # run_filter_sim(ukf, magNoises, gyroNoises)
-    run_controls_sim(ukf, magNoises, gyroNoises)
+    run_filter_sim(ukf, ukf.magNoises, ukf.gyroNoises)
+    # run_controls_sim(ukf, ukf.magNoises, ukf.gyroNoises)
 
 
     # # plot3DVectors(np.array([ukf.B_true, ukf.data[50][:3], ukf.data[100][:3], ukf.data[150][:3]]), 121)

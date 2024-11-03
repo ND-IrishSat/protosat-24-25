@@ -1,10 +1,12 @@
 '''
-filter.py
+simulator.py
 Author: Andrew Gaylord
 
-contains filter class for an arbitrary kalman filter
-object contains system info, initialized values, state values, and filter specifications
-class functions allow for easy initialization, propagation, data generation, simulation, and visualization
+Contains simulator class for an arbitrary kalman filter and control system
+Object contains system info, initialized values, state values, filter specifications, and all outputs
+Class functions allow for easy initialization, propagation, data generation, simulation, and visualization
+
+All parameters (variables in caps) are stored in *params.py*
 
 '''
 
@@ -27,49 +29,64 @@ from ukf.UKF_algorithm import *
 from ukf.hfunc import *
 
 
-class Filter():
-    def __init__ (self, n, dt, dim, dim_mes, r_mag, q_mag, B_true, reaction_speeds, ideal_known, kalmanMethod):
+class Simulator():
+    def __init__ (self, kalmanMethod, controller):
         # number of steps to simulate
-        self.n = n
+        self.n = int(TF / DT)
         # timestep between steps
-        self.dt = dt
+        self.dt = DT
         # dimension of state and measurement space
-        self.dim = dim
-        self.dim_mes = dim_mes
+        self.dim = STATE_SPACE_DIMENSION
+        self.dim_mes = MEASUREMENT_SPACE_DIMENSION
 
-        # measurement noise
-        self.R = np.diag([r_mag] * dim_mes)
-        # process noise
-        self.Q = np.diag([q_mag] * dim)
+        # set process noise and update starting cov guess
+        # parameters: noise magnitude, k (see Estimation II article by Ian Reed)
+        self.ukf_setQ(PROCESS_NOISE_MAG, PROCESS_NOISE_K)
+
+        # set measurement noise
+        # parameters: magnetometer noise, gyroscope noise
+        self.ukf_setR(MEASUREMENT_MAGNETOMETER_NOISE, MEASUREMENT_GYROSCOPE_NOISE)
 
         # starting state (default is standard quaternion and no angular velocity)
         self.state = np.concatenate((normalize(QUAT_INITIAL), VELOCITY_INITIAL))
         # starting covariance (overrid by ukf_setQ)
-        self.cov = np.identity(dim) * COVARIANCE_INITIAL_MAG
+        self.cov = np.identity(self.dim) * COVARIANCE_INITIAL_MAG
 
         # 2D array of n innovations and covariances (populated by filter.simulate)
-        self.innovations = np.zeros((n, dim_mes))
-        self.innovationCovs = np.zeros((n, dim_mes, dim_mes))
+        self.innovations = np.zeros((self.n, self.dim_mes))
+        self.innovationCovs = np.zeros((self.n, self.dim_mes, self.dim_mes))
 
         # true magnetic field for every timestep in simulation
-        self.B_true = np.full((n, 3), B_true)
+        if CONSTANT_B_FIELD:
+            self.B_true = np.full((self.n, 3), CONSTANT_B_FIELD_MAG)
+        else:
+            # TODO: add PySOL propogation
+            pass
 
         # Motor states
         self.current = np.array([0.0, 0.0, 0.0, 0.0]) # Current to each motor
         self.Th_Ta = np.array([0.0, 0.0, 0.0, 0.0]) # diff in temp between housing and ambient
         self.Tw_Ta = np.array([0.0, 0.0, 0.0, 0.0]) # diff in temp between winding and ambient
         # current for all n steps
-        self.currents = np.zeros((n, 4))
+        self.currents = np.zeros((self.n, 4))
         self.currents[0] = self.current
 
+        # set sensor noises (if we're using ideal states to simulate sensor data)
+        if IDEAL_KNOWN:
+            magSD = SENSOR_MAGNETOMETER_SD
+            self.magNoises = np.random.normal(0, magSD, (self.n, 3))
+            
+            gyroSD = SENSOR_GYROSCOPE_SD
+            self.gyroNoises = np.random.normal(0, gyroSD, (self.n, 3))
+
         # 1x4 array of current reaction wheel speeds
-        self.curr_reaction_speeds = reaction_speeds
+        self.curr_reaction_speeds = RW_INITIAL
         # reaction wheel speed of last time step
-        self.last_reaction_speeds = reaction_speeds
+        self.last_reaction_speeds = RW_INITIAL
 
         # reaction wheel speeds for all n steps
-        self.reaction_speeds = np.zeros((n, 4))
-        self.reaction_speeds[0] = reaction_speeds
+        self.reaction_speeds = np.zeros((self.n, 4))
+        self.reaction_speeds[0] = RW_INITIAL
 
         # get moment of inertia of body of satellite
         I_body = CUBESAT_BODY_INERTIA
@@ -79,32 +96,35 @@ class Filter():
         self.EOMS = TEST1EOMS(I_body, I_spin, I_trans)
 
         # data values for all n steps
-        self.data = np.zeros((n, dim_mes))
+        self.data = np.zeros((self.n, self.dim_mes))
 
         # ideal states from EOMs for all n steps
-        self.ideal_states = np.zeros((n, dim))
+        self.ideal_states = np.zeros((self.n, self.dim))
         self.ideal_states[0] = self.state
 
-        # indicates whether we know our ideal states or not (i.e. if we are simulating or not)
-        self.ideal_known = ideal_known
+        # indicates whether we know our ideal states or not (i.e. if we are simulating or running with real data from text file or live)
+        self.ideal_known = IDEAL_KNOWN
 
         # kalman filtered states for all n steps
-        self.filtered_states = np.zeros((n, dim))
+        self.filtered_states = np.zeros((self.n, self.dim))
         self.filtered_states[0] = self.state
 
         # pwm values (motor signals) for all n steps
-        self.pwms = np.zeros((n, 4))
+        self.pwms = np.zeros((self.n, 4))
         self.pwms[0] = np.array([0, 0, 0, 0])
 
         # covariance of system for all n steps
-        self.covs = np.zeros((n, dim, dim))
+        self.covs = np.zeros((self.n, self.dim, self.dim))
         self.covs[0] = self.cov
 
         # what kalman filter to apply to this system
         self.kalmanMethod = kalmanMethod
 
-        # filter times for each step
-        self.times = np.zeros(n)
+        # controller object to use for this system (stores gain constants and provides pwm signal generation function)
+        self.controller = controller
+
+        # filter times for each step (for efficiency testing)
+        self.times = np.zeros(self.n)
 
 
     def ukf_setR(self, magNoise, gyroNoise):
@@ -117,11 +137,11 @@ class Filter():
         '''
 
         self.R = np.array([[magNoise, 0, 0, 0, 0, 0],
-                 [0, magNoise, 0, 0, 0, 0],
-                 [0, 0, magNoise, 0, 0, 0],
-                 [0, 0, 0, gyroNoise, 0, 0],
-                 [0, 0, 0, 0, gyroNoise, 0],
-                 [0, 0, 0, 0, 0, gyroNoise]])
+                        [0, magNoise, 0, 0, 0, 0],
+                        [0, 0, magNoise, 0, 0, 0],
+                        [0, 0, 0, gyroNoise, 0, 0],
+                        [0, 0, 0, 0, gyroNoise, 0],
+                        [0, 0, 0, 0, 0, gyroNoise]])
 
 
     def ukf_setQ(self, noiseMagnitude, R = 10):
@@ -135,12 +155,12 @@ class Filter():
         '''
 
         self.Q = np.array([[self.dt, 3*self.dt/4, self.dt/2, self.dt/4, 0, 0, 0],
-                [3*self.dt/4, self.dt, 3*self.dt/4, self.dt/2, 0, 0, 0],
-                [self.dt/2, 3*self.dt/4, self.dt, 3*self.dt/4, 0, 0, 0],
-                [self.dt/4, self.dt/2, 3*self.dt/4, self.dt, 0, 0, 0],
-                [0, 0, 0, 0, self.dt, 2*self.dt/3, self.dt/3],
-                [0, 0, 0, 0, 2*self.dt/3, self.dt, 2*self.dt/3],
-                [0, 0, 0, 0, self.dt/3, 2*self.dt/3, self.dt]
+                        [3*self.dt/4, self.dt, 3*self.dt/4, self.dt/2, 0, 0, 0],
+                        [self.dt/2, 3*self.dt/4, self.dt, 3*self.dt/4, 0, 0, 0],
+                        [self.dt/4, self.dt/2, 3*self.dt/4, self.dt, 0, 0, 0],
+                        [0, 0, 0, 0, self.dt, 2*self.dt/3, self.dt/3],
+                        [0, 0, 0, 0, 2*self.dt/3, self.dt, 2*self.dt/3],
+                        [0, 0, 0, 0, self.dt/3, 2*self.dt/3, self.dt]
         ])
         self.Q = self.Q * noiseMagnitude
 
@@ -180,7 +200,7 @@ class Filter():
             ideal_reaction_speeds.append(result)
 
         
-        # store in filter object
+        # store in simulator object
         self.reaction_speeds = np.array(ideal_reaction_speeds[:self.n])
         
         return np.array(ideal_reaction_speeds[:self.n])
@@ -188,12 +208,10 @@ class Filter():
 
     def propagate(self):
         '''
-        generates ideal/actual states of cubesat for n time steps
+        generates ideal/actual states of cubesat for all n time steps
         uses starting state and reaction wheel speeds at each step to progate through our EOMs (equations of motion)
-
-        these equations give rough idea of how our satellite would respond to these conditions at each time step
-        from this physics-based ideal state, we can generate fake data to pass through our filter
-
+            These equations simulate how our satellite would respond to our chosen conditions
+        From this physics-based ideal state, we can generate fake data to pass through our filter
         '''
 
         # initialize propogator object with inital quaternion and angular velocity
@@ -203,35 +221,46 @@ class Filter():
         # # use attitude propagator to find actual ideal quaternion for n steps
         # states = propagator.propagate_states(t0, tf, self.n
 
-        currState = self.state
 
-        # make array of all states
-        states = np.array([currState])
+        # First state is already set in initialization
+        for i in range(1, self.n):
+            self.propagate_step(i)
 
-        for i in range(self.n):
+            # set filtered states to ideal states if we're not simulating controls (will be overwritten by simulate)
+            self.filtered_states[i] = self.ideal_states[i]
+        
+        return self.ideal_states
 
-            # store speed from last step
-            self.last_reaction_speeds = self.curr_reaction_speeds
-            self.curr_reaction_speeds = self.reaction_speeds[i]
+        # currState = self.state
 
-            # calculate reaction wheel acceleration
-            alpha = (self.curr_reaction_speeds - self.last_reaction_speeds) / self.dt
+        # # make array of all states
+        # states = np.array([currState])
+
+        # for i in range(self.n):
+
+        #     # store speed from last step
+        #     self.last_reaction_speeds = self.curr_reaction_speeds
+        #     self.curr_reaction_speeds = self.reaction_speeds[i]
+
+        #     # calculate reaction wheel acceleration
+        #     alpha = (self.curr_reaction_speeds - self.last_reaction_speeds) / self.dt
             
-            # progate through our EOMs
-            # params: current quaternion, angular velocity, reaction wheel speed, external torque, reaction wheel acceleration, time step
-            currState = self.EOMS.eoms(currState[:4], currState[4:], self.curr_reaction_speeds, 0, alpha, self.dt)
+        #     # progate through our EOMs
+        #     # params: current quaternion, angular velocity, reaction wheel speed, external torque, reaction wheel acceleration, time step
+        #     currState = self.EOMS.eoms(currState[:4], currState[4:], self.curr_reaction_speeds, 0, alpha, self.dt)
 
-            states = np.append(states, np.array([currState]), axis=0)
+        #     states = np.append(states, np.array([currState]), axis=0)
         
-        # remove duplicate first element
-        states = states[1:]
+        # # remove duplicate first element
+        # states = states[1:]
         
-        self.ideal_states = states
-        return states
+        # self.ideal_states = states
+        # return states
     
 
     def propagate_step(self, i):
 
+        # use filtered states if we're simulating controls to get better results
         currQuat = self.filtered_states[i - 1][:4]
         currVel = self.filtered_states[i - 1][4:]
         
@@ -260,6 +289,8 @@ class Filter():
             hallNoises: guassian hall sensor noise to be added to our reaction wheel speeds (n x 3)
         
         '''
+
+        # TODO: combine these, create 3 different get_data functions for each step (live, text file, simulated)
 
         # calculate sensor b field for every time step (see h func for more info on state to measurement space conversion)
         # rotation matrix(q) * true B field + noise
