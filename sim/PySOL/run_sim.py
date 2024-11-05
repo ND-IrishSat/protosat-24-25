@@ -1,6 +1,8 @@
 """
 run_sim.py  -- 
 
+runs thing
+
 
 """
 
@@ -11,11 +13,22 @@ import numpy as np
 import matplotlib.animation as animation
 import h5py
 import geopandas as gpd
+import geodatasets
 import astropy.time as astro_time
+import os
 
 from wmm import WMM
 
-countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+# fix for geopandas depricating their dataset, probably slower
+# https://stackoverflow.com/questions/76548222/how-to-get-maps-to-geopandas-after-datasets-are-removed
+# url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+# countries = gpd.read_file(url)
+
+# fix #2 using geodatasets library
+countries = gpd.read_file(geodatasets.get_path('naturalearth.land'))
+# this method is depricated in geopandas 1.0
+# countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+
 
 class OAT:
 
@@ -26,8 +39,15 @@ class OAT:
         # set the font globally
         plt.rcParams.update({'font.family':'sans-serif'})
 
-        self.sim_path = path
-        self.out_path = output_path
+        # configure the path correctly to sim/PySOL/save_sim/
+        script_path = os.path.abspath(__file__)
+        script_dir = os.path.split(script_path)[0]
+        abs_file_path = os.path.join(script_dir, path)
+
+        self.sim_path = abs_file_path
+        
+        abs_file_path = os.path.join(script_dir, output_path)
+        self.out_path = abs_file_path
 
         f = h5py.File(self.sim_path + fn, 'r')
         print('Loading ' + fn + '..')

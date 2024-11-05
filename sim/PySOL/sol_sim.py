@@ -11,9 +11,9 @@ from itertools import count
 from math import remainder
 from time import strftime
 from tkinter.tix import DisplayStyle
-import PySOL.spacecraft as sp 
-import PySOL.orb_tools as ot 
-import PySOL.models as models
+import spacecraft as sp 
+import orb_tools as ot 
+import models
 import astropy.time as astro_time
 
 import os
@@ -22,13 +22,22 @@ import datetime as dt
 import numpy as np
 import scipy.integrate as sci
 import matplotlib.pyplot as plt
-import PySOL.constants as constants
+import constants
 
 import geopandas as gpd
+import geodatasets
 
-from PySOL.wmm import WMM
+from wmm import WMM
 
-countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+
+# fix for geopandas depricating their dataset, probably slower
+# url = "https://naciscdn.org/naturalearth/110m/cultural/ne_110m_admin_0_countries.zip"
+# countries = gpd.read_file(url)
+
+# fix #2 using geodatasets library
+countries = gpd.read_file(geodatasets.get_path('naturalearth.land'))
+# this method is depricated in geopandas 1.0
+# countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
 # import matplotlib.pyplot as plt
 # # Read world Countries
@@ -182,6 +191,7 @@ class Simulation():
 
         # Set up integration
         state = sc.state_mat.S_[-1]
+        print("state: ", state)
         t_eval = np.linspace(0, dt_sec, n_outputs)
 
         # https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html
@@ -215,7 +225,7 @@ class Simulation():
             sc.calc_B(mag_model = self.mag_model)
 
     def save_sim(self, file_name = None, save_states = True, save_times = True, 
-                    save_B = True):
+                    save_B = False):
 
         if file_name == None:
             file_name = dt.datetime.now().strftime("%Y-%m-%d_PySol")
@@ -306,7 +316,7 @@ class Simulation():
     def plot_orbit(self, D2 = False, tau_f = None, Earth = True, 
         lims = [8000, 8000, 8000], IJK = True):
 
-        plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+        # plt.rcParams.update({'font.sans-serif': 'Helvetica'})
 
         xlim, ylim, zlim = lims
 
@@ -348,9 +358,12 @@ class Simulation():
         tf = self.scs[0].state_mat.times[-1]
         t0 = self.scs[0].state_mat.times[0]
         
-        ax.set_title('PySOL | Dynamics: {} | '.format(self.model_nm) + t0.strftime('%Y/%m/%d') +
+        ax.set_title('PySOL | ECI | Dynamics: {} | '.format(self.model_nm) + t0.strftime('%Y/%m/%d') +
             '\n' + t0.strftime('%H:%M:%S – ') + tf.strftime('%H:%M:%S UTC'))
         for sc in self.scs:
+            #X = sc.state_mat.R_ECEF[:, 0]
+            #Y = sc.state_mat.R_ECEF[:, 1]
+            #Z = sc.state_mat.R_ECEF[:, 2]
             X = sc.state_mat.X
             Y = sc.state_mat.Y
             Z = sc.state_mat.Z
@@ -384,7 +397,7 @@ class Simulation():
 
         for sc in self.scs:
             LALN = sc.state_mat.to_LALN()
-            ax.scatter(LALN[:, 1], LALN[:, 0], s = 5, color = sc.color )
+            ax.scatter(LALN[:, 1], LALN[:, 0], s = 5, color = sc.color, label = sc.name)
 
         ax.set_xlabel('Longitude [deg]')
         ax.set_ylabel('Lattitude [deg]')
@@ -392,6 +405,13 @@ class Simulation():
         ax.set_xlim(-180, 180)
         ax.set_ylim(-90, 90)
 
+        ax.legend()
+
+        tf = self.scs[0].state_mat.times[-1]
+        t0 = self.scs[0].state_mat.times[0]
+
+        ax.set_title('PySOL | Ground Tracks | Dynamics: {} | '.format(self.model_nm) + t0.strftime('%Y/%m/%d') +
+            '\n' + t0.strftime('%H:%M:%S – ') + tf.strftime('%H:%M:%S UTC'))
         return ax
 
     def plot_B(self):
@@ -400,7 +420,7 @@ class Simulation():
 
 
 
-        ylabels = ['$B_x$', '$B_y$', '$B_z$', '$|\mathbf{B}|$']
+        ylabels = ['$B_{north}$', '$B_{east}$', '$B_{down}$', '$|\mathbf{B}|$']
         
         for sc in self.scs:
 
@@ -418,7 +438,8 @@ class Simulation():
                     ax.plot(times, B[i]*1e-3, color = sc.color)
                     ax.set_ylabel(ylabels[i] + r' [$\mu T$]')
 
-                    ax.set_ylim(-50, 50)
+                    ax.set_ylim(-70, 30)
+                ax.tick_params('x', which = 'major', length = 0.1, direction = 'in', labelsize = 8)
 
 
 
@@ -430,7 +451,7 @@ class Simulation():
 
         fig, axs = plt.subplots(nrows = 3, ncols = 1, figsize = [12, 6], sharex = True)
 
-        plt.rcParams.update({'font.sans-serif': 'Helvetica'})
+        # plt.rcParams.update({'font.sans-serif': 'Helvetica'})
 
         for sc in self.scs:
             labels = ['X [km]', 'Y [km]', 'Z [km]']
@@ -486,15 +507,24 @@ class Simulation():
 
 if __name__ == '__main__':
 
-
+    # 3/21, 2022
     t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
     sim = Simulation(TIME = t0, mag_deg= 12)
 
-    OE1 = ot.OE_array(f = 0, a = 6_800, e = 0.00068, i = 51, Om = 30, w = 30)
-    sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
+    # True anomaly
+    # Semi-major axis
+    # Eccentricity
+    # Inclination
+    # Longitude of the ascending node
+    # Argument of periapsis
+    OE1 = ot.OE_array(f = 121, a = 6_800, e = 0.0000922, i = 51, Om = -10, w = 80)
+    sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'CLOVER-Sat')
 
-    # OE2 = ot.OE_array(f = 7.5, a = 42000, e = 0.000, i = 51.64, Om = 300, w = 74)
-    # sim.create_sc(OE_array= OE2, verbose = True, color = 'blue', name = 'Geostationary Orbit')
+    #OE2 = ot.OE_array(f = 7.5, a = 42_000, e = 0.001, i = 51.64, Om = 300, w = 74)
+    #sim.create_sc(OE_array= OE2, verbose = True, color = 'blue', name = 'Geostationary Orbit')
+
+    #OE3 = ot.OE_array(f = 20, a = 8_000, e = 0.0003, i = 86, Om = 10, w = 20)
+    #sim.create_sc(OE_array= OE3, verbose = True, color = 'red', name = 'Polar Orbit')
 
     # OE2 = ot.OE_array(f = 108, a = 8_000, e = 0.07, i = -20, Om = 0, w = 0)
     # sim.create_sc(OE_array= OE2, verbose = True, color = 'purple', name = 'Graces Orbit')
@@ -508,36 +538,85 @@ if __name__ == '__main__':
     # OE5 = ot.OE_array(f = 0, a = 10_000, e = 0.1, i = 69, Om = 42, w = 63)
     # sim.create_sc(OE_array= OE5, verbose = True, color = 'darkorange', name = 'Owen')
 
+    # total sim time, hours
+    hours = 4
+    DT = dt.timedelta(hours = hours)
+    
+    # time step, seconds
+    timestep = 20.0 
+    sim.propogate(DT, resolution = timestep)
 
-    # DT = dt.timedelta(hours = 1.5)
-    # sim.propogate(DT, resolution =  1)
-    DT = dt.timedelta(hours = 0.1)
-    sim.propogate(DT, resolution =  1)
+    # calculate lat/long and height for each time step
     orb_laln = sim.scs[0].state_mat.LALN
     orb_h = ot.calc_h(sim.scs[0].state_mat.R_ECEF)
 
-    print(sim.scs[0].state_mat.R_ECEF.shape)
-    print(orb_laln)
-    print(orb_h)
+    print("shape: ", sim.scs[0].state_mat.R_ECEF.shape)
+    print("lat/long: ", orb_laln[:5])
+    print("hight: ", orb_h[:5])
 
-    # sim.calc_B_field()
-
-    # sim.save_sim('filename')
-'''
-    sim.plot_orbit(lims = [10_000, 10_000, 10_000])
+    sim.plot_orbit(lims = [8_000, 8_000, 8_000])
 
     sim.calc_B()
-    sim.save_sim(file_name = 'test')
+
+    # save_sim saves magnetic field, ECI, ECEF, angular velocity, and time data in hdf5 format
+    # sim.save_sim(file_name = 'test')
 
     sim.plot_LALN()
     sim.plot_B()
 
-    sim.plot_RADEC()
+    # sim.plot_RADEC()
 
-    sim.plot_XYZ()
+    # sim.plot_XYZ()
 
+    # plt.show()
+
+    # GET CHANGE IN B-FIELD DATA FOR GOAT
+    B_field = sim.scs[0].B_
+
+    print("B field: ", B_field)
+    # TODO: write a function to get B field data for all steps
+    #       in format [Bx, By, Bz] for each time step
+    #       instead of current format of every column being a time step
+
+    time_array = sim.scs[0].state_mat.times 
+    time_array = time_array - dt.datetime.min
+
+    start = time_array[0].total_seconds()
+
+    for i in np.arange(time_array.shape[0]):
+        time_array[i] = time_array[i].total_seconds() - start
+
+    print("timesteps: ", time_array[:5])
+
+    new_shape = (B_field.shape[0], B_field.shape[1] - 1)
+    B_field_diff = np.zeros(new_shape)
+    B_field_dir = np.zeros(new_shape)
+
+    for i in np.arange(new_shape[1]):
+        B_field_diff[:, i] = B_field[:, i+1] - B_field[:, i] # difference in magnetic field, in nT
+        B_field_dir[:, i] = B_field_diff[:, i] / timestep # time derivative, calculated roughly
+
+    fig1 = plt.figure()
+    fig2 = plt.figure()
+    axes1 = fig1.subplots(3)
+    axes2 = fig2.subplots(3)
+
+    comp = ['x', 'y', 'z']
+
+    axes1[0].set_title('Difference in B-field at from previous time step')
+    axes2[0].set_title('dB/dt')
+
+    for i, direc in enumerate(comp):
+        axes1[i].plot(time_array[:-1], B_field_diff[i, :] * 1e-3)
+        axes1[i].set_ylabel('dB' + direc + ' (muT)')
+        axes2[i].plot(time_array[:-1], B_field_dir[i, :] * 1e-3)
+        axes2[i].set_ylabel('dB' + direc + '/dt + (muT)')
+
+    np.savetxt('B_out.csv', (time_array, B_field[0, :] * 1e-3, B_field[1, :] * 1e-3, B_field[2, :] * 1e-3), delimiter = ',')
     plt.show()
-'''
+
+    
+
 
 
     
