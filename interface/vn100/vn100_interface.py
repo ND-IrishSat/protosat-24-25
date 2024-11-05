@@ -9,7 +9,8 @@ Data such as quaternion, magnetic, angle, acceleration, and temperature.
 
 
 '''
-from vnpy import *
+from vectornav import Sensor, Registers
+from vectornav.Registers import *
 
 s = VnSensor()
 
@@ -45,7 +46,8 @@ def connect():
 
 	Prints "CONNECTED" upon succesful connection verification
 	'''
-	s.connect('COM5', 115200)
+	# s.connect('COM5', 115200)
+	s.autoConnect('COM1')
 	if(s.verify_sensor_connectivity()):
 		print("CONNECTED")
 
@@ -67,8 +69,8 @@ def read_quat():
 		Note: Quaternions do not have units
 	'''
 	
-	quat = s.read_attitude_quaternion()
-	quat = [quat.w, quat.x, quat.y, quat.z]
+	quat = s.readRegister(Registers.Attitude.Quaternion())
+	quat = [quat.quatS, quat.quatX, quat.quatY, quat.quatZ]
 	return quat
 
 def read_mag():
@@ -78,8 +80,8 @@ def read_mag():
 	@return 
 		A 3 element list containing 3 float values in microtesla (x,y,z)
 	'''
-	mag_reading = s.read_magnetic_measurements()
-	return [mag_reading.x, mag_reading.y, mag_reading.z]
+	reading = s.readRegister(Registers.Attitude.QuatMagAccelRate)
+	return [reading.magX, reading.magY, reading.magZ]
 
 def read_gyro():
 	'''
@@ -88,8 +90,8 @@ def read_gyro():
 	@return 
 		A returns 3 element list containing 3 float values in °/s (x,y,z)
 	'''
-	gyro_reading = s.read_angular_rate_measurements()
-	return [gyro_reading.x, gyro_reading.y, gyro_reading.z]
+	reading = s.readRegister(Registers.Attitude.QuatMagAccelRate)
+	return [reading.gyroX, reading.gyroY, reading.gyroZ]
 	
 
 def read_accel():
@@ -99,8 +101,8 @@ def read_accel():
 	@return 
 		A returns 3 element list containing 3 float values in °/s^2 (x,y,z)
 	'''
-	accel_reading = s.read_acceleration_measurements()
-	return [accel_reading.x, accel_reading.y, accel_reading.z]
+	reading = s.readRegister(Registers.Attitude.QuatMagAccelRate)
+	return [reading.accelX, reading.accelY, reading.accelZ]
 
 def read_all():
 	'''
@@ -108,8 +110,8 @@ def read_all():
 	@return
 		Returns a 2 element list containing all data from magnetic field and angular velocity
 	'''
-	allData = s.read_magnetic_acceleration_and_angular_rates()
-	mag = allData.mag
+	allData = s.readRegister(Registers.Attitude.QuatMagAccelRate)
+	mag = [allData.magX, allData.magY, allData.magZ]
 	gyro = allData.gyro
 	return [mag, gyro]
 
@@ -137,13 +139,8 @@ def print_data_to_file(count, file_name):
 		file_name: Name of the file
 	
 	'''
-
-	#TODO: Please verify this fuction put the file is in correct folder
-	folder_path = '../new_sensor_tests/'
-	full_path = folder_path + file_name
-
 	i = 0 # keep track of our iteration count
-	f = open(full_path, "a+")
+	f = open(file_name, "a+")
 	while i < count:
 		i += 1
 		# save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
