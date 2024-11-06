@@ -15,8 +15,6 @@ sys.path.extend([f'./{name}' for name in os.listdir(".") if os.path.isdir(name)]
 import os
 import numpy as np
 
-from vnpy import *
-
 import interface.vn100.vn100_interface as vn
 
 import sim.visualizer as simulator
@@ -49,40 +47,30 @@ https://www.vectornav.com/downloader?file=https://www.vectornav.com/docs/default
     
 if __name__ == "__main__":
 
-    s = VnSensor()
-print(type(s))
-
-ez = EzAsyncData.connect('/dev/ttyUSB0', 115200)
-print(s.is_connected)
-print(s.port)
-
-
-
-
     # ==============================================================================
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
 
 	# declare sensor object
     vn.connect()
 
-    count = 100
-    file_name = "test.txt"
-    vn.print_data_to_file(count, file_name)
+    # count = 100
+    # file_name = "test.txt"
+    # vn.print_data_to_file(count, file_name)
     # print 'count' counts of data into the file with name 'file_name'
     
-    vn.disconnect()
+    # vn.disconnect()
 
 
     # ==============================================================================
     # once we're connected to IMU, set up a loop to read a stream of data
 
     # keep track of our iteration count
-    #i = 0
-    #count = 100
-    #while i < count:
+    i = 0
+    count = 100000
+    while i < count:
 
-        # quat = vn.read_quat()
-        # visualize_data(i, quat)
+        quat = vn.read_quat()
+        visualize_data(i, quat)
 
         # time.sleep(.1)
         # print("")

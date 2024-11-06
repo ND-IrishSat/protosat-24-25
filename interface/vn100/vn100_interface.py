@@ -12,7 +12,7 @@ Data such as quaternion, magnetic, angle, acceleration, and temperature.
 from vectornav import Sensor, Registers
 from vectornav.Registers import *
 
-s = VnSensor()
+s = Sensor()
 
 '''
 Alternate connection route:
@@ -40,14 +40,14 @@ def get_instance():
 	'''
 	return s
 
-def connect():
+def connect(port = 'dev/ttyUSB0'):
 	'''
 	Connects to the VnSensor version using specified COM port
 
 	Prints "CONNECTED" upon succesful connection verification
 	'''
 	# s.connect('COM5', 115200)
-	s.autoConnect('COM1')
+	s.autoConnect(port)
 	if(s.verify_sensor_connectivity()):
 		print("CONNECTED")
 
@@ -172,7 +172,7 @@ def read_temp():
 	@return 
 		Returns a float with the temperature in °C
 	'''
-	return s.read_imu_measurements().temp
+	return s.readRegister(Registers.IMU.ImuMeas).temperature
 
 #Returns the pressure reading of the sensor as a float 
 def read_pressure():
@@ -181,4 +181,4 @@ def read_pressure():
 	@return
 		Returns a float with the pressure in Hectopascals (hPO)
 	'''
-	return s.read_imu_measurements().pressure
+	return s.readRegister(Registers.IMU.ImuMeas).pressure
