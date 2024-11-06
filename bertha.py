@@ -19,13 +19,12 @@ import interface.vn100.vn100_interface as vn
 
 import sim.visualizer as simulator
 
-# import ahrs
-
 import time
 
 def visualize_data(i, quaternion):
     '''
     use our cubesat simulator to show quaternion (orientation)
+    Note: i must start at 0 and then increment
 
     @params:
         quaternion: orientation from one data read of VN100 IMU (1 x 4)
@@ -35,10 +34,7 @@ def visualize_data(i, quaternion):
 
 
 '''
-read VN100 Software Documentation file, VN100 Quick Start Guide (both in VN100 References Folder in Drive)
-    also open index.html from file explorer
-
-get consistant data from VN100 IMU and generate data sets
+read VN100 Software Documentation from documentation folder in SDK->python folder
 
 Control center:
 https://www.vectornav.com/downloader?file=https://www.vectornav.com/docs/default-source/software/controlcenter_setup_v3_4_0.exe&key=d2dfe074-c44c-4eb5-940e-c9e0356721c&id=16b36c6b-14d6-4bb8-962a-a081816b205e
@@ -74,7 +70,7 @@ if __name__ == "__main__":
 
         # time.sleep(.1)
         # print("")
-        #i += 1
+        i += 1
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
         #f = open("spinning_circle_one_axis.txt", "a+")
         #f.write(vn.print_mag_gyro_quat()) # put mag, gyro, quat data into text file
