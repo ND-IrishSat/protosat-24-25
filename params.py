@@ -29,7 +29,12 @@ DT = .02
 
 # whether we know our ideal states (or are using real data)
 IDEAL_KNOWN = True
-DATA_FILE = "data.txt"
+
+DATA_FILE = None
+if not IDEAL_KNOWN:
+    # if DATA_FILE points to a valid file, we are using data stored in that file
+    # if DATA_FILE is None, we are using live data from the sensors
+    DATA_FILE = "data.txt"
 
 # should be true if not doing controls
 RUN_STATISTICAL_TESTS = False

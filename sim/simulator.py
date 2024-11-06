@@ -179,7 +179,7 @@ class Simulator():
             flipSteps: how many stepts until speed is reversed
             step: how much to change speed by for each time step
             indices: bitset of sorts to signify which axis you want movement about (which reaction wheels to activate)
-                speed on x and z would equal [1, 0, 1]
+                speed on x and skew wheel would equal [1, 0, 0, 1]
         '''
 
         # start with 0 speed on all axices
@@ -208,57 +208,28 @@ class Simulator():
 
     def propagate(self):
         '''
-        generates ideal/actual states of cubesat for all n time steps
-        uses starting state and reaction wheel speeds at each step to progate through our EOMs (equations of motion)
+        Generates ideal/actual states of cubesat for all n time steps
+        Uses starting state and reaction wheel speeds at each step to progate through our EOMs (equations of motion)
             These equations simulate how our satellite would respond to our chosen conditions
         From this physics-based ideal state, we can generate fake data to pass through our filter
         '''
 
-        # initialize propogator object with inital quaternion and angular velocity
-        # propagator = AttitudePropagator(q_init=self.state[:4], w_init=self.curr_reaction_speeds)
-        # t0 = 0
-        # tf = self.n * self.dt
-        # # use attitude propagator to find actual ideal quaternion for n steps
-        # states = propagator.propagate_states(t0, tf, self.n
-
-
         # First state is already set in initialization
         for i in range(1, self.n):
+            # populate ideal_states array starting at i = 1
             self.propagate_step(i)
 
             # set filtered states to ideal states if we're not simulating controls (will be overwritten by simulate)
             self.filtered_states[i] = self.ideal_states[i]
         
         return self.ideal_states
-
-        # currState = self.state
-
-        # # make array of all states
-        # states = np.array([currState])
-
-        # for i in range(self.n):
-
-        #     # store speed from last step
-        #     self.last_reaction_speeds = self.curr_reaction_speeds
-        #     self.curr_reaction_speeds = self.reaction_speeds[i]
-
-        #     # calculate reaction wheel acceleration
-        #     alpha = (self.curr_reaction_speeds - self.last_reaction_speeds) / self.dt
-            
-        #     # progate through our EOMs
-        #     # params: current quaternion, angular velocity, reaction wheel speed, external torque, reaction wheel acceleration, time step
-        #     currState = self.EOMS.eoms(currState[:4], currState[4:], self.curr_reaction_speeds, 0, alpha, self.dt)
-
-        #     states = np.append(states, np.array([currState]), axis=0)
-        
-        # # remove duplicate first element
-        # states = states[1:]
-        
-        # self.ideal_states = states
-        # return states
     
 
     def propagate_step(self, i):
+        '''
+        Based on our last filtered state, progate through our EOMs to get the next ideal state
+        Populates self.ideal_states[i], allowing us to generate realistic data
+        '''
 
         # use filtered states if we're simulating controls to get better results
         currQuat = self.filtered_states[i - 1][:4]
@@ -278,73 +249,77 @@ class Simulator():
         return currState
 
 
-    def generateData(self, magNoises, gyroNoises, hallNoises):
+    def populateData(self):
         '''
-        generates fake data array (n x dim_mes)
-        adds noise to the ideal states to mimic what our sensors would be giving us
-
-        @params:
-            magNoises: gaussian noise for magnetometer (n x 3)
-            gyroNoises: gaussian noise for gyroscope (n x 3)
-            hallNoises: guassian hall sensor noise to be added to our reaction wheel speeds (n x 3)
-        
+        Populates self.data (n x dim_mes) from either ideal states, live data, or data from a file
+            Ideal states: Adds noise to the ideal states to mimic what our sensors would be giving us
+            Live data: Reads data from our imu and reaction wheels
+            File: reads data from DATA_FILE if non-null
         '''
 
-        # TODO: combine these, create 3 different get_data functions for each step (live, text file, simulated)
+        # if we're not using ideal states and we have a data file, load data from file
+        if not self.ideal_known and DATA_FILE != None:
+            self.loadData(DATA_FILE)
+        else:
+            # if we're not using a file, populate data array from correct source
+            for i in range(self.n):
 
-        # calculate sensor b field for every time step (see h func for more info on state to measurement space conversion)
-        # rotation matrix(q) * true B field + noise
-        # first value, then all the otheres
-        B_sens = np.array([np.matmul(quaternion_rotation_matrix(self.ideal_states[0]), self.B_true[0])])
-        for a in range(1, self.n):
-            B_sens = np.append(B_sens, np.array([np.matmul(quaternion_rotation_matrix(self.ideal_states[a]), self.B_true[a])]), axis=0)
-            # print("{}: {}".format(a, np.matmul(quaternion_rotation_matrix(self.ideal_states[a]), self.B_true)))
-        
-        # add noise
-        B_sens += magNoises
+                if self.ideal_known:
+                    # generate fake data
+                    self.generateData_step(i)
 
-        # create sensor data matrix of magnetomer reading and angular velocity
-        data = np.zeros((self.n, self.dim_mes))
-        for a in range(self.n):
-            data[a][0] = B_sens[a][0]
-            data[a][1] = B_sens[a][1]
-            data[a][2] = B_sens[a][2]
-            # add gyro noise to ideal angular velocity
-            data[a][3] = self.ideal_states[a][4] + gyroNoises[a][0]
-            data[a][4] = self.ideal_states[a][5] + gyroNoises[a][1]
-            data[a][5] = self.ideal_states[a][6] + gyroNoises[a][2]
+                elif DATA_FILE == None:
+                    # if no data file is specified, read from our sensors
+                    self.liveData_step(i)
 
-        self.data = data
-        return data
+        return self.data
     
 
-    def generateData_step(self, i, magNoise, gyroNoise):
+    def generateData_step(self, i):
+        '''
+        Generates fake data for a single time step and populates self.data[i]
+        Adds noise to the ideal states to mimic what our sensors would be giving us
+
+        @returns:
+            data: array of sensor fake data (1 x dim_mes)
+        '''
 
         data = np.zeros(self.dim_mes)
 
         # calculate sensor b field for current time step (see h func for more info on state to measurement space conversion)
         # use current B field of earth to transform ideal state to measurement space + add noise
         # rotation matrix(q) * true B field + noise
-        B_sens = np.array([np.matmul(quaternion_rotation_matrix(self.ideal_states[i]), self.B_true[i])]) + magNoise
+        B_sens = np.array([np.matmul(quaternion_rotation_matrix(self.ideal_states[i]), self.B_true[i])]) + self.magNoises[i]
 
         data[:3] = B_sens
 
         # get predicted speed of this state + noise to mimic gyro reading
-        data[3] = self.ideal_states[i][4] + gyroNoise[0]
-        data[4] = self.ideal_states[i][5] + gyroNoise[1]
-        data[5] = self.ideal_states[i][6] + gyroNoise[2]
+        data[3] = self.ideal_states[i][4] + self.gyroNoises[i][0]
+        data[4] = self.ideal_states[i][5] + self.gyroNoises[i][1]
+        data[5] = self.ideal_states[i][6] + self.gyroNoises[i][2]
 
-        # update data array
+        # store in data array
         self.data[i] = data
 
-        return 0
+        return data
+
+    
+    def liveData_step(self, i):
+        '''
+        Reads one iteration of our sensors and stores in self.data[i]
+        Returns magnetometer, gyroscope reading
+        Populates self.reaction_speeds[i] with hall sensor reading
+        '''
+
+        # TODO: import interface libraries
+        pass
     
 
     def loadData(self, fileName):
         '''
-        alternate to sumulate and generateData. used when ideal_known = False
-        populates self.data with sensor data from file
-        populates self.reaction_speeds with reaction wheel speeds from file
+        Loads pre-made data from a txt file, used when ideal_known = False
+        Populates self.data with sensor data from file
+        Populates self.reaction_speeds with reaction wheel speeds from file
 
         @params:
             fileName: name of file to load data from
@@ -375,12 +350,12 @@ class Simulator():
 
     def simulate(self):
         '''
-        simulates the state estimation process for n time steps
-        runs the specified kalman filter upon the the object's initial state and data/reaction wheel speeds for each time step
-            uses self.reaction_speeds: reaction wheel speed for each time step (n x 3) and self.data: data reading for each time step (n x dim_mes)
+        Simulates the state estimation process for n time steps
+        Runs the specified kalman filter upon the the object's initial state and data/reaction wheel speeds for each time step
+            Uses self.reaction_speeds: reaction wheel speed for each time step (n x 3) and self.data: data reading for each time step (n x dim_mes)
 
-        stores 2D array of estimated states (quaternions, angular velocity) in self.filter_states, covariances in self.covs, and innovation values and covariances in self.innovations/self.innovationCovs
-        also stores time taken for each estimation in self.times
+        Stores 2D array of estimated states (quaternions, angular velocity) in self.filter_states, covariances in self.covs, and innovation values and covariances in self.innovations/self.innovationCovs
+        Also stores time taken for each estimation in self.times
         
         '''
 

@@ -80,10 +80,11 @@ def run_filter_sim(filter, magNoises, gyroNoises):
     dataFile = DATA_FILE
 
     # if we aren't using real data, we need to make up reaction wheel speeds, find ideal state, and generate fake data
-    if not filter.ideal_known:
-        # this populates ukf.data and ukf.reaction_speeds
-        filter.loadData(dataFile)
-    else:
+    # if not filter.ideal_known:
+    #     # this populates ukf.data and ukf.reaction_speeds
+    #     filter.loadData(dataFile)
+
+    if filter.ideal_known:
         # decide how we want our reaction wheels to spin at each time step
         # parameters: max speed, min speed, number of steps to flip speed after, step, bitset of which wheels to activate
         filter.generateSpeeds(400, -400, filter.n, 40, np.array([0, 1, 0, 0]))
@@ -92,8 +93,9 @@ def run_filter_sim(filter, magNoises, gyroNoises):
         filter.propagate()
 
         # generate data reading for each step 
-        filter.generateData(magNoises, gyroNoises, 0)
+        # filter.populateData()
 
+    filter.populateData()
 
     # run our data through the specified kalman function
     filter.simulate()
@@ -121,7 +123,7 @@ def run_controls_sim(filter, magNoises, gyroNoises):
     '''
 
     # generate data for first step so we can start at i = 1
-    filter.generateData_step(0, magNoises[0], gyroNoises[0])
+    filter.generateData_step(0)
 
     # Initialize PID controller
     kp = KP   # Proportional gain
@@ -148,7 +150,7 @@ def run_controls_sim(filter, magNoises, gyroNoises):
         ideal = filter.propagate_step(i)
         
         # create fake magnetometer data by rotating B field by ideal quaternion, and gyro by adding noise to angular velocity
-        filter.generateData_step(i, magNoises[i], gyroNoises[i])
+        filter.generateData_step(i)
 
         # filter our data and get next state
         # also run through our controls to get pwm => voltage => current => speed of reaction wheels
@@ -211,8 +213,8 @@ if __name__ == "__main__":
     # clear output directory from last simulation
     clearDir(outputDir)
 
-    run_filter_sim(ukf, ukf.magNoises, ukf.gyroNoises)
-    # run_controls_sim(ukf, ukf.magNoises, ukf.gyroNoises)
+    # run_filter_sim(ukf, ukf.magNoises, ukf.gyroNoises)
+    run_controls_sim(ukf, ukf.magNoises, ukf.gyroNoises)
 
 
     # # plot3DVectors(np.array([ukf.B_true, ukf.data[50][:3], ukf.data[100][:3], ukf.data[150][:3]]), 121)
