@@ -47,6 +47,8 @@ RESULT = 2
 
 # name of output pdf file
 OUTPUT_FILE = "output.pdf"
+# name of output directory to store plot PNGs in
+OUTPUT_DIR = "plotOutput"
 
 # =======  CONTROLS  =======================================
 
@@ -55,7 +57,10 @@ TARGET = np.array([1.0, 0.0, 0.5, 0.0])
 
 # gains for our PID controller
 KP = MAX_PWM * 4.0e-8       # Proportional gain
+# close to kp allows for narrowing in on target, but not too close
+# smaller = oscillating more frequently, larger = overshooting more
 KI = MAX_PWM * 1e-9         # Integral gain
+# if this is too high, it overrotates
 KD = MAX_PWM * 9e-9         # Derivative gain
 
 # =======  UKF  =================================================

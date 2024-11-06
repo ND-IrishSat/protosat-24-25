@@ -385,7 +385,12 @@ class Simulator():
         return states
 
 
-    def simulate_step(self, i, target, pid):
+    def simulate_step(self, i, target):
+        '''
+        Runs one iteration of propogation for our controls simulation
+        Finds the next state (self.filtered_states[i]), then generates uses our PID controller to find how our system wants to move
+            From the PWM signal output, simulate how our reaction wheel motors would respond for next step (updates self.reaction_speeds[i+1])
+        '''
 
         start = time.time()
         
@@ -407,7 +412,7 @@ class Simulator():
         omega = np.array(self.filtered_states[i][4:])
         
         # Run PD controller to generate output for reaction wheels based on target orientation
-        self.pwms[i] = pid.pid_controller(quaternion, target, omega, self.pwms[i-1])
+        self.pwms[i] = self.controller.pid_controller(quaternion, target, omega, self.pwms[i-1])
 
         # print("wheel speed: ", self.reaction_speeds[i])
         # print("PWM: ", self.pwms[i])
@@ -470,6 +475,77 @@ class Simulator():
 
         return self.filtered_states[i]
 
+    
+    def run_controls_sim(self):
+        '''
+        Combines motor dynamics and PID controller to orient towards a target
+        Propogates our state step by step, as we want to dynamically change our "ideal" state based on our control output
+        '''
+
+        # generate data for first step so we can start at i = 1
+        self.generateData_step(0)
+
+        # define our target orientation and whether we want to reverse it halfway through
+        # TODO: x axis is bugged (or just different moments of inertia). Wants to go sideways
+        target = normalize(TARGET)
+        flip = False
+
+        for i in range(1, self.n):
+
+            # get ideal next state based on current state and reaction wheel speeds of this step
+            # NOTE: this "ideal" state is not super based on truth because it is not generated beforehand. 
+            #       it basically follows what our filter does, so it is not a good representation of the truth
+            ideal = self.propagate_step(i)
+            
+            # create fake magnetometer data by rotating B field by ideal quaternion, and gyro by adding noise to angular velocity
+            self.generateData_step(i)
+
+            # filter our data and get next state
+            # also run through our controls to get pwm => voltage => current => speed of reaction wheels
+            filtered = self.simulate_step(i, target)
+            # game_visualize(np.array([filtered]), i-1)
+
+            # optionally return to starting orientation halfway through
+            if i > self.n / 2 and flip == True:
+                target = normalize(QUAT_INITIAL)
+
+        # plot our results and create pdf output + 3D visualization
+        self.plot_and_viz_results(controller=self.controller, target=target)
+
+
+    def run_filter_sim(self):
+        '''
+        Generates ideal states and sensor data, allowing us to benchmark our kalman filter against simulated "truth". 
+        Can also be run with pre-existing sensor data (ideal_known = False and DATA_FILE != None)
+        '''
+
+        # text file with data values
+        dataFile = DATA_FILE
+
+        if self.ideal_known:
+            # decide how we want our reaction wheels to spin at each time step
+            # parameters: max speed, min speed, number of steps to flip speed after, step, bitset of which wheels to activate
+            self.generateSpeeds(400, -400, self.n, 40, np.array([0, 1, 0, 0]))
+
+            # find ideal state of cubesat through physics equations of motion
+            self.propagate()
+
+        # generate data reading for each step 
+        self.populateData()
+
+        # run our data through the specified kalman function
+        self.simulate()
+
+        # if true, run statistical tests outlined in Estimation II by Ian Reed
+        # these tests allow us to see how well our filter is performing
+        runTests = RUN_STATISTICAL_TESTS
+        sum = 0
+        if runTests:
+            sum = self.runTests()
+
+        # plot our results and create pdf output + 3D visualization
+        self.plot_and_viz_results(sum=sum)
+
 
     def plotData(self):
         '''
@@ -486,6 +562,7 @@ class Simulator():
         '''
         if self.ideal_known:
             plotState_xyz(self.ideal_states, self.ideal_known)
+
         plotState_xyz(self.filtered_states, False)
         # unpack the filtered quaternion and convert it to euler angles
         # use the error quaternion between our starting state and current state to base angle off of starting point
@@ -509,6 +586,48 @@ class Simulator():
         plot_multiple_lines([self.currents], ["Motor Current"], "Motor Current", fileName="Current.png")
 
 
+    def plot_and_viz_results(self, controller=None, target=np.array([1, 0, 0, 0]), sum=0):
+        '''
+        Plots out filter states, data, and reaction wheel speeds, and creates pdf output + 3D visualization
+        Allows us to visualize results of our filter/controls sim
+        Based upon RESULT variable in params.py
+
+        @params:
+            controller: PIDController object (for controls sim)
+            target: target quaternion (for controls sim)
+            sum: sum of statistical tests if they were run
+        '''
+
+        # clear output directory from last simulation
+        clearDir(OUTPUT_DIR)
+
+        # plot mag and gyro data
+        self.plotData()
+        # plots filtered states (and ideal states if ideal_known = True)
+        self.plotStates()
+        # plot reaction wheel speeds
+        self.plotWheelInfo()
+
+        # 0 = only create pdf output, 1 = show 3D animation visualization, 2 = both, 3 = none
+        visualize = RESULT
+
+        if visualize == 1:
+            self.visualizeResults(self.filtered_states)
+
+        elif visualize == 0:
+
+            self.saveFile(OUTPUT_FILE, controller, target, sum, RUN_STATISTICAL_TESTS)
+
+        elif visualize == 2:
+
+            self.saveFile(OUTPUT_FILE, controller, target, sum, RUN_STATISTICAL_TESTS)
+
+            self.visualizeResults(self.filtered_states)
+
+        # only show plot at end so they all show up
+        plt.show()
+
+
     def runTests(self):
         '''
         runs 3 statistical tests on filter results according to Estimation II by Ian Reed:
@@ -529,18 +648,21 @@ class Simulator():
         '''
         takes all saved pngs and compiles a pdf with the given fileName
         uses the formating function found within saving.py
-        stores in outputDir global variable declared in saving.py and opens completed file
+        stores in OUTPUT_DIR variable declared in params.py and opens completed file
         only prints tests results of printsTests is True
         '''
 
-        # savePNGs(outputDir)
+        # savePNGs(OUTPUT_DIR)
 
-        savePDF(fileName, outputDir, self, controller, target, sum, printTests)
+        savePDF(fileName, OUTPUT_DIR, self, controller, target, sum, printTests)
 
         openFile(fileName)
 
 
     def visualizeResults(self, states):
+        '''
+        Given an array of states, visualize the cubesat moving in 3D
+        '''
         # TODO: rewrite functions that visualize different data sets: ideal, filtered, data
         #   with plotting, cubesat, etc
 

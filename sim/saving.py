@@ -15,9 +15,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import chi2
 
+import os
+import sys
 
-# declare global var for name out output directory to store plots in
-outputDir = "plotOutput"
+# import params module from parent directory
+sys.path.insert(1, os.path.join(sys.path[0], '..'))
+from params import OUTPUT_DIR
 
 def saveFig(fig, fileName):
     '''
@@ -27,7 +30,7 @@ def saveFig(fig, fileName):
 
     # absolute path to current directory
     my_path = os.path.dirname(os.path.abspath(__file__)) 
-    saveDirectory = os.path.join(my_path, outputDir)
+    saveDirectory = os.path.join(my_path, OUTPUT_DIR)
 
     fig.savefig(os.path.join(saveDirectory, fileName))
 
