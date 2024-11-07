@@ -38,7 +38,6 @@ def get_instance():
 	@returns 
 		The singleton instance of the VnSensor 
 	'''
-	return s
 
 def connect(port = 'dev/ttyUSB0'):
 	'''
@@ -48,8 +47,8 @@ def connect(port = 'dev/ttyUSB0'):
 	'''
 	# s.connect('COM5', 115200)
 	s.autoConnect(port)
-	if(s.verify_sensor_connectivity()):
-		print("CONNECTED")
+	# if(s.verify_sensor_connectivity()):
+		# print("CONNECTED")
 
 def disconnect():
 	'''
@@ -68,10 +67,10 @@ def read_quat():
 		A 4 element list containing the quaternion values (w, x, y, z)
 		Note: Quaternions do not have units
 	'''
-	
-	quat = s.readRegister(Registers.Attitude.Quaternion())
-	quat = [quat.quatS, quat.quatX, quat.quatY, quat.quatZ]
-	return quat
+	quat_register= Registers.Quaternion()
+	s.readRegister(quat_register)
+	quat_register = [quat_register.quatS, quat_register.quatX, quat_register.quatY, quat_register.quatZ]
+	return quat_register
 
 def read_mag():
 	'''
@@ -82,6 +81,7 @@ def read_mag():
 	'''
 	reading = s.readRegister(Registers.Attitude.QuatMagAccelRate)
 	return [reading.magX, reading.magY, reading.magZ]
+
 
 def read_gyro():
 	'''

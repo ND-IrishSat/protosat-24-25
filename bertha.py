@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
 
 	# declare sensor object
-    vn.connect()
+    vn.connect("COM6")
 
     # count = 100
     # file_name = "test.txt"
@@ -71,6 +71,8 @@ if __name__ == "__main__":
         # time.sleep(.1)
         # print("")
         i += 1
+     #   for i in vn.get_mag_gyro_quat:
+        print(vn.get_mag_gyro_quat().str)
         # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
         #f = open("spinning_circle_one_axis.txt", "a+")
         #f.write(vn.print_mag_gyro_quat()) # put mag, gyro, quat data into text file
