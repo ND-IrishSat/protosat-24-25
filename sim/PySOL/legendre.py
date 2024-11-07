@@ -10,6 +10,7 @@
     Last modified: 25 Oct 2022
 '''
 import numpy as np
+import math
 from scipy.special import lpmn
 
 def lpmn_alt_not(n, x):
@@ -63,7 +64,7 @@ def ssn_lpmv(n_max, x):
             if m_ite == 0:
                 ssn_lpmv_vals[int(n_ite * (n_ite+1) / 2 + m_ite)] = lpmv_alt_not_vals[n_ite, m_ite]
             if m_ite > 0:
-                ssn_lpmv_vals[int(n_ite * (n_ite+1) / 2 + m_ite)] = np.sqrt(2 *np.math.factorial(n_ite - m_ite)/np.math.factorial(n_ite + m_ite) ) * lpmv_alt_not_vals[n_ite, m_ite]
+                ssn_lpmv_vals[int(n_ite * (n_ite+1) / 2 + m_ite)] = np.sqrt(2 *math.factorial(n_ite - m_ite)/math.factorial(n_ite + m_ite) ) * lpmv_alt_not_vals[n_ite, m_ite]
     
     return ssn_lpmv_vals
 
