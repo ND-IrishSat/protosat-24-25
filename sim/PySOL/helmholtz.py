@@ -46,7 +46,7 @@ class FrameX():
         self.L = length
         self.N = num
         
-        self.mu_0 = 1.256637062
+        self.mu_0 = 1.256637062e-6
     
         # Constant in front of Biot-Savart Law: mu_0*N/(4*pi)
         self.const = self.mu_0*num/(4*np.pi)
@@ -284,7 +284,7 @@ class HelmholtzCage():
         # Create tuple of all frames together, for coding elegance purposes :>
         self.cage = (self.frame_xminus, self.frame_xplus, self.frame_yminus, self.frame_yplus, self.frame_zminus, self.frame_zplus)
         
-    def calc_Bfield(self, r, I_xminus=0.1, I_xplus= -0.1, I_yminus=0.1, I_yplus= -0.1, I_zminus=0.1, I_zplus= -0.1):
+    def calc_Bfield(self, r, I_xminus=0.1, I_xplus= 0.1, I_yminus= 0.1, I_yplus= 0.1, I_zminus=0.1, I_zplus= 0.1):
         ''' Calculate B field due to Helmholtz cage at position r
         
             Args:
@@ -344,7 +344,7 @@ class HelmholtzCage():
             verts = self.calc_frame_vertices(frame)
             ax.plot(verts[:, 0], verts[:, 1], verts[:, 2], marker = 'o', color = 'blue')
             
-    def plot_Bfield(self, xlim, ylim, zlim, grid_num = 5, I_xminus=0.0, I_xplus= -0.0, I_yminus=0.0, I_yplus= -0.0, I_zminus=0.1, I_zplus= -0.0):
+    def plot_Bfield(self, xlim, ylim, zlim, grid_num = 4, I_xminus=0.1, I_xplus= 0.1, I_yminus=0, I_yplus= 0, I_zminus= 0, I_zplus= 0):
         ''' Plot a 3D vector field of the B field due to the Helmholtz cage
         
             Args:
@@ -399,12 +399,14 @@ if __name__ == "__main__":
     # Test case
     L = 1
     num = 80
-    x_disp = 0.3
+
+    # Set displacements of frame from origin (center of cage)
+    x_disp = 0.25
     y_disp = 0.25
     z_disp = 0.25
-    I = 1e-3
+    I = 1
     r = np.array([0.0, 0.0, 0.0])
-    lim = 0.45
+    lim = 0.4
     
     cage = HelmholtzCage(L, num, x_disp, y_disp, z_disp)
     cage.plot_Bfield(lim, lim, lim)

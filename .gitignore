@@ -2,3 +2,6 @@
 plotOutput/**
 output.pdf
 sim/plotOutput/**
+interface/vn100/vn100_library/build/
+interface/vn100/vn100_library/dist/
+interface/vn100/vn100_library/vnpy.egg-info/

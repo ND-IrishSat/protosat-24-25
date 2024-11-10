@@ -1,10 +1,17 @@
+'''
+even_basicer_app.py
+
+'''
+
 import dash
-from dash import dcc
+from dash import dcc                           # dash-core-components, i.e, graphs, sliders, dropdowns, etc
 from dash import html
 from dash.dependencies import Input, Output
+
+
 import pandas as pd
 import plotly.express as px
-import geopandas as gpd
+import geopandas as gpd                         # pandas library to work with geospatial data
 import shapely.geometry
 import numpy as np
 from jupyter_dash import JupyterDash
@@ -13,45 +20,56 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 import csv
-import h5py
-import astropy.time as astro_time
+import h5py                                     # Hierarchical Data Format version 5 files are used for managing large datasets,
+import astropy.time as astro_time       
 
 import time
 
-from wmm import WMM
+from wmm import WMM                             # World Magnetic Model (WMM), a mathematical representation of Earth's magnetic field
 
+# Assigns a low-resolution dataset of country boundaries to 'countries'
 countries = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
 
+# Styling sheets via CodePen
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
 
+# Creates a new dash application
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
-# assume you have a "long-form" data frame
-# see https://plotly.com/python/px-arguments/ for more options
+'''
+    Creates a DataFrame
+    - assume you have a "long-form" data frame
+    - see https://plotly.com/python/px-arguments/ for more options
+''' 
 df_bar = pd.DataFrame({
     "Fruit": ["Apples", "Oranges", "Bananas", "Apples", "Oranges", "Bananas"],
     "Amount": [4, 1, 2, 2, 4, 5],
     "City": ["SF", "SF", "SF", "Montreal", "Montreal", "Montreal"]
 })
 
-
-
-
 class OAT:
-
-    def __init__(self, fn, path = 'save_sim/', output_path = 'outputs/'):
+    '''
+        Uses h5py and astropy.time
+        Class to initialize and handle the data stored in HDF5 file
+    '''
+    def __init__(self,fn, path = 'save_sim/', output_path = 'outputs/'):
+        '''
+            Initialize OAT simulation by loading data from an HDF5 file.
+        '''
 
         print('Initializing OAT simulation..')
 
-        # set the font globally
+        # Set the font globally
         #plt.rcParams.update({'font.family':'sans-serif'})
 
+        # Assigns to where the simulation and output directory
         self.sim_path = path
         self.out_path = output_path
 
+        # Open the HDF5 file
         f = h5py.File(self.sim_path + fn, 'r')
         print('Loading ' + fn + '..')
-
+        
         self.dt = f.attrs['dt']
 
         self.X = f['states']['ECI']['X']

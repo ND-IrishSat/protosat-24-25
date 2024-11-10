@@ -27,16 +27,12 @@ import interface.gps_interface as gps_interface
 import ukf.ideal_test_cases as ideal_test_cases
 import ukf.hfunc as hfunc
 import sim.visualizer as simulator
-import sim.PySOL.wmm as wmm
 # from interface.happy_sensors import get_imu_data
 
-# from sim.PySOL import spacecraft as sp
-# from sim.PySol.spacecraft import *
+import sim.PySOL.wmm as wmm
 from sim.PySOL.sol_sim import *
 import sim.PySOL.spacecraft as sp
 import sim.PySOL.orb_tools as ot
-# from sim.PySOL import sol_sim
-# from sim.PySOL import orb_tools as ot
 
 
 def check_zeros(data):
@@ -69,8 +65,18 @@ def run_ukf_textfile(start, cov, r, q, filename):
 
     # set up orbital simulation so can find our position and height for every time step
 
+    # orbital elements (see generate_orbit_data in sol_sim.pyfor more info)
+    # oe = [121, 6_800, 0.0000922, 51, -10, 80]
+    # how long to simulate orbital dynamics for
+    # duration = .3
+
+    # uncomment to generate new data
+    # B_earth = generate_orbit_data(oe, duration, dt, "b_dot_sim.csv", store_data=True)
+    # use pre-generated data
+    # B_earth = get_orbit_data("b_dot_sim.csv")
+
     # startTime = 2022.321
-    t0 = dt.datetime(2022, 3, 21, 0, 0, 0)
+    t0 = datetime.datetime(2022, 3, 21, 0, 0, 0)
     # sim = sol_sim.Simulation(TIME = t0, mag_deg= 12)
     sim = Simulation(TIME = t0, mag_deg= 12)
 
@@ -80,7 +86,7 @@ def run_ukf_textfile(start, cov, r, q, filename):
     sim.create_sc(OE_array= OE1, verbose = True, color = 'green', name = 'Low-Earth Orbit')
 
 
-    DT = dt.timedelta(hours = duration)
+    DT = datetime.timedelta(hours = duration)
     # resolution = timestep. Must match with rest of ukf
     dt_ukf = .1
     sim.propogate(DT, resolution =  .1)

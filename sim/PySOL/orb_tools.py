@@ -10,12 +10,13 @@ import scipy as sci
 import numpy as np
 
 
-import PySOL.orb_tools as ot
-import PySOL.constants as constants
+import orb_tools as ot
+import constants
 import datetime as dt
 
 import astropy.time as astro_time
 
+Omega_earth = np.array([0.0, 0.0, 0.0000729211585530]) # rad / s
 
 class State_Matrix():
     """
@@ -431,8 +432,7 @@ def calc_th_0(time):
 
 def calc_LALN(r_, time):
     """
-    
-    
+        
     """
 
     RA_deg, Dec_deg = calc_R2RADEC(r_, verbose = False)
@@ -475,7 +475,34 @@ def calc_ECEF(r_, time):
     return r_ECEF
 
 
+def calc_ECEF_R(r_, v_, time):
+    """ Calculate ECEF position and velocity from ECI position using Rotation matrix about Z axis (only takes Earth's rotation into account, no nutation + precession)
+    
+        Args:
+            r_ (np.ndarray (1x3)): position vector in ECI basis
+            
 
+    """
+
+    theta_0 = calc_th_0(time)*np.pi/180.0
+    RZ = Rotate_Z(-theta_0)
+
+    r_ECEF = np.matmul(RZ, r_)
+    v_ECEF = np.matmul(RZ, v_) - np.cross(Omega_earth, r_ECEF)
+
+    return r_ECEF, v_ECEF
+
+def calc_ECI_R(r_ECEF, v_ECEF, time):
+    """ Calculate ECI position from ECEF position using Rotation matrix about Z axis (only takes Earth's rotation into account, no nutation + precession)
+    """
+
+    theta_0 = calc_th_0(time)*np.pi/180.0
+    RZ_inv = Rotate_Z(theta_0)
+
+    r_ECI = np.matmul(RZ_inv, r_ECEF)
+    v_ECI = np.matmul(RZ_inv, v_ECEF + np.cross(Omega_earth, r_ECEF))
+
+    return r_ECI, v_ECI
 
 def Rotate_Z(psi):
     """
@@ -533,7 +560,20 @@ if __name__ == '__main__':
 
     print(calc_th_0(time))
     
+    r_ex = np.array([10_000, 7_000, 9_000])
+    v_ex = np.array([10, 0, 0])
+    r_ECEF_1 = calc_ECEF(r_ex, time)
+    r_ECEF_2, v_ECEF_2 = calc_ECEF_R(r_ex, v_ex, time)
 
+    r_ECI, v_ECI = calc_ECI_R(r_ECEF_2, v_ECEF_2, time)
+
+    print(f'ECI: {r_ex}')
+    print(f'ECI --> ECEF (Method 1): {r_ECEF_1}')
+    print(f'ECI --> ECEF (Method 2): {r_ECEF_2}')
+    print(f'ECI --> ECEF (Method 2) --> ECI: {r_ECI}')
+    
+    print(v_ex)
+    print(v_ECI)
     # r_ = np.array([-6045, -3490, 2500])
     # v_ = np.array([-3.457, 6.618, 2.533])
     # S_ = np.concatenate((r_, v_))

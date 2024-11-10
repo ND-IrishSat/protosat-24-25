@@ -39,7 +39,7 @@ class OAT:
         # set the font globally
         plt.rcParams.update({'font.family':'sans-serif'})
 
-        # configure the path correctly to sim/PySOL/save_sim/
+        # configure the path correctly
         script_path = os.path.abspath(__file__)
         script_dir = os.path.split(script_path)[0]
         abs_file_path = os.path.join(script_dir, path)
