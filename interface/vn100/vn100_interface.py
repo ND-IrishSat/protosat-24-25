@@ -38,6 +38,7 @@ def get_instance():
 	@returns 
 		The singleton instance of the VnSensor 
 	'''
+	return s
 
 def connect(port = 'dev/ttyUSB0'):
 	'''
@@ -47,6 +48,7 @@ def connect(port = 'dev/ttyUSB0'):
 	'''
 	# s.connect('COM5', 115200)
 	s.autoConnect(port)
+	print("CONNECTED")
 	# if(s.verify_sensor_connectivity()):
 		# print("CONNECTED")
 
@@ -79,8 +81,9 @@ def read_mag():
 	@return 
 		A 3 element list containing 3 float values in microtesla (x,y,z)
 	'''
-	reading = s.readRegister(Registers.Attitude.QuatMagAccelRate)
-	return [reading.magX, reading.magY, reading.magZ]
+	mag_register = Registers.Mag()
+	s.readRegister(mag_register)
+	return [mag_register.magX, mag_register.magY, mag_register.magZ]
 
 
 def read_gyro():
@@ -90,8 +93,9 @@ def read_gyro():
 	@return 
 		A returns 3 element list containing 3 float values in °/s (x,y,z)
 	'''
-	reading = s.readRegister(Registers.Attitude.QuatMagAccelRate)
-	return [reading.gyroX, reading.gyroY, reading.gyroZ]
+	gyro_register = Registers.Gyro()
+	s.readRegister(gyro_register)
+	return [gyro_register.gyroX, gyro_register.gyroY, gyro_register.gyroZ]
 	
 
 def read_accel():
@@ -142,9 +146,10 @@ def print_data_to_file(count, file_name):
 	i = 0 # keep track of our iteration count
 	f = open(file_name, "a+")
 	while i < count:
+
 		i += 1
 		# save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
-		f.write(print_mag_gyro_quat()) # put mag, gyro, quat data into text file
+		f.write(get_mag_gyro_quat()) # put mag, gyro, quat data into text file
 		if (i < count): f.write("\n") # add newline to separate data sets
 
 	f.close()

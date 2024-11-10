@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # connect to VN100 IMU. run setup.py if needed, check and print sensor info, etc
 
 	# declare sensor object
-    vn.connect("COM6")
+    vn.connect("COM5")
 
     # count = 100
     # file_name = "test.txt"
@@ -62,21 +62,31 @@ if __name__ == "__main__":
 
     # keep track of our iteration count
     i = 0
-    count = 100000
-    while i < count:
+    count = 50
+    file_name = "testing_new_library.txt"
+    f = open(file_name, "a+")
 
+    while i < count:
+        
         quat = vn.read_quat()
         visualize_data(i, quat)
 
-        # time.sleep(.1)
-        # print("")
         i += 1
-     #   for i in vn.get_mag_gyro_quat:
-        print(vn.get_mag_gyro_quat().str)
-        # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
-        #f = open("spinning_circle_one_axis.txt", "a+")
-        #f.write(vn.print_mag_gyro_quat()) # put mag, gyro, quat data into text file
-        #if (i < count):    f.write("\n") # add newline to separate data sets
-        #f.close()
 
+        #time.sleep(.1)
+        #print("")
+		#save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
+        f.write(vn.get_mag_gyro_quat()) # put mag, gyro, quat data into text file
+        if (i < count):
+            f.write("\n") # add newline to separate data sets
+        # optional: save to text file in form of magnetometer (magnetic field), angular velocity (gyroscope), and acceleration (accelerometer)
+    
+    f.close()
+    #source = f'./{file_name}'
+    #destination = './new_sensor_tests'
+    #os.rename(source, destination)
+
+    vn.print_data_to_file(count, "another_test.txt")
+
+    vn.disconnect()
     # ==============================================================================
